@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}CyberOrg - Профиль пользователя{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Профиль пользователя</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4 text-center">
+                            <i class="fas fa-user-circle fa-5x text-muted mb-3"></i>
+                            <h5>{{ current_user.full_name }}</h5>
+                            <p class="text-muted mb-0">@{{ current_user.username }}</p>
+                        </div>
+                        <div class="col-md-8">
+                            <dl class="row">
+                                <dt class="col-sm-4">Роль:</dt>
+                                <dd class="col-sm-8">
+                                    {% if current_user.is_super_admin %}
+                                        <span class="badge bg-danger">Супер-админ</span>
+                                    {% elif current_user.is_admin %}
+                                        <span class="badge bg-warning text-dark">Админ</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Куратор</span>
+                                    {% endif %}
+                                </dd>
+                                
+                                <dt class="col-sm-4">Имя:</dt>
+                                <dd class="col-sm-8">{{ current_user.first_name or 'Не указано' }}</dd>
+                                
+                                <dt class="col-sm-4">Фамилия:</dt>
+                                <dd class="col-sm-8">{{ current_user.last_name or 'Не указана' }}</dd>
+                                
+                                <dt class="col-sm-4">Дата регистрации:</dt>
+                                <dd class="col-sm-8">{{ current_user.created_at|moscow_time }}</dd>
+                                
+                                <dt class="col-sm-4">Последний вход:</dt>
+                                <dd class="col-sm-8">
+                                    {% if current_user.last_login %}
+                                        {{ current_user.last_login|moscow_time }}
+                                    {% else %}
+                                        Не было входов
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    {% if is_default_password %}
+                        <div class="alert alert-warning mb-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i> Вы используете стандартный пароль. Пожалуйста, измените его для обеспечения безопасности вашего аккаунта.
+                        </div>
+                    {% endif %}
+                    
+                    <div class="card mb-0">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">Изменение пароля</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                <div class="mb-3">
+                                    <label for="current_password" class="form-label">Текущий пароль</label>
+                                    <input type="password" class="form-control" id="current_password" name="current_password" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="new_password" class="form-label">Новый пароль</label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password" required minlength="6">
+                                    <div class="form-text">Пароль должен содержать не менее 6 символов</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="confirm_password" class="form-label">Подтвердите новый пароль</label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="6">
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Изменить пароль</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

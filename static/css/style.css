@@ -1,0 +1,463 @@
+/* Общие стили */
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #0dcaf0;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f5f7fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    max-width: 1200px;
+    width: 100%;
+    padding-left: 40px;
+    padding-right: 40px;
+}
+
+main {
+    flex: 1;
+}
+
+.navbar {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff !important;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    color: var(--primary-color) !important;
+}
+
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-bottom: none;
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Стили для вебинаров */
+.webinar-card {
+    position: relative;
+    transition: all 0.3s ease;
+    height: 100%;
+    cursor: pointer;
+}
+
+.selected-webinar {
+    border: 2px solid var(--primary-color);
+}
+
+.webinar-card:hover {
+    transform: translateY(-5px);
+}
+
+.webinar-cover {
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f0f0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    overflow: hidden;
+}
+
+.webinar-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.webinar-title {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--dark-color);
+    height: 2.8rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.task-badge-container {
+    min-height: 1.5rem;
+}
+
+.week-select {
+    width: 120px !important;
+    font-size: 0.85rem;
+}
+
+/* Фильтры и поиск */
+.webinar-filters {
+    margin-bottom: 1.5rem;
+}
+
+.filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-btn {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.75rem;
+}
+
+/* Стили для списка планов */
+.plan-card {
+    margin-bottom: 1rem;
+}
+
+.plan-date {
+    font-size: 0.85rem;
+    color: var(--secondary-color);
+}
+
+/* Оформление для просмотренных вебинаров */
+.watched-webinar {
+    opacity: 0.7;
+}
+
+.watched-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+
+/* Стили для страницы входа */
+.login-container {
+    max-width: 400px;
+    margin: 2rem auto;
+}
+
+/* Стили для медиазапросов */
+@media (max-width: 768px) {
+    .card-title {
+        font-size: 1.1rem;
+    }
+    
+    .webinar-filters .filter-buttons {
+        margin-top: 0.5rem;
+    }
+    
+    .container {
+        padding-left: 25px;
+        padding-right: 25px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .webinar-cover {
+        height: 140px;
+    }
+    
+    .webinar-title {
+        font-size: 0.9rem;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        margin-bottom: 0.5rem;
+    }
+    
+    h1 {
+        font-size: 1.75rem;
+    }
+    
+    .form-select {
+        font-size: 0.85rem;
+    }
+    
+    .week-select {
+        width: 110px !important;
+    }
+}
+
+/* Shkolkovo.online стиль */
+body {
+    background-color: #f0f4f8;
+}
+
+.navbar {
+    background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%) !important;
+}
+
+.navbar-brand, .navbar-nav .nav-link {
+    color: white !important;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.card-header.bg-primary {
+    background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%) !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
+    border-color: #1976d2;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+    border-color: #1565c0;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%) !important;
+}
+
+.form-control:focus {
+    border-color: #2196f3;
+    box-shadow: 0 0 0 0.25rem rgba(33, 150, 243, 0.25);
+}
+
+footer {
+    background-color: #263238 !important;
+}
+
+footer .text-muted {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Улучшенные стили для вебинаров */
+.webinar-card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.webinar-cover {
+    height: 160px;
+}
+
+.webinar-title {
+    font-weight: 600;
+}
+
+.selected-webinar {
+    box-shadow: 0 0 0 2px #2196f3, 0 6px 12px rgba(33, 150, 243, 0.2);
+}
+
+.week-select {
+    border-radius: 4px;
+}
+
+/* Стили для форм */
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Стили для баджей и статусов */
+.badge {
+    padding: 0.5em 0.8em;
+}
+
+/* Стили для таблиц */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+}
+
+.table td {
+    padding: 12px 15px;
+    vertical-align: middle;
+}
+
+/* Различные утилиты */
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Стили для заголовков страниц */
+.page-header {
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Адаптивные стили */
+@media (max-width: 576px) {
+    .container {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    
+    .row {
+        margin-left: -5px;
+        margin-right: -5px;
+    }
+    
+    .col, .col-md-4, .col-md-6, .col-md-8, .col-lg-3 {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    .webinar-cover {
+        height: 100px;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .badge {
+        font-size: 0.7rem;
+    }
+    
+    .week-select {
+        width: 90px !important;
+    }
+}
+
+/* Стили для бейджей */
+.badge {
+    font-weight: normal;
+    padding: 0.4em 0.6em;
+}
+
+/* Стили для таблиц */
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+.table thead th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Стили для списков */
+.list-group-item {
+    border-left: none;
+    border-right: none;
+    padding: 0.75rem 1.25rem;
+}
+
+.list-group-item:first-child {
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+}
+
+.list-group-item:last-child {
+    border-bottom-left-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+/* Специальные стили для печати */
+@media print {
+    header, footer, form, .btn, .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa !important;
+        color: #000 !important;
+    }
+    
+    .badge {
+        border: 1px solid #ddd !important;
+        color: #000 !important;
+    }
+    
+    a[href]:after {
+        content: " (" attr(href) ")";
+    }
+    
+    body {
+        font-size: 12pt;
+    }
+}
+
+/* Стили для навигации */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+/* Анимации для элементов интерфейса */
+.btn {
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Стики-хедер для таблиц с прокруткой */
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #fff;
+}
+
+/* Стили для фильтров */
+.filter-btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+} 

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}CyberOrg - Импорт вебинаров{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Импорт вебинаров из Excel</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Выберите Excel-файл</label>
+                            <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h5 class="alert-heading">Требования к Excel-файлу:</h5>
+                            <p>Файл должен содержать следующие колонки:</p>
+                            <ul class="mb-0">
+                                <li><strong>название вебинара</strong> - название вебинара (обязательно)</li>
+                                <li><strong>ссылка на вебинар</strong> - URL вебинара (обязательно)</li>
+                                <li><strong>дата вебинара</strong> - дата в формате ДД.ММ.ГГГГ (опционально)</li>
+                                <li><strong>номера заданий</strong> - список номеров заданий через запятую (например: "1, 2, 5") (опционально)</li>
+                                <li><strong>решение прогой или руками</strong> - тип решения ("прогой", "руками" или "прогой, руками") (опционально)</li>
+                                <li><strong>номер дз</strong> - номер домашнего задания (опционально)</li>
+                                <li><strong>категория</strong> - категория вебинара (1 - обязательный, 2 - повторение, 3 - необязательный) (опционально)</li>
+                                <li><strong>категория курса</strong> - уровень курса ("Python с нуля", "основной курс", "хард прога", "задание 27") (опционально)</li>
+                                <li><strong>комментарий</strong> - дополнительная информация (опционально)</li>
+                                <li><strong>ссылка на обложку</strong> - URL изображения обложки вебинара (опционально)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('static', filename='templates/webinars_template.xlsx') }}" class="btn btn-success mb-3">
+                                <i class="fas fa-download me-2"></i> Скачать шаблон Excel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-import me-2"></i> Импортировать
+                            </button>
+                            <a href="{{ url_for('webinars_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i> Назад
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

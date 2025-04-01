@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}CyberOrg - Поиск: {{ query }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1>Результаты поиска</h1>
+    <p class="text-muted">По запросу: "{{ query }}"</p>
+    
+    <form action="{{ url_for('search') }}" method="get" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Поиск..." value="{{ query }}">
+            <button class="btn btn-primary" type="submit">Найти</button>
+        </div>
+    </form>
+</div>
+
+<div class="row">
+    <!-- Результаты поиска по ученикам -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Ученики</h5>
+            </div>
+            <div class="card-body">
+                {% if students %}
+                    <div class="list-group">
+                        {% for student in students %}
+                            <a href="{{ url_for('student_detail', student_id=student.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ student.last_name }} {{ student.first_name }}</h6>
+                                    <small class="text-muted">ID: {{ student.platform_id }}</small>
+                                </div>
+                                <div class="d-flex">
+                                    {% if student.target_score %}
+                                        <small class="badge bg-primary me-1">{{ student.target_score }} баллов</small>
+                                    {% endif %}
+                                    
+                                    {% if student.is_beginner %}
+                                        <small class="badge bg-info me-1">Начинающий</small>
+                                    {% endif %}
+                                    
+                                    {% if student.knows_task_26 %}
+                                        <small class="badge bg-warning me-1">Задание 26</small>
+                                    {% endif %}
+                                    
+                                    {% if student.knows_task_27 %}
+                                        <small class="badge bg-danger me-1">Задание 27</small>
+                                    {% endif %}
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Учеников не найдено.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Результаты поиска по вебинарам -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Вебинары</h5>
+            </div>
+            <div class="card-body">
+                {% if webinars %}
+                    <div class="list-group">
+                        {% for webinar in webinars %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ webinar.title }}</h6>
+                                    <small class="text-muted">{{ webinar.date.strftime('%d.%m.%Y') }}</small>
+                                </div>
+                                <div class="mb-1">
+                                    {% for task in webinar.task_numbers %}
+                                        <span class="badge bg-secondary me-1">№{{ task.number }}</span>
+                                    {% endfor %}
+                                    
+                                    {% if webinar.category == 1 %}
+                                        <span class="badge bg-success">Обязательный</span>
+                                    {% elif webinar.category == 2 %}
+                                        <span class="badge bg-info">Повторение</span>
+                                    {% elif webinar.category == 3 %}
+                                        <span class="badge bg-secondary">Необязательный</span>
+                                    {% endif %}
+                                    
+                                    {% if webinar.is_programming and webinar.is_manual %}
+                                        <span class="badge bg-primary">Программирование</span>
+                                        <span class="badge bg-warning text-dark">Ручное решение</span>
+                                    {% elif webinar.is_programming %}
+                                        <span class="badge bg-primary">Программирование</span>
+                                    {% elif webinar.is_manual %}
+                                        <span class="badge bg-warning text-dark">Ручное решение</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Перейти к вебинару
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Вебинаров не найдено.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not students and not webinars %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i> По вашему запросу ничего не найдено. Попробуйте изменить поисковый запрос.
+    </div>
+{% endif %}
+{% endblock %} 
