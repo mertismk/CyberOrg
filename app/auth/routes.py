@@ -30,7 +30,7 @@ def login():
 
             next_page = request.args.get('next')
             # Проверка безопасности: убеждаемся, что next_page ведет на тот же сайт
-            if not next_page or url_parse(next_page).netloc != '':
+            if not next_page or urlparse(next_page).netloc != '':
                 next_page = url_for('main.index') # По умолчанию на главную
             return redirect(next_page)
         else:
