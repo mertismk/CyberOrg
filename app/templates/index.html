@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная - CyberOrg{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <h1 class="display-5 fw-bold mb-4">Система планирования обучения CyberOrg</h1>
+                    <p class="lead mb-4">Добро пожаловать, {{ current_user.username }}!</p>
+                    <div class="mt-4">
+                        <a href="{{ url_for('students.students_list') }}" class="btn btn-primary btn-lg me-2">
+                            <i class="fas fa-user-graduate me-1"></i> Список учеников
+                        </a>
+                        <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-video me-1"></i> Список вебинаров
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-graduation-cap me-2 text-primary"></i>Ученики</h5>
+                    <p class="card-text">Просмотр и управление списком учеников.</p>
+                    <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-video me-2 text-success"></i>Вебинары</h5>
+                    <p class="card-text">Просмотр и управление списком вебинаров.</p>
+                    <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-success">Перейти</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-webinar.search me-2 text-info"></i>Поиск</h5>
+                    <p class="card-text">Поиск по ученикам и вебинарам.</p>
+                    <form action="{{ url_for('main.search') }}" method="get">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" name="q" placeholder="Имя, фамилия, ID, название...">
+                            <button class="btn btn-outline-info" type="submit">Искать</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if current_user.is_admin %}
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="card border-warning shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Административные функции</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Импорт вебинаров</h6>
+                            <p>Загрузка вебинаров из Excel файла.</p>
+                            <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-warning">
+                                <i class="fas fa-upload me-1"></i> Импортировать
+                            </a>
+                        </div>
+                        {% if current_user.is_super_admin %}
+                        <div class="col-md-6">
+                            <h6>Пользователи</h6>
+                            <p>Управление пользователями системы.</p>
+                            <a href="{{ url_for('users.users_list') }}" class="btn btn-danger">
+                                <i class="fas fa-cogs me-1"></i> Управлять
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

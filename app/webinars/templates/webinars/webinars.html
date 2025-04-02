@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}CyberOrg - Вебинары{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Вебинары</h1>
+    <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-primary">
+        <i class="fas fa-file-import me-2"></i> Импортировать вебинары
+    </a>
+</div>
+
+{% if webinars %}
+    <div class="card shadow">
+        <div class="card-body">
+            <!-- Поиск и фильтры -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="webinarFilter" class="form-control" placeholder="Поиск вебинаров...">
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="btn-group float-end" role="group">
+                        <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="all">Все</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_beginners">Python с нуля</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_basic">Основной курс</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_advanced">Хард прога</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_expert">Задание 27</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Плиточное отображение вебинаров -->
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for webinar in webinars %}
+                    <div class="col webinar-item 
+                        {% if webinar.for_beginners %}for_beginners{% endif %}
+                        {% if webinar.for_basic %}for_basic{% endif %}
+                        {% if webinar.for_advanced %}for_advanced{% endif %}
+                        {% if webinar.for_expert %}for_expert{% endif %}
+                    ">
+                        <div class="card h-100 webinar-card">
+                            <!-- Обложка вебинара -->
+                            <div class="webinar-cover">
+                                {% if webinar.cover_url %}
+                                    <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
+                                {% else %}
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-video fa-3x"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="card-body">
+                                <!-- Название и дата -->
+                                <h5 class="card-title webinar-title">{{ webinar.title }}</h5>
+                                <p class="text-muted mb-2">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    {{ webinar.date|moscow_time if webinar.date else 'Не указано' }}
+                                    <span class="ms-2">
+                                        <i class="fas fa-hashtag me-1"></i>
+                                        ID: {{ webinar.url[-5:] if webinar.url|length >= 5 else webinar.url }}
+                                    </span>
+                                </p>
+                                
+                                <!-- Номера заданий -->
+                                <div class="mb-2">
+                                    {% for task in webinar.task_numbers %}
+                                        <span class="badge bg-secondary me-1">№{{ task.number }}</span>
+                                    {% endfor %}
+                                </div>
+                                
+                                <!-- Категория -->
+                                <div class="mb-2">
+                                    {% if webinar.category == 1 %}
+                                        <span class="badge bg-success">Обязательный</span>
+                                    {% elif webinar.category == 2 %}
+                                        <span class="badge bg-info">Повторение</span>
+                                    {% elif webinar.category == 3 %}
+                                        <span class="badge bg-secondary">Необязательный</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Тип решения -->
+                                <div class="mb-2">
+                                    {% if webinar.is_programming and webinar.is_manual %}
+                                        <span class="badge bg-primary">Программирование</span>
+                                        <span class="badge bg-warning text-dark">Ручное решение</span>
+                                    {% elif webinar.is_programming %}
+                                        <span class="badge bg-primary">Программирование</span>
+                                    {% elif webinar.is_manual %}
+                                        <span class="badge bg-warning text-dark">Ручное решение</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Уровень -->
+                                <div class="mb-3">
+                                    {% if webinar.for_beginners %}
+                                        <span class="badge bg-info me-1">Python с нуля</span>
+                                    {% endif %}
+                                    {% if webinar.for_basic %}
+                                        <span class="badge bg-success me-1">Основной курс</span>
+                                    {% endif %}
+                                    {% if webinar.for_advanced %}
+                                        <span class="badge bg-warning text-dark me-1">Хард прога</span>
+                                    {% endif %}
+                                    {% if webinar.for_expert %}
+                                        <span class="badge bg-danger me-1">Задание 27</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Автор и дата создания -->
+                                <div class="small text-muted">
+                                    <div>
+                                        <i class="fas fa-user me-1"></i>
+                                        {{ webinar.created_by.full_name if webinar.created_by else 'Неизвестно' }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card-footer bg-transparent">
+                                <div class="d-grid gap-2">
+                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary">
+                                        <i class="fas fa-external-link-alt me-2"></i> Перейти к вебинару
+                                    </a>
+                                    <button class="btn btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}">
+                                        <i class="fas fa-link me-2"></i> Скопировать ссылку
+                                    </button>
+                                    <button class="btn btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComments{{ webinar.id }}" aria-expanded="false" aria-controls="collapseComments{{ webinar.id }}">
+                                        <i class="fas fa-comments me-2"></i> Комментарии ({{ webinar.comments|length }})
+                                    </button>
+                                </div>
+                                
+                                <div class="collapse mt-2" id="collapseComments{{ webinar.id }}" aria-labelledby="headingComments{{ webinar.id }}" data-bs-parent="#webinarAccordion{{ webinar.id }}">
+                                    <div class="card card-body bg-light">
+                                        <!-- Форма добавления комментария -->
+                                        <div class="mt-3">
+                                            <h6><i class="fas fa-comments me-1"></i> Комментарии:</h6>
+                                            <form action="{{ url_for('webinars.add_webinar_comment', webinar_id=webinar.id) }}" method="post" class="mb-3">
+                                                <div class="input-group">
+                                                    <input type="text" name="comment_text" class="form-control form-control-sm" placeholder="Добавить комментарий..." required>
+                                                    <button class="btn btn-primary" type="submit">
+                                                        <i class="fas fa-paper-plane"></i>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        
+                                        <!-- Список комментариев -->
+                                        {% if webinar.comments %}
+                                            {% for comment in webinar.comments|sort(attribute='created_at', reverse=true) %}
+                                                <div class="d-flex mb-2">
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <small class="text-muted">
+                                                                <strong>{{ comment.user.full_name }}</strong>
+                                                                • {{ comment.created_at|moscow_time }}
+                                                            </small>
+                                                            {% if current_user.id == comment.user_id or current_user.is_admin %}
+                                                                <form action="{{ url_for('webinars.delete_webinar_comment', comment_id=comment.id) }}" method="post" class="d-inline">
+                                                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0" 
+                                                                            onclick="return confirm('Удалить комментарий?')"
+                                                                            title="Удалить комментарий"
+                                                                    >
+                                                                        <i class="fas fa-times"></i>
+                                                                    </button>
+                                                                </form>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div>{{ comment.text }}</div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <small class="text-muted">Нет комментариев</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i> В базе данных нет вебинаров. Импортируйте их из Excel-файла, нажав на кнопку выше.
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Фильтрация по тексту
+        const filterInput = document.getElementById('webinarFilter');
+        if (filterInput) {
+            filterInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase();
+                const cards = document.querySelectorAll('.webinar-item');
+                
+                cards.forEach(function(card) {
+                    const text = card.textContent.toLowerCase();
+                    card.style.display = text.includes(value) ? '' : 'none';
+                });
+            });
+        }
+        
+        // Фильтрация по кнопкам
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        filterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                const cards = document.querySelectorAll('.webinar-item');
+                
+                // Выделяем активную кнопку
+                filterButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
+                filterButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('active', 'btn-primary');
+                
+                if (filter === 'all') {
+                    cards.forEach(card => card.style.display = '');
+                } else {
+                    cards.forEach(function(card) {
+                        card.style.display = card.classList.contains(filter) ? '' : 'none';
+                    });
+                }
+                
+                // Применяем текстовый фильтр поверх категорийного
+                const searchText = filterInput.value.toLowerCase();
+                if (searchText) {
+                    cards.forEach(function(card) {
+                        if (card.style.display !== 'none') {
+                            const text = card.textContent.toLowerCase();
+                            card.style.display = text.includes(searchText) ? '' : 'none';
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Копирование ссылки
+        const copyButtons = document.querySelectorAll('.copy-link-btn');
+        copyButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const url = this.getAttribute('data-url');
+                navigator.clipboard.writeText(url).then(() => {
+                    const originalHtml = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-check me-2"></i> Скопировано!';
+                    this.classList.remove('btn-outline-secondary');
+                    this.classList.add('btn-success');
+                    
+                    setTimeout(() => {
+                        this.innerHTML = originalHtml;
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-outline-secondary');
+                    }, 2000);
+                }).catch(() => {
+                    // Если API не поддерживается, используем старый метод
+                    const textarea = document.createElement('textarea');
+                    textarea.value = url;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        const originalHtml = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check me-2"></i> Скопировано!';
+                        this.classList.remove('btn-outline-secondary');
+                        this.classList.add('btn-success');
+                        
+                        setTimeout(() => {
+                            this.innerHTML = originalHtml;
+                            this.classList.remove('btn-success');
+                            this.classList.add('btn-outline-secondary');
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Не удалось скопировать ссылку:', err);
+                    }
+                    document.body.removeChild(textarea);
+                });
+            });
+        });
+    });
+</script>
+{% endblock %} 

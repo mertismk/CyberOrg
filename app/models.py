@@ -1,0 +1,190 @@
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import UserMixin
+from datetime import datetime, date
+
+db = SQLAlchemy()
+
+
+# Модель для вебинаров
+class Webinar(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    date = db.Column(db.Date)
+    task_numbers = db.relationship(
+        "TaskNumber", secondary="webinar_task_association", back_populates="webinars"
+    )
+    is_programming = db.Column(db.Boolean, default=False)  # Решение прогой
+    is_manual = db.Column(db.Boolean, default=False)  # Решение руками
+    homework_number = db.Column(db.Integer)
+    category = db.Column(db.Integer)  # 1: теория, 2: практика, 3: разбор ДЗ
+    for_beginners = db.Column(db.Boolean, default=False)  # Курс Python с нуля
+    for_basic = db.Column(db.Boolean, default=False)  # Основной курс
+    for_advanced = db.Column(db.Boolean, default=False)  # Хард прога
+    for_expert = db.Column(db.Boolean, default=False)  # Задание 27
+    created_by_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False
+    )  # ID создателя
+    created_by = db.relationship("User")
+    comments = db.relationship(
+        "WebinarComment", backref="webinar", cascade="all, delete-orphan"
+    )
+    cover_url = db.Column(db.String(500))  # Ссылка на обложку
+
+    planned_in = db.relationship("PlannedWebinar", back_populates="webinar")
+    watched_by = db.relationship("WatchedWebinar", back_populates="webinar")
+
+    # Добавляем именованное ограничение уникальности для URL
+    __table_args__ = (db.UniqueConstraint("url", name="uq_webinar_url"),)
+
+
+# Модель для номеров заданий
+class TaskNumber(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.Integer, unique=True, nullable=False)
+    webinars = db.relationship(
+        "Webinar", secondary="webinar_task_association", back_populates="task_numbers"
+    )
+
+
+# Ассоциативная таблица для связи вебинаров и номеров заданий
+webinar_task_association = db.Table(
+    "webinar_task_association",
+    db.Column("webinar_id", db.Integer, db.ForeignKey("webinar.id"), primary_key=True),
+    db.Column(
+        "task_number_id", db.Integer, db.ForeignKey("task_number.id"), primary_key=True
+    ),
+)
+
+
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(64), index=True)
+    last_name = db.Column(db.String(64), index=True)
+    platform_id = db.Column(db.String(100), nullable=False, index=True)
+    registration_date = db.Column(db.DateTime, default=datetime.utcnow)
+    target_score = db.Column(db.Integer)
+    hours_per_week = db.Column(db.Integer)
+    known_tasks = db.relationship(
+        "KnownTaskNumber",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    last_plan_id = db.Column(db.Integer, db.ForeignKey("study_plan.id"), nullable=True)
+    # plans = db.relationship('StudyPlan', back_populates='student', lazy='dynamic', foreign_keys='StudyPlan.student_id') # Original line
+    plans = db.relationship(
+        "StudyPlan", back_populates="student", foreign_keys="StudyPlan.student_id"
+    )  # Corrected line without lazy='dynamic'
+    watched_webinars = db.relationship(
+        "WatchedWebinar", back_populates="student"
+    )
+    notes = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    initial_score = db.Column(db.Integer, nullable=True)
+    needs_python_basics = db.Column(db.Boolean, default=False)
+    task_26_deferred = db.Column(db.Boolean, default=False)
+    task_27_deferred = db.Column(db.Boolean, default=False)
+
+    @property
+    def full_name(self):
+        parts = [self.first_name, self.last_name]
+        return " ".join(p for p in parts if p)
+
+
+# Модель для планов обучения
+class StudyPlan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False
+    )  # ID создателя
+
+    student = db.relationship(
+        "Student", back_populates="plans", foreign_keys=[student_id]
+    )
+    planned_webinars = db.relationship(
+        "PlannedWebinar", back_populates="study_plan", cascade="all, delete-orphan"
+    )
+    created_by = db.relationship("User")
+
+
+# Модель для запланированных вебинаров в плане
+class PlannedWebinar(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    study_plan_id = db.Column(
+        db.Integer, db.ForeignKey("study_plan.id"), nullable=False
+    )
+    webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
+    week_number = db.Column(db.Integer, nullable=False, default=1)  # Номер недели (1-5)
+
+    study_plan = db.relationship("StudyPlan", back_populates="planned_webinars")
+    webinar = db.relationship("Webinar", back_populates="planned_in")
+
+
+# Модель для просмотренных вебинаров
+class WatchedWebinar(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False)
+    webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
+    watched_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False
+    )  # ID пользователя, который отметил
+
+    student = db.relationship("Student", back_populates="watched_webinars")
+    webinar = db.relationship("Webinar", back_populates="watched_by")
+    created_by = db.relationship("User")
+
+
+# Модель для известных заданий студента
+class KnownTaskNumber(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False)
+    task_number = db.Column(db.Integer, nullable=False)  # Номер задания
+
+    student = db.relationship("Student", back_populates="known_tasks")
+
+
+# Модель для пользователей (кураторов, администраторов)
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    role = db.Column(
+        db.String(20), nullable=False, default="regular"
+    )  # 'regular', 'admin', 'super_admin'
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    last_login = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def full_name(self):
+        parts = [self.first_name, self.last_name]
+        return " ".join(p for p in parts if p)
+
+    @property
+    def is_admin(self):
+        return self.role in ["admin", "super_admin"]
+
+    @property
+    def is_super_admin(self):
+        return self.role == "super_admin"
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+# Модель для комментариев к вебинарам
+class WebinarComment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+    user = db.relationship("User")

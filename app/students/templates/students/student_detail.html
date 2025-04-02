@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.first_name }} {{ student.last_name }} - Профиль ученика{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-secondary mb-2">
+        <i class="fas fa-arrow-left me-1"></i> К списку учеников
+    </a>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">{{ student.first_name }} {{ student.last_name }}</h3>
+        <div class="btn-group">
+            <a href="{{ url_for('students.student_edit', student_id=student.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-1"></i> Редактировать
+            </a>
+            <a href="{{ url_for('plans.create_study_plan', student_id=student.id) }}" class="btn btn-primary">
+                <i class="fas fa-calendar-plus me-1"></i> Создать план
+            </a>
+        </div>
+    </div>
+    <p class="text-muted">ID на платформе: {{ student.platform_id }}</p>
+
+    {# --- Начало изменений: Отображение прогресса по последнему плану --- #}
+    {% if last_plan %}
+        <div class="mb-3">
+            <p class="mb-1">
+                <strong>Последний план:</strong> 
+                <a href="{{ url_for('plans.view_study_plan', plan_id=last_plan.id) }}">План #{{ last_plan.id }}</a>
+                (от {{ last_plan.created_at|moscow_time }})
+            </p>
+            <div class="progress" style="height: 20px;">
+                <div class="progress-bar bg-success" role="progressbar" 
+                     style="width: {{ completion_percentage }}%;" 
+                     aria-valuenow="{{ completion_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                     {{ completion_percentage }}%
+                </div>
+            </div>
+             <small class="text-muted">Процент просмотренных вебинаров в последнем плане</small>
+        </div>
+    {% else %}
+        <p class="text-muted">У этого ученика еще нет планов обучения.</p>
+    {% endif %}
+    {# --- Конец изменений --- #}
+</div>
+
+<div class="row">
+    <!-- Информация об ученике -->
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Информация</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-6">Целевой балл:</dt>
+                    <dd class="col-sm-6">{{ student.target_score or 'Не указан' }}</dd>
+                    
+                    <dt class="col-sm-6">Часов в неделю:</dt>
+                    <dd class="col-sm-6">{{ student.hours_per_week or 'Не указано' }}</dd>
+                    
+                    <dt class="col-sm-6">Уровень:</dt>
+                    <dd class="col-sm-6">
+                        {% if student.is_beginner %}
+                            <span class="badge bg-info">Начинающий</span>
+                        {% else %}
+                            <span class="badge bg-success">Базовый</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-6">Задание 26:</dt>
+                    <dd class="col-sm-6">
+                        {% if student.knows_task_26 %}
+                            <span class="badge bg-success">Знает</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Не знает</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-6">Задание 27:</dt>
+                    <dd class="col-sm-6">
+                        {% if student.knows_task_27 %}
+                            <span class="badge bg-success">Знает</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Не знает</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Известные задания -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Известные задания</h5>
+            </div>
+            <div class="card-body">
+                <p>Отметьте задания, которые ученик уже знает</p>
+                <form action="{{ url_for('students.update_known_tasks', student_id=student.id) }}" method="post">
+                    <!-- Обязательные задания -->
+                    <h6 class="mb-2">Обязательные задания</h6>
+                    <div class="d-flex flex-wrap task-number-grid">
+                        {% for i in required_tasks|sort %}
+                            <div class="form-check mb-2 me-3">
+                                <input class="form-check-input" type="checkbox" value="{{ i }}" id="task{{ i }}_req" name="known_tasks"
+                                       {% if i in known_task_numbers %}checked{% endif %}>
+                                <label class="form-check-label" for="task{{ i }}_req">
+                                    №{{ i }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Дополнительные задания -->
+                    <h6 class="mt-3 mb-2">Дополнительные задания</h6>
+                    <div class="d-flex flex-wrap task-number-grid">
+                        {% set has_other_tasks = false %}
+                        {% for i in range(1, 28) %}
+                            {% if i not in required_tasks %}
+                                {% set has_other_tasks = true %}
+                                <div class="form-check mb-2 me-3">
+                                    <input class="form-check-input" type="checkbox" value="{{ i }}" id="task{{ i }}_oth" name="known_tasks"
+                                           {% if i in known_task_numbers %}checked{% endif %}>
+                                    <label class="form-check-label" for="task{{ i }}_oth">
+                                        №{{ i }}
+                                    </label>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if not has_other_tasks %}
+                            <p class="text-muted">Все задания включены в основной план подготовки.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Планы обучения -->
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Планы обучения</h5>
+                <a href="{{ url_for('plans.create_study_plan', student_id=student.id) }}" class="btn btn-sm btn-light">
+                    <i class="fas fa-plus me-1"></i> Новый план
+                </a>
+            </div>
+            <div class="card-body">
+                {% if study_plans %}
+                    <div class="list-group">
+                        {% for plan in study_plans %}
+                            <a href="{{ url_for('plans.view_study_plan', plan_id=plan.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">План #{{ plan.id }}</h6>
+                                    <small class="text-muted">Создан: {{ plan.created_at|moscow_time }} • Автор: {{ plan.created_by.full_name }}</small>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">{{ plan.planned_webinars|length }} вебинаров</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> У ученика пока нет планов обучения.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Просмотренные вебинары -->
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Просмотренные вебинары</h5>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#addWatchedWebinarsModal">
+                        <i class="fas fa-plus me-1"></i> Добавить вебинары
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if watched_webinars %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40%">Название</th>
+                                    <th style="width: 20%">Дата просмотра</th>
+                                    <th style="width: 30%">Номера</th>
+                                    <th style="width: 10%">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for watched in watched_webinars %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ watched.webinar.url }}" target="_blank" class="text-decoration-none">
+                                                <i class="fas fa-external-link-alt me-1 text-muted"></i>
+                                                {{ watched.webinar.title }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">
+                                                <i class="far fa-calendar-alt me-1"></i>
+                                                {{ watched.watched_at|moscow_time }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% for task in watched.webinar.task_numbers %}
+                                                <span class="badge bg-secondary me-1">№{{ task.number }}</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            <form action="{{ url_for('students.mark_webinar_watched', student_id=student.id) }}" method="post" class="d-inline">
+                                                <input type="hidden" name="webinar_id" value="{{ watched.webinar.id }}">
+                                                <input type="hidden" name="action" value="unwatch">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить вебинар из просмотренных?')" title="Удалить из просмотренных">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Ученик пока не просмотрел ни одного вебинара.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления просмотренных вебинаров -->
+<div class="modal fade" id="addWatchedWebinarsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить просмотренные вебинары</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="addWatchedTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="links-tab" data-bs-toggle="tab" href="#links" role="tab">
+                            <i class="fas fa-link me-1"></i> По ссылкам
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="manual-tab" data-bs-toggle="tab" href="#manual" role="tab">
+                            <i class="fas fa-hand-pointer me-1"></i> Ручной выбор
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="addWatchedTabContent">
+                    <!-- Вкладка с добавлением по ссылкам -->
+                    <div class="tab-pane fade show active" id="links" role="tabpanel">
+                        <form action="{{ url_for('students.mark_webinar_watched', student_id=student.id) }}" method="post">
+                            <div class="mb-3">
+                                <label for="webinar_links" class="form-label">Ссылки на вебинары</label>
+                                <textarea class="form-control" id="webinar_links" name="webinar_links" rows="5" 
+                                    placeholder="Вставьте ссылки на вебинары, по одной в строке"></textarea>
+                                <div class="form-text">Каждая ссылка должна быть на новой строке</div>
+                            </div>
+                            <input type="hidden" name="action" value="add_by_links">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-1"></i> Добавить вебинары
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Вкладка с ручным выбором -->
+                    <div class="tab-pane fade" id="manual" role="tabpanel">
+                        <form action="{{ url_for('students.mark_webinar_watched', student_id=student.id) }}" method="post">
+                            <input type="hidden" name="action" value="add_manual">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>
+                                                <input type="checkbox" class="form-check-input" id="selectAll">
+                                            </th>
+                                            <th>Название</th>
+                                            <th>Дата</th>
+                                            <th>Номера</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for webinar in all_webinars %}
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" class="form-check-input webinar-checkbox" 
+                                                           name="webinar_ids" value="{{ webinar.id }}"
+                                                           {% if webinar.id in watched_webinar_ids %}checked disabled{% endif %}>
+                                                </td>
+                                                <td>
+                                                    <a href="{{ webinar.url }}" target="_blank">
+                                                        {{ webinar.title }}
+                                                    </a>
+                                                </td>
+                                                <td>{{ webinar.date|moscow_time }}</td>
+                                                <td>
+                                                    {% for task in webinar.task_numbers %}
+                                                        <span class="badge bg-secondary me-1">№{{ task.number }}</span>
+                                                    {% endfor %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                                <button type="submit" class="btn btn-primary">Добавить выбранные</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Поиск вебинаров в ручном режиме
+        const searchInput = document.getElementById('webinarSearch');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const value = this.value.toLowerCase();
+                const items = document.querySelectorAll('.webinar-item');
+                
+                items.forEach(function(item) {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(value) ? '' : 'none';
+                });
+            });
+        }
+    });
+</script>
+{% endblock %} 

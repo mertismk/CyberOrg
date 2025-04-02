@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Доступ запрещен{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-template">
+                <h1 class="display-1 text-danger">403</h1>
+                <h2 class="mb-3">Доступ запрещен</h2>
+                <div class="error-details mb-4">
+                    У вас нет прав доступа к этой странице.
+                </div>
+                <div class="error-actions">
+                    <p class="lead">У вас нет прав доступа к этой странице.</p>
+                    <p>Если вы считаете, что это ошибка, обратитесь к администратору.</p>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                        Вернуться на главную
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
