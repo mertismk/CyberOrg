@@ -40,11 +40,11 @@ CyberOrg - это веб-приложение для планирования и
    pip install -r requirements.txt
    ```
 
-4. Настройте переменные окружения (создайте файл `.env`):
+4. Настройте переменные окружения (по желанию, создайте файл `.env`):
    ```
-   FLASK_APP=app.py
+   FLASK_APP=run.py
    FLASK_ENV=development
-   DATABASE_URL=sqlite:///cyberorg.db
+   DATABASE_URL=sqlite:///instance/cyberorg.db
    # или для PostgreSQL
    # DATABASE_URL=postgresql://username:password@localhost/cyberorg
    SECRET_KEY=ваш_секретный_ключ
@@ -58,6 +58,10 @@ CyberOrg - это веб-приложение для планирования и
 6. Запустите приложение:
    ```bash
    flask run
+   ```
+   или
+   ```bash
+   python run.py
    ```
 
 ## Развертывание на сервере
@@ -80,7 +84,7 @@ CyberOrg - это веб-приложение для планирования и
    Group=www-data
    WorkingDirectory=/path/to/CyberOrg
    Environment="PATH=/path/to/CyberOrg/.venv/bin"
-   ExecStart=/path/to/CyberOrg/.venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+   ExecStart=/path/to/CyberOrg/.venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 "app:create_app()"
 
    [Install]
    WantedBy=multi-user.target
@@ -90,17 +94,26 @@ CyberOrg - это веб-приложение для планирования и
 
 ## Структура проекта
 
-- `app.py` - основной файл приложения
-- `models.py` - модели данных
-- `templates/` - HTML-шаблоны
-- `static/` - статические файлы (CSS, JavaScript)
-- `migrations/` - миграции базы данных
+- `run.py` - точка входа приложения
+- `config.py` - конфигурация приложения
+- `app/` - основной пакет приложения
+  - `__init__.py` - инициализация приложения и подключение blueprints
+  - `models.py` - модели данных
+  - `templates/` - HTML-шаблоны
+  - `static/` - статические файлы (CSS, JavaScript)
+  - Blueprints:
+    - `auth/` - аутентификация и авторизация
+    - `main/` - основные маршруты
+    - `users/` - управление пользователями
+    - `students/` - управление учениками
+    - `webinars/` - управление вебинарами
+    - `plans/` - управление планами обучения
 
 ## Роли пользователей
 
-- **Куратор**: Базовая роль для работы с учениками и планами
-- **Администратор**: Доступ к импорту вебинаров и расширенному функционалу
-- **Супер-администратор**: Полный доступ, включая управление пользователями
+- **Куратор (regular)**: Базовая роль для работы с учениками и планами
+- **Администратор (admin)**: Доступ к импорту вебинаров и расширенному функционалу
+- **Супер-администратор (super_admin)**: Полный доступ, включая управление пользователями
 
 ## Контакты
 

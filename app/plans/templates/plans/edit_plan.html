@@ -2,6 +2,91 @@
 
 {% block title %}Редактирование плана - {{ student.first_name }} {{ student.last_name }}{% endblock %}
 
+{% block styles %}
+<style>
+    /* Стили для улучшения интерфейса */
+    .webinar-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .webinar-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .filter-buttons {
+        flex-wrap: wrap;
+    }
+    
+    .filter-buttons .btn {
+        margin-bottom: 5px;
+    }
+    
+    .webinar-cover {
+        height: 180px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+        background-color: #f8f9fa;
+        border-radius: calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;
+    }
+    
+    .webinar-cover img {
+        object-fit: contain;
+        max-width: 100%;
+        max-height: 100%;
+        padding: 0;
+    }
+    
+    .webinar-cover .btn {
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .webinar-cover .btn:hover {
+        opacity: 1;
+    }
+    
+    .task-badge-container {
+        min-height: 50px;
+        display: block;
+    }
+    
+    .badge {
+        display: inline-block;
+        margin-right: 2px;
+        margin-bottom: 3px;
+    }
+    
+    .webinar-title {
+        min-height: 60px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .selected-webinar {
+        border: 2px solid #0d6efd;
+    }
+    
+    /* Стили для мобильных устройств */
+    @media (max-width: 768px) {
+        .filter-buttons {
+            margin-top: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -24,62 +109,155 @@
                             <i class="fas fa-info-circle me-2"></i> Вы можете отредактировать список вебинаров, изменить неделю или удалить вебинары из плана.
                         </div>
                         
+                        <!-- Отладочная информация -->
                         <div class="mb-3 webinar-filters">
                             <input type="text" id="currentPlanSearchInput" class="form-control mb-2" placeholder="Поиск в текущем плане...">
                         </div>
                         
                         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 current-plan-webinars">
-                            {% for planned_webinar in current_planned_webinars %}
-                                <div class="col webinar-item">
-                                    <div class="card webinar-card h-100 selected-webinar" data-id="{{ planned_webinar.webinar.id }}">
-                                        <div class="webinar-cover">
-                                            {% if planned_webinar.webinar.id|webinar_cover_exists %}
-                                                <img src="{{ url_for('static', filename='covers/' + planned_webinar.webinar.id|string + '.png') }}" class="card-img-top" alt="{{ planned_webinar.webinar.title }}">
-                                            {% else %}
-                                                <div class="text-center text-muted">
-                                                    <i class="fas fa-video fa-3x"></i>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="card-body">
-                                            <h6 class="card-title webinar-title">{{ planned_webinar.webinar.title }}</h6>
-                                            <div class="task-badge-container">
-                                                {% for task in planned_webinar.webinar.task_numbers %}
-                                                    <span class="badge bg-secondary me-1">№{{ task.number }}</span>
-                                                {% endfor %}
-                                                
-                                                {% if planned_webinar.webinar.category == 1 %}
-                                                    <span class="badge bg-success">Обязательный</span>
-                                                {% elif planned_webinar.webinar.category == 2 %}
-                                                    <span class="badge bg-info">Повторение</span>
-                                                {% elif planned_webinar.webinar.category == 3 %}
-                                                    <span class="badge bg-secondary">Необязательный</span>
+                            {% if current_planned_webinars|length == 0 and direct_plan_webinars|length == 0 %}
+                                <div class="col-12">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i> В текущем плане нет вебинаров. Добавьте их из списка ниже.
+                                    </div>
+                                </div>
+                            {% elif direct_plan_webinars|length > 0 %}
+                                <!-- Отображение вебинаров через direct_plan_webinars (альтернативный метод) -->
+                                {% for item in direct_plan_webinars %}
+                                    <div class="col webinar-item">
+                                        <div class="card webinar-card h-100 selected-webinar" data-id="{{ item.webinar.id }}">
+                                            <div class="webinar-cover">
+                                                {% if item.webinar.cover_url %}
+                                                    <img src="{{ item.webinar.cover_url }}" class="card-img-top" alt="{{ item.webinar.title }}">
+                                                {% else %}
+                                                    <div class="text-center text-muted">
+                                                        <i class="fas fa-video fa-3x"></i>
+                                                    </div>
                                                 {% endif %}
+                                                <div class="position-absolute top-0 end-0 m-2">
+                                                    <a href="{{ item.webinar.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle" title="Открыть вебинар">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-light rounded-circle copy-link-btn" data-url="{{ item.webinar.url }}" title="Скопировать ссылку">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div class="mt-2 small text-muted">
-                                                <div>Дата: {{ planned_webinar.webinar.date.strftime('%d.%m.%Y') }}</div>
-                                                <div>ID: {{ planned_webinar.webinar.url[-5:] if planned_webinar.webinar.url|length >= 5 else planned_webinar.webinar.url }}</div>
+                                            <div class="card-body">
+                                                <h6 class="card-title webinar-title">{{ item.webinar.title }}</h6>
+                                                <div class="task-badge-container">
+                                                    {% for task in item.webinar.task_numbers %}
+                                                        <span class="badge bg-secondary me-1">№{{ task.number }}</span>
+                                                    {% endfor %}
+                                                    
+                                                    {% if item.webinar.category == 1 %}
+                                                        <span class="badge bg-success">Обязательный</span>
+                                                    {% elif item.webinar.category == 2 %}
+                                                        <span class="badge bg-info">Повторение</span>
+                                                    {% elif item.webinar.category == 3 %}
+                                                        <span class="badge bg-secondary">Необязательный</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="mt-2 small text-muted">
+                                                    <div>Дата: {{ item.webinar.date.strftime('%d.%m.%Y') if item.webinar.date else 'Нет даты' }}</div>
+                                                    <div>ID: {{ item.webinar.url[-5:] if item.webinar.url|length >= 5 else item.webinar.url }}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                                            <select class="form-select form-select-sm week-select" name="week_numbers" style="width: 120px;">
-                                                {% for week in range(1, 6) %}
-                                                    <option value="{{ week }}" {% if planned_webinar.week_number == week %}selected{% endif %}>
-                                                        Неделя {{ week }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-                                            {# Добавляем скрытое поле #}
-                                            <input type="hidden" name="webinar_ids_hidden" value="{{ planned_webinar.webinar.id }}">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input webinar-checkbox" type="checkbox" 
-                                                    id="webinar{{ planned_webinar.webinar.id }}" name="webinar_ids" 
-                                                    value="{{ planned_webinar.webinar.id }}" checked>
+                                            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                                                <select class="form-select form-select-sm week-select" name="week_numbers_{{ item.webinar.id }}" style="width: 120px;">
+                                                    {% for week in range(1, 6) %}
+                                                        <option value="{{ week }}" {% if item.week_number == week %}selected{% endif %}>
+                                                            Неделя {{ week }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                                {# Добавляем скрытое поле #}
+                                                <input type="hidden" name="webinar_ids_hidden" value="{{ item.webinar.id }}">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input webinar-checkbox" type="checkbox" 
+                                                        id="webinar{{ item.webinar.id }}" name="webinar_ids" 
+                                                        value="{{ item.webinar.id }}" checked>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                {% endfor %}
+                            {% elif current_planned_webinars|length > 0 %}
+                                <!-- Стандартное отображение через current_planned_webinars -->
+                                {% for planned_webinar in current_planned_webinars %}
+                                    {% if planned_webinar.webinar %}
+                                        <div class="col webinar-item">
+                                            <div class="card webinar-card h-100 selected-webinar" data-id="{{ planned_webinar.webinar.id }}">
+                                                <div class="webinar-cover">
+                                                    {% if planned_webinar.webinar.cover_url %}
+                                                        <img src="{{ planned_webinar.webinar.cover_url }}" class="card-img-top" alt="{{ planned_webinar.webinar.title }}">
+                                                    {% else %}
+                                                        <div class="text-center text-muted">
+                                                            <i class="fas fa-video fa-3x"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                    <div class="position-absolute top-0 end-0 m-2">
+                                                        <a href="{{ planned_webinar.webinar.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle" title="Открыть вебинар">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                        <button type="button" class="btn btn-sm btn-light rounded-circle copy-link-btn" data-url="{{ planned_webinar.webinar.url }}" title="Скопировать ссылку">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    <h6 class="card-title webinar-title">{{ planned_webinar.webinar.title }}</h6>
+                                                    <div class="task-badge-container">
+                                                        {% for task in planned_webinar.webinar.task_numbers %}
+                                                            <span class="badge bg-secondary me-1">№{{ task.number }}</span>
+                                                        {% endfor %}
+                                                        
+                                                        {% if planned_webinar.webinar.category == 1 %}
+                                                            <span class="badge bg-success">Обязательный</span>
+                                                        {% elif planned_webinar.webinar.category == 2 %}
+                                                            <span class="badge bg-info">Повторение</span>
+                                                        {% elif planned_webinar.webinar.category == 3 %}
+                                                            <span class="badge bg-secondary">Необязательный</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="mt-2 small text-muted">
+                                                        <div>Дата: {{ planned_webinar.webinar.date.strftime('%d.%m.%Y') if planned_webinar.webinar.date else 'Нет даты' }}</div>
+                                                        <div>ID: {{ planned_webinar.webinar.url[-5:] if planned_webinar.webinar.url|length >= 5 else planned_webinar.webinar.url }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                                                    <select class="form-select form-select-sm week-select" name="week_numbers_{{ planned_webinar.webinar.id }}" style="width: 120px;">
+                                                        {% for week in range(1, 6) %}
+                                                            <option value="{{ week }}" {% if planned_webinar.week_number == week %}selected{% endif %}>
+                                                                Неделя {{ week }}
+                                                            </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    {# Добавляем скрытое поле #}
+                                                    <input type="hidden" name="webinar_ids_hidden" value="{{ planned_webinar.webinar.id }}">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input webinar-checkbox" type="checkbox" 
+                                                            id="webinar{{ planned_webinar.webinar.id }}" name="webinar_ids" 
+                                                            value="{{ planned_webinar.webinar.id }}" checked>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div class="col webinar-item">
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle me-2"></i> Вебинар не найден
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-12">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i> Невозможно отобразить вебинары. Проверьте данные плана.
+                                    </div>
                                 </div>
-                            {% endfor %}
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -98,33 +276,116 @@
                         
                         <div class="mb-3 webinar-filters">
                             <input type="text" id="webinarSearchInput" class="form-control mb-2" placeholder="Поиск вебинаров...">
-                            <div class="btn-group filter-buttons">
+                            <div class="btn-group filter-buttons mb-2">
                                 <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="all">Все</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_beginners">Python с нуля</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_basic">Основной курс</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_advanced">Хард прога</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_expert">Задание 27</button>
+                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_mocks">Пробники</button>
+                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_practice">Нарешка</button>
+                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_minisnap">Мини-щелчок</button>
+                            </div>
+                            
+                            <!-- Дополнительные фильтры -->
+                            <div class="card mb-3 bg-light">
+                                <div class="card-header py-2" data-bs-toggle="collapse" data-bs-target="#additionalFilters" style="cursor: pointer;">
+                                    <div class="text-decoration-none text-dark fw-bold">
+                                        <i class="fas fa-filter me-2"></i> Дополнительные фильтры
+                                        <i class="fas fa-chevron-down float-end mt-1"></i>
+                                    </div>
+                                </div>
+                                <div id="additionalFilters" class="collapse">
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <!-- Фильтр по дате -->
+                                            <div class="col-md-6">
+                                                <label class="form-label small mb-1"><i class="fas fa-calendar-alt me-1"></i> По дате</label>
+                                                <div class="btn-group w-100" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-filter active" data-filter="all">Все</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-filter" data-filter="new">Новые сначала</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary date-filter" data-filter="old">Старые сначала</button>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Фильтр по типу решения -->
+                                            <div class="col-md-6">
+                                                <label class="form-label small mb-1"><i class="fas fa-code me-1"></i> Тип решения</label>
+                                                <div class="btn-group w-100" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary solution-filter active" data-filter="all">Все</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary solution-filter" data-filter="is_programming">Программирование</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary solution-filter" data-filter="is_manual">Ручное решение</button>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Фильтр по категории -->
+                                            <div class="col-md-6">
+                                                <label class="form-label small mb-1"><i class="fas fa-tags me-1"></i> Категория</label>
+                                                <div class="btn-group w-100" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary category-filter active" data-filter="all">Все</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary category-filter" data-filter="category-1">Обязательный</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary category-filter" data-filter="category-2">Повторение</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary category-filter" data-filter="category-3">Необязательный</button>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Фильтр по номерам заданий -->
+                                            <div class="col-md-6">
+                                                <label for="taskFilterSelect" class="form-label small mb-1"><i class="fas fa-hashtag me-1"></i> Номер задания</label>
+                                                <select class="form-select form-select-sm" id="taskFilterSelect">
+                                                    <option value="all" selected>Все задания</option>
+                                                    {% for i in range(1, 28) %}
+                                                        <option value="task-{{ i }}">№{{ i }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            
+                                            <!-- Сброс фильтров -->
+                                            <div class="col-12 mt-3">
+                                                <button type="button" class="btn btn-sm btn-danger" id="resetAllFilters">
+                                                    <i class="fas fa-undo me-2"></i> Сбросить все фильтры
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
                         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 all-webinars">
                             {% for webinar in webinars %}
-                                {% if webinar.id not in current_planned_webinars|map(attribute='webinar_id')|list and webinar.id not in watched_webinar_ids %}
+                                {% if webinar.id not in current_webinar_ids and webinar.id not in watched_webinar_ids %}
                                     <div class="col webinar-item 
                                         {% if webinar.for_beginners %}for_beginners{% endif %}
                                         {% if webinar.for_basic %}for_basic{% endif %}
                                         {% if webinar.for_advanced %}for_advanced{% endif %}
                                         {% if webinar.for_expert %}for_expert{% endif %}
-                                    ">
+                                        {% if webinar.for_mocks %}for_mocks{% endif %}
+                                        {% if webinar.for_practice %}for_practice{% endif %}
+                                        {% if webinar.for_minisnap %}for_minisnap{% endif %}
+                                        {% if webinar.is_programming %} is_programming{% endif %}
+                                        {% if webinar.is_manual %} is_manual{% endif %}
+                                        {% if webinar.category %} category-{{ webinar.category }}{% endif %}
+                                        {% for task in webinar.task_numbers %} task-{{ task.number }}{% endfor %}
+                                    "
+                                    data-date="{{ webinar.date.strftime('%Y-%m-%d') if webinar.date else '1900-01-01' }}">
                                         <div class="card webinar-card h-100" data-id="{{ webinar.id }}">
                                             <div class="webinar-cover">
-                                                {% if webinar.id|webinar_cover_exists %}
-                                                    <img src="{{ url_for('static', filename='covers/' + webinar.id|string + '.png') }}" class="card-img-top" alt="{{ webinar.title }}">
+                                                {% if webinar.cover_url %}
+                                                    <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
                                                 {% else %}
                                                     <div class="text-center text-muted">
                                                         <i class="fas fa-video fa-3x"></i>
                                                     </div>
                                                 {% endif %}
+                                                <div class="position-absolute top-0 end-0 m-2">
+                                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle" title="Открыть вебинар">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-light rounded-circle copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div class="card-body">
                                                 <h6 class="card-title webinar-title">{{ webinar.title }}</h6>
@@ -148,7 +409,7 @@
                                                 </div>
                                             </div>
                                             <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                                                <select class="form-select form-select-sm week-select" name="week_numbers" style="width: 120px;" disabled>
+                                                <select class="form-select form-select-sm week-select" name="week_numbers_{{ webinar.id }}" style="width: 120px;">
                                                     {% for week in range(1, 6) %}
                                                         <option value="{{ week }}">Неделя {{ week }}</option>
                                                     {% endfor %}
@@ -179,7 +440,7 @@
 </div>
 {% endblock %}
 
-{% block additional_scripts %}
+{% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Поиск по текущим вебинарам
@@ -194,28 +455,173 @@
             });
         });
         
-        // Поиск по всем вебинарам
+        // Текущее состояние фильтров
+        const activeFilters = {
+            courseCategory: 'all',
+            date: 'all',
+            solution: 'all',
+            category: 'all',
+            tasks: []
+        };
+        
+        // Все DOM-элементы для фильтрации
         const searchInput = document.getElementById('webinarSearchInput');
-        searchInput.addEventListener('keyup', function() {
-            const value = this.value.toLowerCase();
-            const cards = document.querySelectorAll('.all-webinars .webinar-item');
+        const cardsContainer = document.querySelector('.all-webinars');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const dateFilterButtons = document.querySelectorAll('.date-filter');
+        const solutionFilterButtons = document.querySelectorAll('.solution-filter');
+        const categoryFilterButtons = document.querySelectorAll('.category-filter');
+        const taskFilterSelect = document.getElementById('taskFilterSelect');
+        const resetButton = document.getElementById('resetAllFilters');
+        
+        // Функция применения всех фильтров и сортировки
+        function applyFiltersAndSort() {
+            if (!cardsContainer) {
+                return;
+            }
             
-            cards.forEach(function(card) {
-                const text = card.textContent.toLowerCase();
-                if (card.style.display !== 'none' && text.includes(value)) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
+            // Получаем все карточки вебинаров
+            const allCards = Array.from(cardsContainer.querySelectorAll('.webinar-item'));
+            
+            const searchText = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            // ФИЛЬТРАЦИЯ
+            const filteredCards = [];
+            
+            allCards.forEach(card => {
+                let shouldShow = true;
+                const cardText = card.textContent.toLowerCase();
+                const cardClasses = Array.from(card.classList);
+                
+                // 1. Текстовый поиск
+                if (searchText && !cardText.includes(searchText)) {
+                    shouldShow = false;
                 }
+                
+                // 2. Категория курса
+                if (shouldShow && activeFilters.courseCategory !== 'all') {
+                    if (!cardClasses.includes(activeFilters.courseCategory)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 3. Тип решения
+                if (shouldShow && activeFilters.solution !== 'all') {
+                    if (!cardClasses.includes(activeFilters.solution)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 4. Категория обязательности
+                if (shouldShow && activeFilters.category !== 'all') {
+                    if (!cardClasses.includes(activeFilters.category)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // 5. Задания
+                if (shouldShow && activeFilters.tasks.length > 0) {
+                    let hasAnyTask = false;
+                    for (const task of activeFilters.tasks) {
+                        if (cardClasses.includes(task)) {
+                            hasAnyTask = true;
+                            break;
+                        }
+                    }
+                    if (!hasAnyTask) {
+                        shouldShow = false;
+                    }
+                }
+                
+                // Добавляем карточку, если она прошла все фильтры
+                if (shouldShow) {
+                    filteredCards.push(card);
+                }
+            });
+            
+            // Скрываем все карточки
+            allCards.forEach(card => {
+                card.style.display = 'none';
+            });
+            
+            // СОРТИРОВКА по дате
+            if (activeFilters.date === 'new' || activeFilters.date === 'old') {
+                filteredCards.sort((a, b) => {
+                    // Извлекаем даты из data-атрибутов
+                    const dateA = a.getAttribute('data-date') || '1900-01-01';
+                    const dateB = b.getAttribute('data-date') || '1900-01-01';
+                    
+                    return activeFilters.date === 'new' 
+                        ? new Date(dateB) - new Date(dateA) 
+                        : new Date(dateA) - new Date(dateB);
+                });
+            }
+            
+            // Показываем отфильтрованные карточки
+            filteredCards.forEach(card => {
+                card.style.display = '';
+            });
+            
+            // Сообщение, если ничего не найдено
+            if (filteredCards.length === 0) {
+                const noResultsMsg = document.getElementById('noResultsMessage');
+                if (!noResultsMsg) {
+                    const message = document.createElement('div');
+                    message.id = 'noResultsMessage';
+                    message.className = 'alert alert-info text-center my-3';
+                    message.innerHTML = `
+                        <i class="fas fa-info-circle me-2"></i> Нет вебинаров, соответствующих фильтрам.
+                        <button class="btn btn-sm btn-outline-primary ms-3" id="resetFiltersBtn">Сбросить фильтры</button>
+                    `;
+                    cardsContainer.parentNode.insertBefore(message, cardsContainer.nextSibling);
+                    
+                    document.getElementById('resetFiltersBtn').addEventListener('click', function() {
+                        if (resetButton) resetButton.click();
+                    });
+                }
+            } else {
+                const noResultsMsg = document.getElementById('noResultsMessage');
+                if (noResultsMsg) {
+                    noResultsMsg.remove();
+                }
+            }
+        }
+        
+        // Добавляем клик по фильтрам дополнительно к теории делегирования событий
+        document.querySelectorAll('.filter-btn, .date-filter, .solution-filter, .category-filter').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                // Just handle the click
             });
         });
         
+        // Вызываем функцию при загрузке страницы для первоначальной фильтрации
+        if (cardsContainer) {
+            applyFiltersAndSort();
+        }
+        
+        // Добавление обработчиков для копирования ссылок
+        const copyButtons = document.querySelectorAll('.copy-link-btn');
+        copyButtons.forEach(function(button) {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation(); // Предотвращаем всплытие события
+                const url = this.getAttribute('data-url');
+                navigator.clipboard.writeText(url).then(function() {
+                    alert('Ссылка скопирована в буфер обмена');
+                });
+            });
+        });
+        
+        // Поиск по всем вебинарам
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                applyFiltersAndSort();
+            });
+        }
+        
         // Фильтрация по категориям
-        const filterButtons = document.querySelectorAll('.filter-btn');
         filterButtons.forEach(function(button) {
             button.addEventListener('click', function() {
                 const filter = this.getAttribute('data-filter');
-                const cards = document.querySelectorAll('.all-webinars .webinar-item');
                 
                 // Выделяем активную кнопку
                 filterButtons.forEach(btn => {
@@ -226,32 +632,111 @@
                 this.classList.remove('btn-outline-primary');
                 this.classList.add('active', 'btn-primary');
                 
-                if (filter === 'all') {
-                    cards.forEach(card => {
-                        card.style.display = '';
-                    });
-                } else {
-                    cards.forEach(function(card) {
-                        if (card.classList.contains(filter)) {
-                            card.style.display = '';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
-                }
-                
-                // Применяем текстовый фильтр поверх категорийного
-                const searchText = searchInput.value.toLowerCase();
-                if (searchText) {
-                    cards.forEach(function(card) {
-                        if (card.style.display !== 'none') {
-                            const text = card.textContent.toLowerCase();
-                            card.style.display = text.includes(searchText) ? '' : 'none';
-                        }
-                    });
-                }
+                activeFilters.courseCategory = filter;
+                applyFiltersAndSort();
             });
         });
+        
+        // Фильтрация по дате
+        dateFilterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                
+                dateFilterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                activeFilters.date = filter;
+                applyFiltersAndSort();
+            });
+        });
+        
+        // Фильтрация по типу решения
+        solutionFilterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                
+                solutionFilterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                activeFilters.solution = filter;
+                applyFiltersAndSort();
+            });
+        });
+        
+        // Фильтрация по категории
+        categoryFilterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                
+                categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                activeFilters.category = filter;
+                applyFiltersAndSort();
+            });
+        });
+        
+        // Фильтрация по номерам заданий
+        if (taskFilterSelect) {
+            taskFilterSelect.addEventListener('change', function() {
+                const filter = this.value;
+                
+                if (filter === 'all') {
+                    activeFilters.tasks = [];
+                } else {
+                    activeFilters.tasks = [filter];
+                }
+                applyFiltersAndSort();
+            });
+        }
+        
+        // Кнопка сброса всех фильтров
+        if (resetButton) {
+            resetButton.addEventListener('click', function() {
+                activeFilters.courseCategory = 'all';
+                activeFilters.date = 'all';
+                activeFilters.solution = 'all';
+                activeFilters.category = 'all';
+                activeFilters.tasks = [];
+                
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active', 'btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active', 'btn-primary');
+                        btn.classList.remove('btn-outline-primary');
+                    }
+                });
+                
+                dateFilterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                solutionFilterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                categoryFilterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                if (taskFilterSelect) {
+                    taskFilterSelect.value = 'all';
+                }
+                
+                applyFiltersAndSort();
+            });
+        }
         
         // Выбор/отмена вебинара и активация/деактивация селекта недели
         const webinarCheckboxes = document.querySelectorAll('.webinar-checkbox');
@@ -262,10 +747,14 @@
                 
                 if (this.checked) {
                     card.classList.add('selected-webinar');
-                    weekSelect.disabled = false;
+                    if (weekSelect) {
+                        weekSelect.disabled = false;
+                    }
                 } else {
                     card.classList.remove('selected-webinar');
-                    weekSelect.disabled = true;
+                    if (weekSelect) {
+                        weekSelect.disabled = true;
+                    }
                 }
             });
         });
@@ -274,20 +763,36 @@
         const webinarCards = document.querySelectorAll('.webinar-card');
         webinarCards.forEach(function(card) {
             card.addEventListener('click', function(e) {
-                // Не реагируем на клики по селекту и чекбоксу
+                // Не реагируем на клики по селекту, чекбоксу и кнопкам
                 if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || 
                     e.target.tagName === 'OPTION' || e.target.closest('select') || 
-                    e.target.closest('.form-check')) {
+                    e.target.closest('.form-check') || e.target.tagName === 'A' || 
+                    e.target.tagName === 'BUTTON' || e.target.closest('a') || 
+                    e.target.closest('button')) {
                     return;
                 }
                 
                 const checkbox = this.querySelector('.webinar-checkbox');
-                checkbox.checked = !checkbox.checked;
-                
-                // Вызываем событие change вручную
-                const event = new Event('change', { bubbles: true });
-                checkbox.dispatchEvent(event);
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    
+                    // Вызываем событие change вручную
+                    const event = new Event('change', { bubbles: true });
+                    checkbox.dispatchEvent(event);
+                }
             });
+        });
+        
+        // Инициализация - первоначальная активация селектов недель для выбранных вебинаров
+        webinarCheckboxes.forEach(function(checkbox) {
+            if (checkbox.checked) {
+                const card = checkbox.closest('.webinar-card');
+                const weekSelect = card.querySelector('.week-select');
+                if (weekSelect) {
+                    weekSelect.disabled = false;
+                }
+                card.classList.add('selected-webinar');
+            }
         });
     });
 </script>

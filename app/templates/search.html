@@ -39,11 +39,11 @@
                                         <small class="badge bg-info me-1">Начинающий</small>
                                     {% endif %}
                                     
-                                    {% if student.knows_task_26 %}
+                                    {% if 26 in student.known_tasks|map(attribute='task_number')|list %}
                                         <small class="badge bg-warning me-1">Задание 26</small>
                                     {% endif %}
                                     
-                                    {% if student.knows_task_27 %}
+                                    {% if 27 in student.known_tasks|map(attribute='task_number')|list %}
                                         <small class="badge bg-danger me-1">Задание 27</small>
                                     {% endif %}
                                 </div>
@@ -115,8 +115,10 @@
 </div>
 
 {% if not students and not webinars %}
-    <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle me-2"></i> По вашему запросу ничего не найдено. Попробуйте изменить поисковый запрос.
+    <div class="text-center my-5">
+        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Ничего не найдено" class="img-fluid mb-3" style="max-height: 150px;">
+        <h4 class="mt-2">Ничего не найдено</h4>
+        <p class="text-muted">По вашему запросу "{{ query }}" ничего не найдено. Попробуйте изменить поисковый запрос.</p>
     </div>
 {% endif %}
 {% endblock %} 

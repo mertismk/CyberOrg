@@ -42,11 +42,11 @@
                                             <span class="badge bg-success">Базовый</span>
                                         {% endif %}
                                         
-                                        {% if student.knows_task_26 %}
+                                        {% if 26 in student.known_tasks|map(attribute='task_number')|list %}
                                             <span class="badge bg-warning">Задание 26</span>
                                         {% endif %}
                                         
-                                        {% if student.knows_task_27 %}
+                                        {% if 27 in student.known_tasks|map(attribute='task_number')|list %}
                                             <span class="badge bg-danger">Задание 27</span>
                                         {% endif %}
                                     </td>

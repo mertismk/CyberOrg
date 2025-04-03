@@ -122,8 +122,8 @@
                                 {% if webinar.cover_url %}
                                     <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
                                 {% else %}
-                                    <div class="text-center text-muted py-5">
-                                        <i class="fas fa-video fa-3x"></i>
+                                    <div class="d-flex align-items-center justify-content-center h-100 w-100">
+                                        <i class="fas fa-video fa-3x text-muted"></i>
                                     </div>
                                 {% endif %}
                             </div>
@@ -262,6 +262,22 @@
                                         {% endif %}
                                     </div>
                                 </div>
+
+                                {# Кнопки редактирования/удаления для админов #}
+                                {% if current_user.is_admin %}
+                                <hr class="my-2">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-warning" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="{{ url_for('webinars.delete_webinar', webinar_id=webinar.id) }}" method="POST" onsubmit="return confirm('Вы уверены, что хотите удалить этот вебинар? Это действие необратимо.');" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+
                             </div>
                         </div>
                     </div>
@@ -270,8 +286,10 @@
         </div>
     </div>
 {% else %}
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i> В базе данных нет вебинаров. Импортируйте их из Excel-файла, нажав на кнопку выше.
+    <div class="alert alert-info text-center">
+        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-3" style="max-height: 150px;">
+        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> В базе данных нет вебинаров</h5>
+        <p>Импортируйте их из Excel-файла, нажав на кнопку выше.</p>
     </div>
 {% endif %}
 {% endblock %}
@@ -279,6 +297,14 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Обработчик ошибок загрузки изображений
+        document.querySelectorAll('.webinar-cover img').forEach(function(img) {
+            img.onerror = function() {
+                this.src = "{{ url_for('static', filename='images/sorry.png') }}";
+                this.classList.add('fallback-img');
+            };
+        });
+        
         // Текущее состояние фильтров
         const activeFilters = {
             courseCategory: 'all',
@@ -518,8 +544,9 @@
                 noResultsMessage.className = 'col-12 text-center my-5';
                 noResultsMessage.innerHTML = `
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i> 
-                        Нет вебинаров, соответствующих выбранным фильтрам. 
+                        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет результатов" class="img-fluid mb-3" style="max-height: 150px;">
+                        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> Нет вебинаров</h5>
+                        <p>Попробуйте изменить фильтры или поисковый запрос.</p>
                         <button class="btn btn-sm btn-outline-primary ms-3" id="resetFiltersBtn">Сбросить фильтры</button>
                     </div>
                 `;
@@ -530,6 +557,14 @@
             } else {
                 filteredCards.forEach(card => {
                     cardsContainer.appendChild(card);
+                    
+                    // Восстанавливаем обработчики ошибок для новых изображений после фильтрации
+                    card.querySelectorAll('.webinar-cover img').forEach(function(img) {
+                        img.onerror = function() {
+                            this.src = "{{ url_for('static', filename='images/sorry.png') }}";
+                            this.classList.add('fallback-img');
+                        };
+                    });
                 });
             }
         }

@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
-from datetime import datetime, date
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -75,10 +75,9 @@ class Student(db.Model):
         cascade="all, delete-orphan",
     )
     last_plan_id = db.Column(db.Integer, db.ForeignKey("study_plan.id"), nullable=True)
-    # plans = db.relationship('StudyPlan', back_populates='student', lazy='dynamic', foreign_keys='StudyPlan.student_id') # Original line
     plans = db.relationship(
         "StudyPlan", back_populates="student", foreign_keys="StudyPlan.student_id"
-    )  # Corrected line without lazy='dynamic'
+    )
     watched_webinars = db.relationship("WatchedWebinar", back_populates="student")
     notes = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
@@ -91,6 +90,11 @@ class Student(db.Model):
     def full_name(self):
         parts = [self.first_name, self.last_name]
         return " ".join(p for p in parts if p)
+
+    @property
+    def is_beginner(self):
+        """Проверяет, является ли студент начинающим на основе needs_python_basics."""
+        return self.needs_python_basics
 
 
 # Модель для планов обучения

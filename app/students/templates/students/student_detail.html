@@ -69,7 +69,7 @@
                     
                     <dt class="col-sm-6">Задание 26:</dt>
                     <dd class="col-sm-6">
-                        {% if student.knows_task_26 %}
+                        {% if 26 in known_task_numbers %}
                             <span class="badge bg-success">Знает</span>
                         {% else %}
                             <span class="badge bg-secondary">Не знает</span>
@@ -78,7 +78,7 @@
                     
                     <dt class="col-sm-6">Задание 27:</dt>
                     <dd class="col-sm-6">
-                        {% if student.knows_task_27 %}
+                        {% if 27 in known_task_numbers %}
                             <span class="badge bg-success">Знает</span>
                         {% else %}
                             <span class="badge bg-secondary">Не знает</span>
@@ -329,6 +329,17 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Выбор всех вебинаров
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.webinar-checkbox:not(:disabled)');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+        }
+        
         // Поиск вебинаров в ручном режиме
         const searchInput = document.getElementById('webinarSearch');
         if (searchInput) {

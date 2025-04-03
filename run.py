@@ -1,18 +1,15 @@
 from app import create_app, db
-from app.models import TaskNumber, User # Добавьте другие модели по мере необходимости
+from app.models import TaskNumber, User
 
 app = create_app()
 
-# Функция для инициализации базы данных
-@app.cli.command('init-db')
+
+@app.cli.command("init-db")
 def init_db_command():
     """Инициализация базы данных начальными данными."""
-    # --- Начало изменений: Добавляем создание таблиц --- 
     print("Создание таблиц базы данных...")
     db.create_all()
     print("Таблицы созданы.")
-    # --- Конец изменений ---
-    # Создаем номера заданий
     print("Добавление номеров заданий...")
     for i in range(1, 28):
         task = TaskNumber.query.filter_by(number=i).first()
@@ -20,7 +17,6 @@ def init_db_command():
             task = TaskNumber(number=i)
             db.session.add(task)
 
-    # Создаем пользователей
     users_data = [
         {
             "username": "makarkonev",
@@ -106,7 +102,7 @@ def init_db_command():
                 first_name=user_data["first_name"],
                 last_name=user_data["last_name"],
             )
-            user.set_password("123456")  
+            user.set_password("123456")
             db.session.add(user)
 
     db.session.commit()
@@ -114,4 +110,4 @@ def init_db_command():
 
 
 if __name__ == "__main__":
-    app.run('0.0.0.0', debug=True) 
+    app.run("0.0.0.0", debug=True)

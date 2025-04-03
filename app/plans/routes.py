@@ -31,23 +31,33 @@ def create_study_plan(student_id):
     if request.method == "POST":
         study_plan = StudyPlan(student_id=student.id, created_by_id=current_user.id)
         db.session.add(study_plan)
-        db.session.flush()
+        db.session.flush() # Получаем ID для study_plan
 
-        webinar_ids = request.form.getlist("webinar_ids")
-        week_numbers = request.form.getlist("week_numbers")
-        # Создаем словарь id: week для удобства
-        weeks_map = {int(id_): int(num) for id_, num in zip(request.form.getlist("webinar_ids_hidden"), week_numbers)}
+        webinar_ids = request.form.getlist("webinar_ids") # Получаем ID только выбранных вебинаров
 
-        for webinar_id in webinar_ids: # Только выбранные пользователем
-            webinar_id = int(webinar_id)
-            # Берем неделю из скрытого поля или ставим 1 по умолчанию
-            week_number = weeks_map.get(webinar_id, 1)
-            planned_webinar = PlannedWebinar(
-                study_plan_id=study_plan.id,
-                webinar_id=webinar_id,
-                week_number=week_number,
-            )
-            db.session.add(planned_webinar)
+        for webinar_id_str in webinar_ids: # Итерируемся только по выбранным
+            try:
+                webinar_id = int(webinar_id_str)
+                # Получаем номер недели из соответствующего поля week_numbers_webinarId
+                week_number_str = request.form.get(f"week_numbers_{webinar_id}")
+                try:
+                    # Пытаемся преобразовать в число, по умолчанию 1, если не указано или ошибка
+                    week_number = int(week_number_str) if week_number_str else 1
+                    if not 1 <= week_number <= 5: # Проверка диапазона недель
+                         week_number = 1
+                except (ValueError, TypeError):
+                    week_number = 1 # Ставим 1 по умолчанию при любой ошибке
+                
+                planned_webinar = PlannedWebinar(
+                    study_plan_id=study_plan.id,
+                    webinar_id=webinar_id,
+                    week_number=week_number,
+                )
+                db.session.add(planned_webinar)
+            except ValueError:
+                # Пропускаем, если ID вебинара некорректный
+                flash(f"Некорректный ID вебинара: {webinar_id_str}", "warning")
+                continue
 
         # Читаем квоты из скрытых полей формы
         quota_basic = int(request.form.get("quota_basic", 0))
@@ -58,20 +68,9 @@ def create_study_plan(student_id):
         except ValueError:
              advanced_task_number = None # На случай если передано что-то не то
 
-        # Формируем строку резюме
-        summary_lines = ["План обучения создан!"]
-        summary_lines.append("\n\nПодытожим ваш план на неделю:")
-        if quota_basic > 0:
-            plural = "а" if quota_basic % 10 == 1 and quota_basic != 11 else ("ов" if quota_basic % 10 in [0, 5, 6, 7, 8, 9] or 10 < quota_basic < 20 else "а")
-            summary_lines.append(f"✔ {quota_basic} вебинар{plural} основного курса")
-        if advanced_task_number and quota_advanced > 0:
-            plural = "а" if quota_advanced % 10 == 1 and quota_advanced != 11 else ("ов" if quota_advanced % 10 in [0, 5, 6, 7, 8, 9] or 10 < quota_advanced < 20 else "а")
-            summary_lines.append(f"✔ {quota_advanced} вебинар{plural} по заданию {advanced_task_number}")
-        summary_lines.append("✔ домашняя работа к каждому вебинару")
-
         db.session.commit()
-        # Используем сформированное сообщение
-        flash("\n".join(summary_lines), "success")
+        # Используем простое сообщение
+        flash("План обучения успешно создан!", "success")
         # Используем .view_study_plan
         return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
 
@@ -229,50 +228,144 @@ def edit_study_plan(plan_id):
     student = plan.student # Берем студента из плана
 
     if request.method == "POST":
+        # Отладочный вывод для POST-запроса
+        print("Обработка POST-запроса для редактирования плана:")
+        print(f"webinar_ids: {request.form.getlist('webinar_ids')}")
+        
         # Очищаем старые запланированные вебинары
         PlannedWebinar.query.filter_by(study_plan_id=plan.id).delete()
 
-        webinar_ids = request.form.getlist("webinar_ids")
-        week_numbers = request.form.getlist("week_numbers")
-        weeks_map = {int(id_): int(num) for id_, num in zip(request.form.getlist("webinar_ids_hidden"), week_numbers)}
+        webinar_ids = request.form.getlist("webinar_ids") # Получаем ID только выбранных вебинаров
 
-        for webinar_id in webinar_ids:
-            webinar_id = int(webinar_id)
-            week_number = weeks_map.get(webinar_id, 1)
-            planned_webinar = PlannedWebinar(
-                study_plan_id=plan.id,
-                webinar_id=webinar_id,
-                week_number=week_number,
-            )
-            db.session.add(planned_webinar)
+        for webinar_id_str in webinar_ids: # Итерируемся только по выбранным
+            try:
+                webinar_id = int(webinar_id_str)
+                 # Получаем номер недели из соответствующего поля week_numbers_webinarId
+                week_number_str = request.form.get(f"week_numbers_{webinar_id}")
+                try:
+                    # Пытаемся преобразовать в число, по умолчанию 1, если не указано или ошибка
+                    week_number = int(week_number_str) if week_number_str else 1
+                    if not 1 <= week_number <= 5: # Проверка диапазона недель
+                         week_number = 1
+                except (ValueError, TypeError):
+                    week_number = 1 # Ставим 1 по умолчанию при любой ошибке
+
+                planned_webinar = PlannedWebinar(
+                    study_plan_id=plan.id,
+                    webinar_id=webinar_id,
+                    week_number=week_number,
+                )
+                db.session.add(planned_webinar)
+            except ValueError:
+                # Пропускаем, если ID вебинара некорректный
+                flash(f"Некорректный ID вебинара в запросе: {webinar_id_str}", "warning")
+                continue
 
         db.session.commit()
         flash("План обучения обновлен!", "success")
         return redirect(url_for("plans.view_study_plan", plan_id=plan.id))
 
     # Данные для формы редактирования
-    current_planned_webinars = plan.planned_webinars # Уже загружены
+    # Загружаем planned_webinars с вебинарами, используя явный запрос вместо свойства
+    current_planned_webinars = PlannedWebinar.query.options(
+        db.joinedload(PlannedWebinar.webinar).joinedload(Webinar.task_numbers)
+    ).filter_by(study_plan_id=plan.id).all()
+    
     current_webinar_ids = {pw.webinar_id for pw in current_planned_webinars}
     webinars = Webinar.query.all() # Все вебинары для выбора
     known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
-    known_task_numbers = [task.task_number for task in known_tasks]
+    known_task_numbers = {task.task_number for task in known_tasks}
     watched_webinar_ids = {
         w.webinar_id
         for w in WatchedWebinar.query.filter_by(student_id=student.id).all()
     }
     webinar_weeks = {pw.webinar_id: pw.week_number for pw in current_planned_webinars}
+    
+    # Выводим отладочную информацию
+    print(f"Количество вебинаров в текущем плане: {len(current_planned_webinars)}")
+    print(f"ID вебинаров в текущем плане: {current_webinar_ids}")
+    for pw in current_planned_webinars:
+        print(f"Вебинар ID: {pw.webinar_id}, Название: {pw.webinar.title if pw.webinar else 'Нет вебинара'}, Неделя: {pw.week_number}")
+    print(f"Недели вебинаров: {webinar_weeks}")
+    
+    # Проверяем наличие вебинаров в базе напрямую
+    if current_webinar_ids:
+        direct_webinars = Webinar.query.filter(Webinar.id.in_(current_webinar_ids)).all()
+        found_webinar_ids = {w.id for w in direct_webinars}
+        missing_webinar_ids = current_webinar_ids - found_webinar_ids
+        print(f"Найдено вебинаров напрямую: {len(direct_webinars)}")
+        print(f"Отсутствующие вебинары: {missing_webinar_ids}")
+    
+        # Если есть отсутствующие вебинары, исправляем ситуацию - удаляем их из плана
+        if missing_webinar_ids:
+            print(f"Удаляю отсутствующие вебинары из плана: {missing_webinar_ids}")
+            PlannedWebinar.query.filter(
+                PlannedWebinar.study_plan_id == plan.id,
+                PlannedWebinar.webinar_id.in_(missing_webinar_ids)
+            ).delete(synchronize_session=False)
+            db.session.commit()
+            
+            # Перезагружаем planned_webinars после исправления
+            current_planned_webinars = PlannedWebinar.query.options(
+                db.joinedload(PlannedWebinar.webinar).joinedload(Webinar.task_numbers)
+            ).filter_by(study_plan_id=plan.id).all()
+            current_webinar_ids = {pw.webinar_id for pw in current_planned_webinars}
 
     # Расчет max_weekly_webinars (можно вынести в сервис?)
     total_hours_per_week = student.hours_per_week or 9
     time_for_26_27 = 0
-    if student.knows_task_26 and student.knows_task_27:
+    
+    # Проверяем, знает ли студент задания 26 и 27, просматривая известные задания
+    known_task_numbers = {task.task_number for task in student.known_tasks}
+    knows_task_26 = 26 in known_task_numbers
+    knows_task_27 = 27 in known_task_numbers
+    
+    if knows_task_26 and knows_task_27:
         time_for_26_27 = int(total_hours_per_week * 0.5)
-    elif student.knows_task_26 or student.knows_task_27:
+    elif knows_task_26 or knows_task_27:
         time_for_26_27 = int(total_hours_per_week * 0.3)
     time_for_basic = total_hours_per_week - time_for_26_27
     basic_webinars_per_week = max(1, time_for_basic // 3)
     advanced_webinars_per_week = max(0, time_for_26_27 // 4)
     max_weekly_webinars = basic_webinars_per_week + advanced_webinars_per_week
+
+    # Прямая загрузка вебинаров плана (обходное решение)
+    direct_plan_webinars = []
+    if current_webinar_ids:
+        print(f"Загружаю вебинары для плана. ID вебинаров: {current_webinar_ids}")
+        direct_webinars = Webinar.query.filter(Webinar.id.in_(current_webinar_ids)).options(
+            db.joinedload(Webinar.task_numbers)
+        ).all()
+        
+        # Выводим количество найденных вебинаров для диагностики
+        print(f"Найдено {len(direct_webinars)} вебинаров из {len(current_webinar_ids)}")
+        
+        # Создаем словарь вебинар_id: вебинар для быстрого доступа
+        webinar_dict = {w.id: w for w in direct_webinars}
+        
+        # Создаем структуру с неделями для каждого вебинара
+        for pw in current_planned_webinars:
+            if pw.webinar_id in webinar_dict:
+                direct_plan_webinars.append({
+                    'webinar': webinar_dict[pw.webinar_id],
+                    'week_number': pw.week_number
+                })
+            else:
+                print(f"Вебинар с ID {pw.webinar_id} не найден в базе данных")
+        
+        print(f"Подготовлено {len(direct_plan_webinars)} вебинаров для отображения в плане")
+
+    # Если у нас нет direct_plan_webinars, но есть current_webinar_ids, что-то пошло не так
+    if len(direct_plan_webinars) == 0 and current_webinar_ids:
+        print("ВНИМАНИЕ: ID вебинаров есть, но не удалось загрузить ни одного вебинара!")
+        
+        # Дополнительная проверка вебинаров
+        for webinar_id in current_webinar_ids:
+            webinar = Webinar.query.get(webinar_id)
+            if webinar:
+                print(f"Вебинар ID={webinar_id} существует: {webinar.title}")
+            else:
+                print(f"Вебинар ID={webinar_id} не существует в базе данных!")
 
     # Шаблон plans/templates/plans/edit_plan.html
     return render_template(
@@ -281,6 +374,8 @@ def edit_study_plan(plan_id):
         student=student,
         webinars=webinars,
         current_webinar_ids=current_webinar_ids,
+        current_planned_webinars=current_planned_webinars,
+        direct_plan_webinars=direct_plan_webinars,  # Добавляем прямые вебинары
         known_task_numbers=known_task_numbers,
         watched_webinar_ids=watched_webinar_ids,
         webinar_weeks=webinar_weeks,
@@ -313,9 +408,8 @@ def delete_study_plan(plan_id):
 def mark_all_webinars_watched(plan_id):
     plan = StudyPlan.query.get_or_404(plan_id)
 
-    if not current_user.is_admin and current_user.id != plan.created_by_id:
-        flash("У вас нет прав для выполнения этого действия", "danger")
-        return redirect(url_for("plans.view_study_plan", plan_id=plan_id))
+    # Разрешаем всем авторизованным пользователям (кураторам) отмечать вебинары как просмотренные
+    # Ранее было ограничение: if not current_user.is_admin and current_user.id != plan.created_by_id:
 
     planned_webinars = PlannedWebinar.query.filter_by(study_plan_id=plan_id).all()
     webinar_ids = {pw.webinar_id for pw in planned_webinars}

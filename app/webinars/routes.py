@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from app import db
 from app.models import Webinar, TaskNumber, WebinarComment, User
 from app.webinars import bp
+from app.webinars.forms import WebinarForm # Импортируем форму
 
 
 @bp.route("/") # Базовый URL /webinars
@@ -25,6 +26,8 @@ def webinars_list():
 @bp.route("/import", methods=["GET", "POST"])
 @login_required # Возможно, стоит ограничить права до admin_required?
 def import_webinars():
+    if not current_user.is_admin:
+        abort(403) # Доступ запрещен
     if request.method == "POST":
         if "file" not in request.files:
             flash("Файл не выбран", "danger")
@@ -185,6 +188,124 @@ def import_webinars():
 
     # Шаблон webinars/templates/webinars/import_webinars.html
     return render_template("webinars/import_webinars.html")
+
+
+@bp.route("/<int:webinar_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_webinar(webinar_id):
+    if not current_user.is_admin:
+        abort(403) # Доступ запрещен
+
+    webinar = Webinar.query.options(
+        selectinload(Webinar.task_numbers)
+    ).get_or_404(webinar_id)
+
+    form = WebinarForm(obj=webinar)
+
+    # Преобразуем список номеров заданий в строку для формы
+    if webinar.task_numbers:
+        form.task_numbers.data = ", ".join(sorted([str(task.number) for task in webinar.task_numbers]))
+
+    # Устанавливаем значение для course_category
+    # Найдем ключ в COURSE_CATEGORY_CHOICES, соответствующий булевым флагам вебинара
+    selected_course_category = ''
+    if webinar.for_beginners: selected_course_category = 'python с нуля'
+    elif webinar.for_basic: selected_course_category = 'основной курс'
+    elif webinar.for_advanced: selected_course_category = 'хард прога'
+    elif webinar.for_expert: selected_course_category = 'задание 27'
+    elif webinar.for_mocks: selected_course_category = 'разбор пробников'
+    elif webinar.for_practice: selected_course_category = 'нарешка'
+    elif webinar.for_minisnap: selected_course_category = 'мини-щелчок'
+    form.course_category.data = selected_course_category
+
+    if form.validate_on_submit():
+        # Обновляем основные поля
+        webinar.title = form.title.data
+        webinar.url = form.url.data
+        webinar.date = form.date.data
+        webinar.cover_url = form.cover_url.data
+
+        # Обновляем тип решения
+        webinar.is_programming = form.is_programming.data
+        webinar.is_manual = form.is_manual.data
+
+        # Обновляем категорию
+        webinar.category = int(form.category.data) if form.category.data else None
+
+        # Обновляем категорию курса на основе выбора в SelectField
+        selected_course = form.course_category.data
+        webinar.for_beginners = selected_course == 'python с нуля'
+        webinar.for_basic = selected_course == 'основной курс'
+        webinar.for_advanced = selected_course == 'хард прога'
+        webinar.for_expert = selected_course == 'задание 27'
+        webinar.for_mocks = selected_course == 'разбор пробников'
+        webinar.for_practice = selected_course == 'нарешка'
+        webinar.for_minisnap = selected_course == 'мини-щелчок'
+
+        # Обновляем номера заданий
+        current_tasks = {task.number for task in webinar.task_numbers}
+        new_task_numbers_str = form.task_numbers.data
+        new_tasks = set()
+        if new_task_numbers_str:
+            try:
+                new_tasks = {int(num.strip()) for num in new_task_numbers_str.split(',') if num.strip().isdigit()}
+            except ValueError:
+                flash('Ошибка в формате номеров заданий', 'danger')
+                # Можно не продолжать сохранение или обработать иначе
+                return render_template("webinars/edit_webinar.html", form=form, webinar=webinar)
+
+        # Задачи для добавления
+        tasks_to_add = new_tasks - current_tasks
+        for num in tasks_to_add:
+            task = TaskNumber.query.filter_by(number=num).first()
+            if task:
+                webinar.task_numbers.append(task)
+            else:
+                flash(f'Задание с номером {num} не найдено в базе и не было добавлено.', 'warning')
+
+        # Задачи для удаления
+        tasks_to_remove = current_tasks - new_tasks
+        tasks_objects_to_remove = [task for task in webinar.task_numbers if task.number in tasks_to_remove]
+        for task in tasks_objects_to_remove:
+            webinar.task_numbers.remove(task)
+
+        try:
+            db.session.commit()
+            flash('Вебинар успешно обновлен!', 'success')
+            return redirect(url_for('webinars.webinars_list'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при сохранении вебинара: {str(e)}', 'danger')
+
+    elif request.method == 'POST':
+        # Если форма не прошла валидацию при POST-запросе
+        flash('Пожалуйста, исправьте ошибки в форме.', 'danger')
+
+    # Для GET-запроса или если валидация не прошла
+    return render_template("webinars/edit_webinar.html", form=form, webinar=webinar)
+
+
+@bp.route("/<int:webinar_id>/delete", methods=["POST"])
+@login_required
+def delete_webinar(webinar_id):
+    if not current_user.is_admin:
+        abort(403) # Доступ запрещен
+
+    webinar = Webinar.query.get_or_404(webinar_id)
+
+    try:
+        # Удаляем связанные комментарии (если настроено каскадное удаление, это не обязательно)
+        # WebinarComment.query.filter_by(webinar_id=webinar.id).delete()
+        
+        # Удаляем сам вебинар
+        db.session.delete(webinar)
+        db.session.commit()
+        flash(f'Вебинар "{webinar.title}" успешно удален.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении вебинара: {str(e)}', 'danger')
+
+    return redirect(url_for('webinars.webinars_list'))
 
 
 @bp.route("/<int:webinar_id>/comment", methods=["POST"])
