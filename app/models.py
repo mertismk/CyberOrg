@@ -23,6 +23,9 @@ class Webinar(db.Model):
     for_basic = db.Column(db.Boolean, default=False)  # Основной курс
     for_advanced = db.Column(db.Boolean, default=False)  # Хард прога
     for_expert = db.Column(db.Boolean, default=False)  # Задание 27
+    for_mocks = db.Column(db.Boolean, default=False)  # Разбор пробников
+    for_practice = db.Column(db.Boolean, default=False)  # Нарешка
+    for_minisnap = db.Column(db.Boolean, default=False)  # Мини-щелчок
     created_by_id = db.Column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
     )  # ID создателя
@@ -76,9 +79,7 @@ class Student(db.Model):
     plans = db.relationship(
         "StudyPlan", back_populates="student", foreign_keys="StudyPlan.student_id"
     )  # Corrected line without lazy='dynamic'
-    watched_webinars = db.relationship(
-        "WatchedWebinar", back_populates="student"
-    )
+    watched_webinars = db.relationship("WatchedWebinar", back_populates="student")
     notes = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     initial_score = db.Column(db.Integer, nullable=True)

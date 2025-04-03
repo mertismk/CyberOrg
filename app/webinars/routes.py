@@ -15,8 +15,9 @@ from app.webinars import bp
 def webinars_list():
     webinars = Webinar.query.options(
         joinedload(Webinar.created_by),
-        selectinload(Webinar.comments).joinedload(WebinarComment.user)
-    ).all()
+        selectinload(Webinar.comments).joinedload(WebinarComment.user),
+        selectinload(Webinar.task_numbers)
+    ).order_by(Webinar.date.desc().nullslast(), Webinar.id.desc()).all()
     # Шаблон webinars/templates/webinars/webinars.html
     return render_template("webinars/webinars.html", webinars=webinars)
 
@@ -92,10 +93,10 @@ def import_webinars():
                         except Exception as e:
                              errors.append(f"Строка {index + 2}: Ошибка обработки номеров заданий ({e})")
 
-                    if "решение прогой или руки" in df.columns and not pd.isna(row["решение прогой или руки"]):
-                        solution_type = str(row["решение прогой или руки"]).lower()
-                        webinar.is_programming = "прогой" in solution_type
-                        webinar.is_manual = "руками" in solution_type
+                    if "тип решения" in df.columns and not pd.isna(row["тип решения"]):
+                        solution_type = str(row["тип решения"]).lower()
+                        webinar.is_programming = any(term in solution_type for term in ["прогой", "программирование", "программный"])
+                        webinar.is_manual = any(term in solution_type for term in ["руками", "ручное", "ручной"])
 
                     if "номер дз" in df.columns and not pd.isna(row["номер дз"]):
                         try:
@@ -121,6 +122,9 @@ def import_webinars():
                         webinar.for_basic = False
                         webinar.for_advanced = False
                         webinar.for_expert = False
+                        webinar.for_mocks = False
+                        webinar.for_practice = False
+                        webinar.for_minisnap = False
 
                         # Затем устанавливаем нужный флаг
                         if course_category == "python с нуля":
@@ -131,6 +135,12 @@ def import_webinars():
                             webinar.for_advanced = True
                         elif course_category == "задание 27":
                             webinar.for_expert = True
+                        elif course_category == "разбор пробников":
+                            webinar.for_mocks = True
+                        elif course_category == "нарешка":
+                            webinar.for_practice = True
+                        elif course_category == "мини-щелчок":
+                            webinar.for_minisnap = True
                         # Можно добавить else для обработки неизвестных категорий, если нужно
                         # else:
                         #     errors.append(f"Строка {index + 2}: Неизвестная категория курса '{row['категория курса']}'")

@@ -28,6 +28,73 @@
                         <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_basic">Основной курс</button>
                         <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_advanced">Хард прога</button>
                         <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_expert">Задание 27</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_mocks">Разбор пробников</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_practice">Нарешка</button>
+                        <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_minisnap">Мини-щелчок</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Расширенные фильтры -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <a href="#advancedFilters" data-bs-toggle="collapse" class="text-decoration-none text-dark">
+                        <i class="fas fa-filter me-2"></i> Расширенная фильтрация
+                        <i class="fas fa-chevron-down float-end mt-1"></i>
+                    </a>
+                </div>
+                <div id="advancedFilters" class="collapse">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Фильтр по дате -->
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fas fa-calendar-alt me-1"></i> По дате</label>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-secondary date-filter active" data-filter="all">Все</button>
+                                    <button type="button" class="btn btn-outline-secondary date-filter" data-filter="new">Новые</button>
+                                    <button type="button" class="btn btn-outline-secondary date-filter" data-filter="old">Старые</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Фильтр по типу решения -->
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fas fa-code me-1"></i> Тип решения</label>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-secondary solution-filter active" data-filter="all">Все</button>
+                                    <button type="button" class="btn btn-outline-secondary solution-filter" data-filter="is_programming">Программирование</button>
+                                    <button type="button" class="btn btn-outline-secondary solution-filter" data-filter="is_manual">Ручное решение</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Фильтр по категории -->
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fas fa-tags me-1"></i> Категория</label>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-secondary category-filter active" data-filter="all">Все</button>
+                                    <button type="button" class="btn btn-outline-secondary category-filter" data-filter="category-1">Обязательный</button>
+                                    <button type="button" class="btn btn-outline-secondary category-filter" data-filter="category-2">Повторение</button>
+                                    <button type="button" class="btn btn-outline-secondary category-filter" data-filter="category-3">Необязательный</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Фильтр по номерам заданий -->
+                            <div class="col-md-6">
+                                <label for="taskFilterSelect" class="form-label"><i class="fas fa-hashtag me-1"></i> Номер задания</label>
+                                <select class="form-select" id="taskFilterSelect">
+                                    <option value="all" selected>Все задания</option>
+                                    {% for i in range(1, 28) %}
+                                        <option value="task-{{ i }}">№{{ i }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <!-- Сброс фильтров -->
+                            <div class="col-12">
+                                <button type="button" class="btn btn-danger" id="resetAllFilters">
+                                    <i class="fas fa-undo me-2"></i> Сбросить все фильтры
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -40,7 +107,15 @@
                         {% if webinar.for_basic %}for_basic{% endif %}
                         {% if webinar.for_advanced %}for_advanced{% endif %}
                         {% if webinar.for_expert %}for_expert{% endif %}
-                    ">
+                        {% if webinar.for_mocks %}for_mocks{% endif %}
+                        {% if webinar.for_practice %}for_practice{% endif %}
+                        {% if webinar.for_minisnap %}for_minisnap{% endif %}
+                        {% if webinar.is_programming %} is_programming{% endif %}
+                        {% if webinar.is_manual %} is_manual{% endif %}
+                        {% if webinar.category %} category-{{ webinar.category }}{% endif %}
+                        {% for task in webinar.task_numbers %} task-{{ task.number }}{% endfor %}
+                        {% if webinar.date %} date-{{ webinar.date.strftime('%Y-%m-%d') }}{% endif %}
+                    " data-id="{{ webinar.id }}">
                         <div class="card h-100 webinar-card">
                             <!-- Обложка вебинара -->
                             <div class="webinar-cover">
@@ -108,6 +183,15 @@
                                     {% endif %}
                                     {% if webinar.for_expert %}
                                         <span class="badge bg-danger me-1">Задание 27</span>
+                                    {% endif %}
+                                    {% if webinar.for_mocks %}
+                                        <span class="badge bg-secondary me-1">Разбор пробников</span>
+                                    {% endif %}
+                                    {% if webinar.for_practice %}
+                                        <span class="badge bg-primary me-1">Нарешка</span>
+                                    {% endif %}
+                                    {% if webinar.for_minisnap %}
+                                        <span class="badge bg-dark me-1">Мини-щелчок</span>
                                     {% endif %}
                                 </div>
                                 
@@ -195,56 +279,265 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Фильтрация по тексту
+        // Текущее состояние фильтров
+        const activeFilters = {
+            courseCategory: 'all',
+            date: 'all',
+            solution: 'all',
+            category: 'all',
+            tasks: [] // Для множественного выбора заданий
+        };
+        
+        // Элементы DOM
         const filterInput = document.getElementById('webinarFilter');
+        const cardsContainer = document.querySelector('.row.g-4'); // Контейнер карточек
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const dateFilterButtons = document.querySelectorAll('.date-filter');
+        const solutionFilterButtons = document.querySelectorAll('.solution-filter');
+        const categoryFilterButtons = document.querySelectorAll('.category-filter');
+        const taskFilterSelect = document.getElementById('taskFilterSelect');
+        const resetButton = document.getElementById('resetAllFilters');
+        const copyButtons = document.querySelectorAll('.copy-link-btn');
+
+        // Фильтрация по тексту
         if (filterInput) {
             filterInput.addEventListener('keyup', function() {
-                const value = this.value.toLowerCase();
-                const cards = document.querySelectorAll('.webinar-item');
-                
-                cards.forEach(function(card) {
-                    const text = card.textContent.toLowerCase();
-                    card.style.display = text.includes(value) ? '' : 'none';
-                });
+                applyFiltersAndSort();
             });
         }
         
-        // Фильтрация по кнопкам
-        const filterButtons = document.querySelectorAll('.filter-btn');
+        // Фильтрация по основным кнопкам курса
         filterButtons.forEach(function(button) {
             button.addEventListener('click', function() {
                 const filter = this.getAttribute('data-filter');
-                const cards = document.querySelectorAll('.webinar-item');
-                
-                // Выделяем активную кнопку
                 filterButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
                 filterButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
                 this.classList.remove('btn-outline-primary');
                 this.classList.add('active', 'btn-primary');
-                
-                if (filter === 'all') {
-                    cards.forEach(card => card.style.display = '');
-                } else {
-                    cards.forEach(function(card) {
-                        card.style.display = card.classList.contains(filter) ? '' : 'none';
-                    });
-                }
-                
-                // Применяем текстовый фильтр поверх категорийного
-                const searchText = filterInput.value.toLowerCase();
-                if (searchText) {
-                    cards.forEach(function(card) {
-                        if (card.style.display !== 'none') {
-                            const text = card.textContent.toLowerCase();
-                            card.style.display = text.includes(searchText) ? '' : 'none';
-                        }
-                    });
-                }
+                activeFilters.courseCategory = filter;
+                applyFiltersAndSort();
             });
         });
         
+        // Фильтрация по дате
+        dateFilterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                dateFilterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                activeFilters.date = filter;
+                applyFiltersAndSort();
+            });
+        });
+        
+        // Фильтрация по типу решения
+        solutionFilterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                solutionFilterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                activeFilters.solution = filter;
+                applyFiltersAndSort();
+            });
+        });
+        
+        // Фильтрация по категории
+        categoryFilterButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                activeFilters.category = filter;
+                applyFiltersAndSort();
+            });
+        });
+        
+        // Фильтрация по номерам заданий (ОДИНОЧНЫЙ ВЫБОР через SELECT)
+        if (taskFilterSelect) {
+            taskFilterSelect.addEventListener('change', function() {
+                const filter = this.value;
+                if (filter === 'all') {
+                    activeFilters.tasks = [];
+                } else {
+                    activeFilters.tasks = [filter];
+                }
+                applyFiltersAndSort();
+            });
+        }
+        
+        // Кнопка сброса всех фильтров
+        if (resetButton) {
+            resetButton.addEventListener('click', function() {
+                activeFilters.courseCategory = 'all';
+                activeFilters.date = 'all';
+                activeFilters.solution = 'all';
+                activeFilters.category = 'all';
+                activeFilters.tasks = [];
+
+                if (filterInput) {
+                    filterInput.value = '';
+                }
+
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active', 'btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active', 'btn-primary');
+                        btn.classList.remove('btn-outline-primary');
+                    }
+                });
+
+                dateFilterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active');
+                    }
+                });
+
+                solutionFilterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active');
+                    }
+                });
+
+                categoryFilterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-filter') === 'all') {
+                        btn.classList.add('active');
+                    }
+                });
+
+                if (taskFilterSelect) {
+                    taskFilterSelect.value = 'all';
+                }
+
+                applyFiltersAndSort();
+            });
+        }
+        
+        // Функция применения всех фильтров И СОРТИРОВКИ
+        function applyFiltersAndSort() {
+            if (!cardsContainer) return;
+
+            if (!window.originalCards || window.originalCards.length === 0) {
+                window.originalCards = Array.from(document.querySelectorAll('.webinar-item'));
+            }
+            
+            const allCards = window.originalCards.map(card => card.cloneNode(true));
+            const searchText = filterInput ? filterInput.value.toLowerCase() : '';
+
+            // ФИЛЬТРАЦИЯ
+            const filteredCards = [];
+            
+            allCards.forEach(card => {
+                let shouldShow = true;
+                const cardText = card.textContent.toLowerCase();
+                const cardClasses = Array.from(card.classList);
+                
+                // 1. Текстовый поиск
+                if (searchText && !cardText.includes(searchText)) {
+                    shouldShow = false;
+                }
+
+                // 2. Категория курса
+                if (shouldShow && activeFilters.courseCategory !== 'all') {
+                    if (!cardClasses.some(cls => cls.includes(activeFilters.courseCategory))) {
+                        shouldShow = false;
+                    }
+                }
+
+                // 3. Тип решения
+                if (shouldShow && activeFilters.solution !== 'all') {
+                    if (!cardClasses.some(cls => cls.includes(activeFilters.solution))) {
+                        shouldShow = false;
+                    }
+                }
+
+                // 4. Категория обязательности
+                if (shouldShow && activeFilters.category !== 'all') {
+                    if (!cardClasses.some(cls => cls.includes(activeFilters.category))) {
+                        shouldShow = false;
+                    }
+                }
+
+                // 5. Задания
+                if (shouldShow && activeFilters.tasks.length > 0) {
+                    const cardTaskClasses = cardClasses
+                        .filter(cls => cls.includes('task-'))
+                        .map(cls => cls.trim());
+                    
+                    let hasAnyTask = false;
+                    for (const task of activeFilters.tasks) {
+                        if (cardTaskClasses.some(cls => cls === task)) {
+                            hasAnyTask = true;
+                            break;
+                        }
+                    }
+                    if (!hasAnyTask) {
+                        shouldShow = false;
+                    }
+                }
+
+                if (shouldShow) {
+                    filteredCards.push(card);
+                }
+            });
+
+            // СОРТИРОВКА
+            const extractDate = (card) => {
+                const dateClasses = Array.from(card.classList).filter(cls => cls.includes('date-'));
+                if (dateClasses.length > 0) {
+                    const dateStr = dateClasses[0].replace('date-', '').trim();
+                    try {
+                        const date = new Date(dateStr);
+                        return isNaN(date.getTime()) ? null : date;
+                    } catch(e) {
+                        return null;
+                    }
+                }
+                return null;
+            };
+
+            filteredCards.sort((a, b) => {
+                const dateA = extractDate(a);
+                const dateB = extractDate(b);
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+                return activeFilters.date === 'new' ? dateB - dateA : dateA - dateB;
+            });
+            
+            // ПЕРЕСТРАИВАЕМ DOM
+            while (cardsContainer.firstChild) {
+                cardsContainer.removeChild(cardsContainer.firstChild);
+            }
+            
+            if (filteredCards.length === 0) {
+                const noResultsMessage = document.createElement('div');
+                noResultsMessage.className = 'col-12 text-center my-5';
+                noResultsMessage.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> 
+                        Нет вебинаров, соответствующих выбранным фильтрам. 
+                        <button class="btn btn-sm btn-outline-primary ms-3" id="resetFiltersBtn">Сбросить фильтры</button>
+                    </div>
+                `;
+                cardsContainer.appendChild(noResultsMessage);
+                document.getElementById('resetFiltersBtn').addEventListener('click', function() {
+                    if (resetButton) resetButton.click();
+                });
+            } else {
+                filteredCards.forEach(card => {
+                    cardsContainer.appendChild(card);
+                });
+            }
+        }
+        
+        activeFilters.date = 'old';
+        applyFiltersAndSort();
+
         // Копирование ссылки
-        const copyButtons = document.querySelectorAll('.copy-link-btn');
         copyButtons.forEach(function(button) {
             button.addEventListener('click', function() {
                 const url = this.getAttribute('data-url');
