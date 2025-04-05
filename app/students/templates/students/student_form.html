@@ -3,8 +3,8 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% macro render_field(field, field_type='text') %}
-    <div class="mb-3">
-        {{ field.label(class='form-label') }}
+    <div class="mb-4">
+        {{ field.label(class='form-label fw-medium') }}
         {{ field(class='form-control' + (' is-invalid' if field.errors else ''), type=field_type, **kwargs) }}
         {% if field.errors %}
             <div class="invalid-feedback">
@@ -18,7 +18,7 @@
 {% endmacro %}
 
 {% macro render_checkbox(field) %}
-    <div class="form-check mb-3">
+    <div class="form-check mb-4">
         {{ field(class='form-check-input' + (' is-invalid' if field.errors else ''), **kwargs) }}
         {{ field.label(class='form-check-label') }}
         {% if field.errors %}
@@ -33,54 +33,84 @@
 {% endmacro %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">{{ title }}</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="{{ url_for('students.student_edit', student_id=student.id) if student else '' }}" novalidate>
-                        {{ form.hidden_tag() }}
-                        
-                        <div class="row mb-0">
-                            <div class="col-md-6">
-                                {{ render_field(form.first_name) }}
-                            </div>
-                            <div class="col-md-6">
-                                {{ render_field(form.last_name) }}
-                            </div>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="fw-bold">{{ title }}</h1>
+            <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i> К списку учеников
+            </a>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    {% if student %}
+                        <i class="fas fa-user-edit me-2"></i> Данные ученика
+                    {% else %}
+                        <i class="fas fa-user-plus me-2"></i> Новый ученик
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('students.student_edit', student_id=student.id) if student else '' }}" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row mb-0">
+                        <div class="col-md-6">
+                            {{ render_field(form.first_name) }}
                         </div>
+                        <div class="col-md-6">
+                            {{ render_field(form.last_name) }}
+                        </div>
+                    </div>
 
-                        {{ render_field(form.platform_id, description="Уникальный номер ученика на платформе Школково.") }}
-                        <div class="mb-3 text-center">
-                            <img src="{{ url_for('static', filename='images/platform_id_guide.png') }}" alt="Где найти ID платформы" class="img-fluid img-thumbnail" style="max-width: 400px; cursor: pointer;" 
-                                 data-bs-toggle="modal" data-bs-target="#imageModal">
-                            <div class="form-text">(Нажмите на картинку для увеличения)</div>
-                        </div>
-
-                        <div class="row mb-0">
-                            <div class="col-md-6">
-                                {{ render_field(form.target_score, field_type='number', min=60, max=100, step=1) }} 
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" style="background-color: rgba(114, 9, 183, 0.1);">
+                                    <i class="fas fa-id-card text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">ID на платформе Школково</h6>
+                                    <p class="text-muted small mb-0">Необходим для связи ученика с учебной платформой</p>
+                                </div>
                             </div>
-                             <div class="col-md-6">
-                                {{ render_field(form.hours_per_week, field_type='number', min=1) }}
+                            
+                            {{ render_field(form.platform_id, description="Уникальный номер ученика на платформе Школково.") }}
+                            
+                            <div class="text-center">
+                                <img src="{{ url_for('static', filename='images/platform_id_guide.png') }}" alt="Где найти ID платформы" class="img-fluid rounded shadow-sm" style="max-width: 400px; cursor: pointer;" 
+                                     data-bs-toggle="modal" data-bs-target="#imageModal">
+                                <div class="form-text mt-2">(Нажмите на картинку для увеличения)</div>
                             </div>
                         </div>
+                    </div>
 
-                        {{ render_field(form.initial_score, field_type='number', min=0, max=100, step=1, placeholder='Оставьте пустым, если неизвестно') }}
-                        
-                        {{ render_checkbox(form.needs_python_basics) }}
-                        
-                        {{ render_field(form.notes, field_type='textarea', rows=3) }}
-                        
-                        <div class="card-footer text-end bg-light border-top mt-4 pt-3 pb-1">
-                            <a href="{{ url_for('students.student_detail', student_id=student.id) if student else url_for('students.students_list') }}" class="btn btn-secondary me-2">Отмена</a>
-                            {{ form.submit(class='btn btn-primary') }}
+                    <div class="row mb-0">
+                        <div class="col-md-6">
+                            {{ render_field(form.target_score, field_type='number', min=60, max=100, step=1) }} 
                         </div>
-                    </form>
-                </div>
+                         <div class="col-md-6">
+                            {{ render_field(form.hours_per_week, field_type='number', min=1) }}
+                        </div>
+                    </div>
+
+                    {{ render_field(form.initial_score, field_type='number', min=0, max=100, step=1, placeholder='Оставьте пустым, если неизвестно') }}
+                    
+                    {{ render_checkbox(form.needs_python_basics) }}
+                    
+                    {{ render_field(form.notes, field_type='textarea', rows=3) }}
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{{ url_for('students.student_detail', student_id=student.id) if student else url_for('students.students_list') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i> {{ form.submit.label.text }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -94,10 +124,9 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body text-center">
-        <img src="{{ url_for('static', filename='images/platform_id_guide.png') }}" alt="Где найти ID платформы" class="img-fluid">
+        <img src="{{ url_for('static', filename='images/platform_id_guide.png') }}" alt="Где найти ID платформы" class="img-fluid rounded shadow-sm">
       </div>
     </div>
   </div>
 </div>
-
 {% endblock %} 

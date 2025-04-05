@@ -27,6 +27,52 @@ from app.services.plan_service import recommend_webinars
 @login_required
 def create_study_plan(student_id):
     student = Student.query.get_or_404(student_id)
+    webinars = Webinar.query.options(db.joinedload(Webinar.task_numbers)).all()
+    watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.filter_by(student_id=student_id).all()}
+    known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
+    known_task_numbers = {task.task_number for task in known_tasks}
+
+    # Определяем, первый ли это план для студента
+    plan_count = StudyPlan.query.filter_by(student_id=student.id).count()
+    is_first_plan = plan_count == 0
+
+    # Рассчитываем required_tasks для логики и отображения в шаблоне
+    required_tasks = set()
+    target_score = student.target_score or 80 # Дефолтный балл для расчета
+    tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
+    tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
+    tasks_80_85 = set(range(1, 24)) | {25}
+    tasks_85_90 = set(range(1, 26))
+    tasks_90_95 = set(range(1, 26)) | {27}
+    tasks_95_100 = set(range(1, 28))
+    if target_score <= 70: required_tasks = tasks_60_70.copy()
+    elif target_score <= 80: required_tasks = tasks_70_80.copy()
+    elif target_score <= 85: required_tasks = tasks_80_85.copy()
+    elif target_score <= 90: required_tasks = tasks_85_90.copy()
+    elif target_score <= 95: required_tasks = tasks_90_95.copy()
+    else: required_tasks = tasks_95_100.copy()
+    required_tasks_list = sorted(list(required_tasks))
+
+    # Получаем последний план для расчета completion_percentage
+    last_plan = StudyPlan.query.filter_by(student_id=student.id).order_by(StudyPlan.created_at.desc()).first()
+    last_plan_completion_perc = 0
+    if last_plan:
+        watched_count = WatchedWebinar.query.filter(WatchedWebinar.student_id == student.id, \
+                                                    WatchedWebinar.webinar_id.in_([p.webinar_id for p in last_plan.planned_webinars])).count()
+        total_planned = len(last_plan.planned_webinars)
+        last_plan_completion_perc = int(watched_count / total_planned * 100) if total_planned > 0 else 0
+
+    # Вызываем сервис для получения рекомендаций (СЛОЖНАЯ ВЕРСИЯ)
+    # Возвращены is_first_plan, last_plan_completion_perc
+    # Возвращено weekly_hours_summary
+    suitable_webinars, webinar_weeks, weekly_hours_summary = recommend_webinars(
+        student=student,
+        # webinars=webinars, # Больше не передаем все вебинары
+        known_task_numbers=known_task_numbers,
+        watched_webinar_ids=watched_webinar_ids,
+        is_first_plan=is_first_plan, # Передаем флаг
+        last_plan_completion_perc=last_plan_completion_perc # Передаем процент
+    )
 
     if request.method == "POST":
         study_plan = StudyPlan(student_id=student.id, created_by_id=current_user.id)
@@ -81,42 +127,8 @@ def create_study_plan(student_id):
     watched_webinars_rel = WatchedWebinar.query.filter_by(student_id=student_id).all()
     watched_webinar_ids = {w.webinar_id for w in watched_webinars_rel}
 
-    # Определяем, первый ли это план и процент выполнения предыдущего
-    last_plan = StudyPlan.query.filter_by(student_id=student_id).order_by(StudyPlan.created_at.desc()).first()
-    is_first_plan = last_plan is None
-    last_plan_completion_perc = 0.0
-    if last_plan:
-        # Перезагружаем запланированные вебинары для последнего плана
-        last_plan_planned_webinars = PlannedWebinar.query.filter_by(study_plan_id=last_plan.id).all()
-        total_in_last_plan = len(last_plan_planned_webinars)
-        if total_in_last_plan > 0:
-            last_plan_planned_ids = {p.webinar_id for p in last_plan_planned_webinars}
-            # Считаем просмотренные из ПОСЛЕДНЕГО плана
-            watched_in_last_plan = WatchedWebinar.query.filter(
-                WatchedWebinar.student_id == student_id,
-                WatchedWebinar.webinar_id.in_(last_plan_planned_ids)
-            ).count()
-            last_plan_completion_perc = watched_in_last_plan / total_in_last_plan
-
-    # Используем сервис для получения рекомендаций, передавая новые параметры
-    suitable_webinars, webinar_weeks, quota_t27, quota_t26, quota_basic = recommend_webinars(
-        student,
-        webinars,
-        known_task_numbers,
-        watched_webinar_ids,
-        is_first_plan=is_first_plan, # Новый параметр
-        last_plan_completion_perc=last_plan_completion_perc # Новый параметр
-    )
-    # --- Начало изменений: Сохраняем изменения флагов студента --- 
-    db.session.commit() # Сохраняем, если recommend_webinars изменил флаги deferred
-    # --- Конец изменений --- 
-
     # Проверка на предыдущий план
     has_previous_plan = bool(last_plan and (datetime.utcnow() - last_plan.created_at).days >= 35)
-
-    # Определяем, какое из заданий (26 или 27) используется для вывода в резюме
-    advanced_task_number = 27 if quota_t27 > 0 else (26 if quota_t26 > 0 else None)
-    advanced_task_quota = quota_t27 if quota_t27 > 0 else quota_t26
 
     # Шаблон plans/templates/plans/create_plan.html
     return render_template(
@@ -128,10 +140,9 @@ def create_study_plan(student_id):
         watched_webinar_ids=watched_webinar_ids,
         webinar_weeks=webinar_weeks, # Словарь {webinar_id: week_number}
         has_previous_plan=has_previous_plan,
-        # Передаем рассчитанные квоты в шаблон
-        quota_basic=quota_basic,
-        quota_advanced=advanced_task_quota,
-        advanced_task_number=advanced_task_number
+        weekly_hours_summary=weekly_hours_summary, # Вернули
+        required_tasks=required_tasks_list,
+        is_first_plan=is_first_plan # Вернули
     )
 
 
@@ -173,6 +184,7 @@ def view_study_plan(plan_id):
 
     # Остальные данные для шаблона
     watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.filter_by(student_id=plan.student.id).all()}
+    
     known_task_numbers = {task.task_number for task in KnownTaskNumber.query.filter_by(student_id=plan.student.id).all()}
     now = datetime.utcnow()
 

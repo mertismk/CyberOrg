@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import joinedload, selectinload
 
 from app import db
-from app.models import Webinar, TaskNumber, WebinarComment, User
+from app.models import Webinar, TaskNumber, WebinarComment, User, WatchedWebinar
 from app.webinars import bp
 from app.webinars.forms import WebinarForm # Импортируем форму
 
@@ -19,8 +19,12 @@ def webinars_list():
         selectinload(Webinar.comments).joinedload(WebinarComment.user),
         selectinload(Webinar.task_numbers)
     ).order_by(Webinar.date.desc().nullslast(), Webinar.id.desc()).all()
+    
+    # Получаем список просмотренных вебинаров для текущего пользователя
+    watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.all()}
+    
     # Шаблон webinars/templates/webinars/webinars.html
-    return render_template("webinars/webinars.html", webinars=webinars)
+    return render_template("webinars/webinars.html", webinars=webinars, watched_webinar_ids=watched_webinar_ids)
 
 
 @bp.route("/import", methods=["GET", "POST"])

@@ -73,6 +73,29 @@ def student_detail(student_id):
         .all()
     )
 
+    # Получаем статистику вебинаров по номерам заданий
+    task_stats = {}
+    
+    # Получаем все вебинары с заданиями
+    webinars_with_tasks = (
+        Webinar.query
+        .options(joinedload(Webinar.task_numbers))
+        .all()
+    )
+    
+    # Собираем статистику по каждому номеру задания
+    for webinar in webinars_with_tasks:
+        for task in webinar.task_numbers:
+            task_num = task.number
+            if task_num not in task_stats:
+                task_stats[task_num] = {
+                    'total': 0,
+                    'watched': 0
+                }
+            task_stats[task_num]['total'] += 1
+            if webinar.id in watched_webinar_ids:
+                task_stats[task_num]['watched'] += 1
+
     # Расчет необходимых заданий для отображения (как в view_study_plan)
     target_score = student.target_score or 80
     required_tasks = set()
@@ -199,6 +222,7 @@ def student_detail(student_id):
         last_plan=last_plan,
         completion_percentage=completion_percentage,
         # --- Конец изменений ---
+        task_stats=task_stats,
     )
 
 
@@ -523,3 +547,29 @@ def update_known_tasks(student_id):
     flash("Список известных заданий обновлен", "success")
 
     return redirect(url_for("students.student_detail", student_id=student_id))
+
+
+# Новый маршрут и функция для страницы добавления вебинаров
+@bp.route("/<int:student_id>/add_webinars", methods=["GET"])
+@login_required
+def add_webinars_page(student_id):
+    student = Student.query.options(
+        joinedload(Student.watched_webinars) # Загружаем просмотренные
+    ).get_or_404(student_id)
+
+    # Получаем все вебинары для формы ручного выбора
+    all_webinars = (
+        Webinar.query.options(joinedload(Webinar.task_numbers)) # Загружаем номера заданий
+        .order_by(Webinar.date.desc(), Webinar.id.desc())
+        .all()
+    )
+    
+    # Получаем ID уже просмотренных вебинаров
+    watched_webinar_ids = {w.webinar_id for w in student.watched_webinars}
+
+    return render_template(
+        "students/add_webinars.html", 
+        student=student,
+        all_webinars=all_webinars,
+        watched_webinar_ids=watched_webinar_ids
+    )

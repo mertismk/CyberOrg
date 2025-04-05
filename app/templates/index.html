@@ -15,18 +15,18 @@
         {% endif %}
     {% endwith %}
     
-    <div class="row mb-4">
+    <div class="row mb-5">
         <div class="col-lg-12">
             <div class="card shadow">
                 <div class="card-body text-center py-5">
-                    <h1 class="display-5 fw-bold mb-4">Система планирования обучения CyberOrg</h1>
-                    <p class="lead mb-4">Добро пожаловать, {{ current_user.username }}!</p>
-                    <div class="mt-4">
-                        <a href="{{ url_for('students.students_list') }}" class="btn btn-primary btn-lg me-2">
-                            <i class="fas fa-user-graduate me-1"></i> Список учеников
+                    <h1 class="display-5 fw-bold mb-4">Система планирования обучения <span style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CyberOrg</span></h1>
+                    <p class="lead mb-4">Добро пожаловать, {{ current_user.first_name }}! 👋</p>
+                    <div class="mt-4 d-flex flex-wrap justify-content-center gap-3">
+                        <a href="{{ url_for('students.students_list') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-user-graduate me-2"></i> Список учеников
                         </a>
-                        <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-success btn-lg">
-                            <i class="fas fa-video me-1"></i> Список вебинаров
+                        <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-accent btn-lg">
+                            <i class="fas fa-video me-2"></i> Список вебинаров
                         </a>
                     </div>
                 </div>
@@ -36,32 +36,53 @@
     
     <div class="row">
         <div class="col-md-4 mb-4">
-            <div class="card h-100 shadow">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-graduation-cap me-2 text-primary"></i>Ученики</h5>
-                    <p class="card-text">Просмотр и управление списком учеников.</p>
-                    <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-primary">Перейти</a>
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <div class="d-inline-block p-3 rounded-circle mb-3" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);">
+                            <i class="fas fa-graduation-cap fa-2x text-white"></i>
+                        </div>
+                        <h5 class="card-title">Ученики</h5>
+                    </div>
+                    <p class="card-text flex-grow-1">Просмотр и управление списком учеников. Отслеживайте прогресс и организуйте учебный план.</p>
+                    <a href="{{ url_for('students.students_list') }}" class="btn btn-primary mt-auto">
+                        <i class="fas fa-arrow-right me-2"></i>Перейти
+                    </a>
                 </div>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="card h-100 shadow">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-video me-2 text-success"></i>Вебинары</h5>
-                    <p class="card-text">Просмотр и управление списком вебинаров.</p>
-                    <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-success">Перейти</a>
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <div class="d-inline-block p-3 rounded-circle mb-3" style="background: linear-gradient(135deg, var(--accent-color) 0%, var(--light-accent) 100%);">
+                            <i class="fas fa-video fa-2x text-white"></i>
+                        </div>
+                        <h5 class="card-title">Вебинары</h5>
+                    </div>
+                    <p class="card-text flex-grow-1">Просмотр и управление списком вебинаров. Организуйте учебные материалы и следите за прогрессом.</p>
+                    <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-accent mt-auto">
+                        <i class="fas fa-arrow-right me-2"></i>Перейти
+                    </a>
                 </div>
             </div>
         </div>
         <div class="col-md-4 mb-4">
-            <div class="card h-100 shadow">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-search me-2 text-info"></i>Поиск</h5>
-                    <p class="card-text">Поиск по ученикам и вебинарам.</p>
-                    <form action="{{ url_for('main.search') }}" method="get">
-                        <div class="input-group mb-3">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <div class="d-inline-block p-3 rounded-circle mb-3" style="background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-dark) 100%);">
+                            <i class="fas fa-search fa-2x text-white"></i>
+                        </div>
+                        <h5 class="card-title">Поиск</h5>
+                    </div>
+                    <p class="card-text flex-grow-1">Быстрый поиск по ученикам и вебинарам. Найдите нужную информацию за считанные секунды.</p>
+                    <form action="{{ url_for('main.search') }}" method="get" class="mt-auto">
+                        <div class="input-group">
                             <input type="text" class="form-control" name="q" placeholder="Имя, фамилия, ID, название...">
-                            <button class="btn btn-outline-info" type="submit">Искать</button>
+                            <button class="btn btn-secondary" type="submit">
+                                <i class="fas fa-search me-1"></i> Искать
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -70,28 +91,42 @@
     </div>
     
     {% if current_user.is_admin %}
-    <div class="row mt-2">
+    <div class="row mt-4">
         <div class="col-12">
-            <div class="card border-warning shadow">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Административные функции</h5>
+            <div class="card border-0 shadow">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--warning-color) 0%, #f7d06b 100%);">
+                    <h5 class="mb-0 text-dark"><i class="fas fa-cog me-2"></i>Административные функции</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
-                            <h6>Импорт вебинаров</h6>
-                            <p>Загрузка вебинаров из Excel файла.</p>
-                            <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-warning">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <div class="d-flex align-items-start">
+                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" style="background-color: #ffeeba;">
+                                    <i class="fas fa-upload text-warning fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold">Импорт вебинаров</h6>
+                                    <p class="mb-3">Загрузка вебинаров из Excel файла</p>
+                                    <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-sm" style="background-color: var(--warning-color); color: #333;">
                                 <i class="fas fa-upload me-1"></i> Импортировать
                             </a>
+                                </div>
+                            </div>
                         </div>
                         {% if current_user.is_super_admin %}
                         <div class="col-md-6">
-                            <h6>Пользователи</h6>
-                            <p>Управление пользователями системы.</p>
-                            <a href="{{ url_for('users.users_list') }}" class="btn btn-danger">
+                            <div class="d-flex align-items-start">
+                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" style="background-color: #f8d7da;">
+                                    <i class="fas fa-users-cog text-danger fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold">Пользователи</h6>
+                                    <p class="mb-3">Управление пользователями системы</p>
+                                    <a href="{{ url_for('users.users_list') }}" class="btn btn-sm btn-accent">
                                 <i class="fas fa-cogs me-1"></i> Управлять
                             </a>
+                                </div>
+                            </div>
                         </div>
                         {% endif %}
                     </div>

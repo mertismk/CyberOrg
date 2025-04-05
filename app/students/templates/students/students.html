@@ -3,77 +3,95 @@
 {% block title %}CyberOrg - Список учеников{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Список учеников</h2>
-        <a href="{{ url_for('students.student_new') }}" class="btn btn-primary">
-            <i class="fas fa-user-plus me-1"></i> Добавить ученика
-        </a>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold">Список учеников</h1>
+    <a href="{{ url_for('students.student_new') }}" class="btn btn-accent">
+        <i class="fas fa-user-plus me-2"></i> Добавить ученика
+    </a>
+</div>
 
-    {% if students %}
-        <div class="card shadow">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
+{% if students %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3">ID на платформе</th>
+                            <th class="py-3">Имя</th>
+                            <th class="py-3">Фамилия</th>
+                            <th class="py-3">Целевой балл</th>
+                            <th class="py-3">Часов в неделю</th>
+                            <th class="py-3">Уровень</th>
+                            <th class="py-3 text-end pe-4">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
                             <tr>
-                                <th>ID на платформе</th>
-                                <th>Имя</th>
-                                <th>Фамилия</th>
-                                <th>Целевой балл</th>
-                                <th>Часов в неделю</th>
-                                <th>Уровень</th>
-                                <th>Действия</th>
+                                <td class="px-4 py-3">{{ student.platform_id }}</td>
+                                <td class="py-3"><strong>{{ student.first_name }}</strong></td>
+                                <td class="py-3"><strong>{{ student.last_name }}</strong></td>
+                                <td class="py-3">{{ student.target_score or '-' }}</td>
+                                <td class="py-3">{{ student.hours_per_week or '-' }}</td>
+                                <td class="py-3">
+                                    {% if student.is_beginner %}
+                                        <span class="badge bg-info me-1 mb-1">Начинающий</span>
+                                    {% else %}
+                                        <span class="badge bg-success me-1 mb-1">Базовый</span>
+                                    {% endif %}
+                                    
+                                    {% if 26 in student.known_tasks|map(attribute='task_number')|list %}
+                                        <span class="badge bg-warning text-dark me-1 mb-1">Задание 26</span>
+                                    {% endif %}
+                                    
+                                    {% if 27 in student.known_tasks|map(attribute='task_number')|list %}
+                                        <span class="badge bg-accent me-1 mb-1">Задание 27</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 text-end pe-4">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('students.student_edit', student_id=student.id) }}" class="btn btn-sm btn-secondary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('plans.create_study_plan', student_id=student.id) }}" class="btn btn-sm btn-accent">
+                                            <i class="fas fa-calendar-plus"></i>
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for student in students %}
-                                <tr>
-                                    <td>{{ student.platform_id }}</td>
-                                    <td>{{ student.first_name }}</td>
-                                    <td>{{ student.last_name }}</td>
-                                    <td>{{ student.target_score or '-' }}</td>
-                                    <td>{{ student.hours_per_week or '-' }}</td>
-                                    <td>
-                                        {% if student.is_beginner %}
-                                            <span class="badge bg-info">Начинающий</span>
-                                        {% else %}
-                                            <span class="badge bg-success">Базовый</span>
-                                        {% endif %}
-                                        
-                                        {% if 26 in student.known_tasks|map(attribute='task_number')|list %}
-                                            <span class="badge bg-warning">Задание 26</span>
-                                        {% endif %}
-                                        
-                                        {% if 27 in student.known_tasks|map(attribute='task_number')|list %}
-                                            <span class="badge bg-danger">Задание 27</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye me-1"></i> Просмотр
-                                            </a>
-                                            <a href="{{ url_for('students.student_edit', student_id=student.id) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-edit me-1"></i> Ред.
-                                            </a>
-                                            <a href="{{ url_for('plans.create_study_plan', student_id=student.id) }}" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-calendar-plus me-1"></i> План
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-    {% else %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i> Список учеников пуст. Добавьте первого ученика, нажав на кнопку выше.
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <p class="text-muted mb-0"><i class="fas fa-users me-2"></i> Всего учеников: <strong>{{ students|length }}</strong></p>
+        
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-download me-1"></i> Экспорт
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i> CSV</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i> Excel</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i> Печать</a></li>
+            </ul>
         </div>
-    {% endif %}
-</div>
+    </div>
+{% else %}
+    <div class="alert alert-info text-center py-5">
+        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет учеников" class="img-fluid mb-4" style="max-height: 150px;">
+        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> Список учеников пуст</h5>
+        <p class="mb-4">Добавьте первого ученика, нажав на кнопку выше</p>
+        <a href="{{ url_for('students.student_new') }}" class="btn btn-accent">
+            <i class="fas fa-user-plus me-2"></i> Добавить первого ученика
+        </a>
+    </div>
+{% endif %}
 {% endblock %} 

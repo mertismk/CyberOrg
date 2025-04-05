@@ -2,189 +2,261 @@
 
 {% block title %}CyberOrg - Руководство пользователя{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    /* Стиль для активного пункта в боковой навигации */
+    .guide-nav .list-group-item.active {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
+        color: white;
+        font-weight: 500;
+    }
+    .guide-nav .list-group-item {
+        border-left: 3px solid transparent;
+        transition: all 0.2s ease;
+        padding: 0.75rem 1rem;
+    }
+    .guide-nav .list-group-item:hover {
+        border-left: 3px solid var(--bs-primary-light);
+        background-color: var(--bs-light);
+    }
+    .guide-nav .list-group-item.active:hover {
+         border-left: 3px solid var(--bs-primary);
+    }
+    /* Улучшенные заголовки секций */
+    .section-title {
+        color: var(--bs-primary);
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--bs-gray-300);
+    }
+    /* Карточка с контентом */
+    .content-card {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        border-radius: 0.5rem;
+    }
+    .content-card .card-header {
+        background-color: var(--bs-primary);
+        color: white;
+        border-radius: 0.5rem 0.5rem 0 0; /* Скругляем только верхние углы */
+    }
+    .sticky-top {
+        top: 80px; /* Немного ниже, чтобы не прилипать к навбару */
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="row">
         <div class="col-lg-3">
-            <div class="card shadow mb-4 sticky-top" style="top: 20px;">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Содержание</h5>
-                </div>
-                <div class="card-body p-2">
-                    <div class="list-group list-group-flush">
-                        <a href="#intro" class="list-group-item list-group-item-action">Введение</a>
-                        <a href="#students" class="list-group-item list-group-item-action">Работа с учениками</a>
-                        <a href="#webinars" class="list-group-item list-group-item-action">Управление вебинарами</a>
-                        <a href="#plans" class="list-group-item list-group-item-action">Создание планов обучения</a>
-                        <a href="#faq" class="list-group-item list-group-item-action">Часто задаваемые вопросы</a>
+            <nav class="guide-nav sticky-top">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h5 class="card-title mb-0 text-primary"><i class="fas fa-bars me-2"></i>Содержание</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="guideNav" class="list-group list-group-flush">
+                            <a href="#intro" class="list-group-item list-group-item-action"><i class="fas fa-rocket fa-fw me-2"></i>Введение</a>
+                            <a href="#students" class="list-group-item list-group-item-action"><i class="fas fa-users fa-fw me-2"></i>Работа с учениками</a>
+                            <a href="#webinars" class="list-group-item list-group-item-action"><i class="fas fa-video fa-fw me-2"></i>Управление вебинарами</a>
+                            <a href="#plans" class="list-group-item list-group-item-action"><i class="fas fa-clipboard-list fa-fw me-2"></i>Создание планов</a>
+                            <a href="#faq" class="list-group-item list-group-item-action"><i class="fas fa-question-circle fa-fw me-2"></i>Частые вопросы</a>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </nav>
         </div>
 
-        <div class="col-lg-9">
-            <div class="card shadow mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="card-title mb-0">Руководство пользователя CyberOrg</h4>
+        <div class="col-lg-9" data-bs-spy="scroll" data-bs-target="#guideNav" data-bs-offset="100" tabindex="0">
+            <div class="card content-card mb-4">
+                <div class="card-header">
+                    <h4 class="card-title mb-0"><i class="fas fa-book-open me-2"></i>Руководство пользователя CyberOrg</h4>
                 </div>
-                <div class="card-body">
-                    <section id="intro" class="mb-5">
-                        <h2 class="border-bottom pb-2 mb-4">Введение</h2>
-                        <p>CyberOrg — это система для планирования и организации обучения учеников. Основная цель системы — помочь кураторам эффективно составлять индивидуальные планы обучения для учеников, отслеживать их прогресс и оптимизировать учебный процесс.</p>
+                <div class="card-body p-4">
+                    <section id="intro" class="mb-5 pt-3">
+                        <h2 class="section-title">Введение</h2>
+                        <p><strong>CyberOrg</strong> — это система для планирования и организации обучения учеников. Основная цель системы — помочь кураторам эффективно составлять индивидуальные планы обучения для учеников, отслеживать их прогресс и оптимизировать учебный процесс.</p>
 
-                        <div class="alert alert-info mt-3">
-                            <h5><i class="fas fa-info-circle me-2"></i> Основные возможности системы:</h5>
+                        <div class="alert alert-primary mt-4 border-primary bg-primary-light">
+                            <h5 class="alert-heading text-primary"><i class="fas fa-check-circle me-2"></i> Основные возможности:</h5>
                             <ul class="mb-0">
-                                <li>Добавление и управление учениками</li>
-                                <li>Создание индивидуальных планов обучения</li>
-                                <li>Отслеживание прогресса по просмотренным вебинарам</li>
-                                <li>Управление базой вебинаров</li>
-                                <li>Автоматический подбор вебинаров на основе уровня и целей ученика</li>
+                                <li><i class="fas fa-user-plus fa-fw me-2 text-muted"></i>Добавление и управление учениками</li>
+                                <li><i class="fas fa-tasks fa-fw me-2 text-muted"></i>Создание индивидуальных планов обучения</li>
+                                <li><i class="fas fa-history fa-fw me-2 text-muted"></i>Отслеживание прогресса по просмотренным вебинарам</li>
+                                <li><i class="fas fa-database fa-fw me-2 text-muted"></i>Управление базой вебинаров</li>
+                                <li><i class="fas fa-magic fa-fw me-2 text-muted"></i>Автоматический подбор вебинаров</li>
                             </ul>
                         </div>
                     </section>
 
-                    <section id="students" class="mb-5">
-                        <h2 class="border-bottom pb-2 mb-4">Работа с учениками</h2>
+                    <section id="students" class="mb-5 pt-3">
+                        <h2 class="section-title">Работа с учениками</h2>
 
-                        <h4 class="mt-4 mb-3">Просмотр списка учеников</h4>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-list me-2 text-primary"></i>Просмотр списка учеников</h4>
                         <p>На странице "Ученики" вы можете увидеть список всех учеников, добавленных в систему. Для каждого ученика отображается основная информация: ID на платформе, имя, фамилия, целевой балл и уровень подготовки.</p>
 
-                        <h4 class="mt-4 mb-3">Добавление нового ученика</h4>
-                        <p>Для добавления нового ученика нажмите кнопку "Добавить ученика" на странице списка учеников. На форме заполните все необходимые поля:</p>
-                        <ul>
-                            <li><strong>Имя и фамилия</strong> — персональные данные ученика</li>
-                            <li><strong>ID на платформе</strong> — уникальный идентификатор ученика</li>
-                            <li><strong>Целевой балл</strong> — желаемый результат ЕГЭ (влияет на подбор вебинаров)</li>
-                            <li><strong>Часов в неделю</strong> — планируемое время на подготовку</li>
-                            <li><strong>Уровень подготовки</strong> — текущие знания и навыки ученика</li>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-user-plus me-2 text-primary"></i>Добавление нового ученика</h4>
+                        <p>Для добавления нового ученика нажмите кнопку <button class="btn btn-sm btn-primary disabled"><i class="fas fa-plus me-1"></i> Добавить ученика</button> на странице списка учеников. На форме заполните все необходимые поля:</p>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-user fa-fw me-2 text-muted"></i><strong>Имя и фамилия</strong> — персональные данные ученика</li>
+                            <li><i class="fas fa-id-card fa-fw me-2 text-muted"></i><strong>ID на платформе</strong> — уникальный идентификатор ученика</li>
+                            <li><i class="fas fa-bullseye fa-fw me-2 text-muted"></i><strong>Целевой балл</strong> — желаемый результат ЕГЭ</li>
+                            <li><i class="fas fa-clock fa-fw me-2 text-muted"></i><strong>Часов в неделю</strong> — планируемое время на подготовку</li>
+                            <li><i class="fas fa-graduation-cap fa-fw me-2 text-muted"></i><strong>Уровень подготовки</strong> — текущие знания</li>
+                            <li><i class="fas fa-flag-checkered fa-fw me-2 text-muted"></i><strong>Начальный балл</strong> — результат последнего пробника (влияет на отсрочку сложных заданий)</li>
                         </ul>
 
-                        <h4 class="mt-4 mb-3">Профиль ученика</h4>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-address-card me-2 text-primary"></i>Профиль ученика</h4>
                         <p>На странице профиля ученика вы можете:</p>
-                        <ul>
-                            <li>Просматривать и редактировать информацию об ученике</li>
-                            <li>Отмечать известные ученику задания</li>
-                            <li>Просматривать список планов обучения</li>
-                            <li>Просматривать список просмотренных вебинаров</li>
-                            <li>Создавать новые планы обучения</li>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-edit fa-fw me-2 text-muted"></i>Просматривать и редактировать информацию об ученике</li>
+                            <li><i class="fas fa-check-square fa-fw me-2 text-muted"></i>Отмечать известные ученику задания</li>
+                            <li><i class="fas fa-list-alt fa-fw me-2 text-muted"></i>Просматривать список планов обучения</li>
+                            <li><i class="fas fa-eye fa-fw me-2 text-muted"></i>Просматривать список просмотренных вебинаров</li>
+                            <li><i class="fas fa-plus-circle fa-fw me-2 text-muted"></i>Создавать новые планы обучения</li>
                         </ul>
                     </section>
 
-                    <section id="webinars" class="mb-5">
-                        <h2 class="border-bottom pb-2 mb-4">Управление вебинарами</h2>
+                    <section id="webinars" class="mb-5 pt-3">
+                        <h2 class="section-title">Управление вебинарами</h2>
 
-                        <h4 class="mt-4 mb-3">Просмотр вебинаров</h4>
-                        <p>На странице "Вебинары" вы можете увидеть все доступные вебинары в системе. Для каждого вебинара отображается название, дата, связанные номера заданий, категория, тип решения и уровень подготовки.</p>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-search me-2 text-primary"></i>Просмотр вебинаров</h4>
+                        <p>На странице "Вебинары" вы можете увидеть все доступные вебинары в системе. Используйте поиск и фильтры для навигации.</p>
 
-                        <h4 class="mt-4 mb-3">Фильтрация вебинаров</h4>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-filter me-2 text-primary"></i>Фильтрация вебинаров</h4>
                         <p>Вы можете фильтровать вебинары по различным критериям:</p>
-                        <ul>
-                            <li>Текстовый поиск по названию</li>
-                            <li>Фильтр по уровню подготовки (Python с нуля, Основной курс, Хард прога, Задание 27)</li>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-search fa-fw me-2 text-muted"></i>Текстовый поиск по названию</li>
+                            <li><i class="fas fa-layer-group fa-fw me-2 text-muted"></i>Тип курса (Python с нуля, Основной курс, Хард прога, Задание 27 и т.д.)</li>
+                             <li><i class="fas fa-calendar-alt fa-fw me-2 text-muted"></i>Дата (новые/старые)</li>
+                             <li><i class="fas fa-code fa-fw me-2 text-muted"></i>Тип решения (прога/ручное)</li>
+                             <li><i class="fas fa-tag fa-fw me-2 text-muted"></i>Категория (обязательный/повторение/необязательный)</li>
+                             <li><i class="fas fa-hashtag fa-fw me-2 text-muted"></i>Номер задания</li>
                         </ul>
 
-                        <h4 class="mt-4 mb-3">Отметка о просмотре вебинара</h4>
-                        <p>Для отметки вебинара как просмотренного, перейдите на страницу плана обучения ученика и нажмите кнопку "Отметить" рядом с нужным вебинаром. Вебинар будет помечен как просмотренный, и информация будет сохранена в профиле ученика.</p>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-check me-2 text-primary"></i>Отметка о просмотре вебинара</h4>
+                        <p>Для отметки вебинара как просмотренного, перейдите на страницу <strong>плана обучения</strong> ученика и нажмите кнопку <button class="btn btn-sm btn-success disabled"><i class="fas fa-check me-1"></i> Отметить</button> рядом с нужным вебинаром. Вебинар будет помечен как просмотренный, и информация будет сохранена в профиле ученика.</p>
                     </section>
 
-                    <section id="plans" class="mb-5">
-                        <h2 class="border-bottom pb-2 mb-4">Создание планов обучения</h2>
+                    <section id="plans" class="mb-5 pt-3">
+                        <h2 class="section-title">Создание планов обучения</h2>
 
-                        <h4 class="mt-4 mb-3">Создание нового плана</h4>
-                        <p>Для создания нового плана обучения, перейдите на страницу профиля ученика и нажмите кнопку "Создать план". Система автоматически подберет рекомендуемые вебинары на ближайшие 5 недель на основе данных ученика.</p>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-magic me-2 text-primary"></i>Создание нового плана</h4>
+                        <p>Для создания нового плана обучения, перейдите на страницу профиля ученика и нажмите кнопку <button class="btn btn-sm btn-info disabled"><i class="fas fa-plus me-1"></i> Создать план</button>. Система автоматически подберет рекомендуемые вебинары на ближайшие 5 недель на основе данных ученика.</p>
 
-                        <h4 class="mt-4 mb-3">Автоматический подбор вебинаров: Шаг за шагом</h4>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-cogs me-2 text-primary"></i>Автоматический подбор вебинаров: Шаг за шагом</h4>
                         <p>Алгоритм подбора стремится создать максимально эффективный и сбалансированный план. Вот как он работает:</p>
-                        <ol>
-                            <li>
-                                <strong>Определение набора необходимых заданий:</strong><br>
-                                На основе <strong>Целевого балла</strong> ученика определяется список заданий ЕГЭ, которые необходимо освоить:
-                                <ul>
-                                    <li>60-70 баллов: Задания 1-7, 9-12, 14, 16, 18, 19-21, 22</li>
-                                    <li>70-80 баллов: Задания 1-12, 14, 16-23</li>
-                                    <li>80-85 баллов: Задания 1-23, 25</li>
-                                    <li>85-90 баллов: Задания 1-25</li>
-                                    <li>90-95 баллов: Задания 1-25, 27</li>
-                                    <li>95-100 баллов: Задания 1-27</li>
-                                </ul>
-                                <em>Примечание: Задание 26 обычно добавляется для баллов 85+, но его необходимость можно переопределить в профиле ученика.</em>
-                            </li>
-                            <li>
-                                <strong>Учет начального балла (если указан):</strong><br>
-                                Если при создании плана указан <strong>Начальный балл</strong> за пробник и он <strong>&lt;= 40</strong>, а ученику требуются задания 26 и/или 27, то изучение этих сложных заданий <strong>откладывается на следующий 5-недельный план</strong>. В текущем плане фокус будет на заданиях 1-25. Если начальный балл выше 40 или не указан, задания 26/27 включаются сразу (если они нужны по целевому баллу).
-                            </li>
-                            <li>
-                                <strong>Фильтрация вебинаров:</strong><br>
-                                Из общей базы вебинаров отбираются только те, которые:
-                                <ul>
-                                    <li>Относятся к <strong>необходимым заданиям</strong> (определенным на шаге 1).</li>
-                                    <li><strong>Не были просмотрены</strong> учеником ранее.</li>
-                                    <li><strong>Не относятся к заданиям, которые уже отмечены как "известные"</strong> в профиле ученика.</li>
-                                    <li>Соответствуют флагу <strong>"Нужен Python с нуля"</strong>: если флаг <em>не</em> установлен, вебинары "Python для начинающих" исключаются.</li>
-                                </ul>
-                            </li>
-                            <li>
-                                <strong>Расчет недельного объема:</strong><br>
-                                Исходя из указанных <strong>Часов в неделю</strong>, система определяет примерное количество вебинаров на каждую из 5 недель (обычно из расчета ~3 часа на 1 вебинар).
-                            </li>
-                            <li>
-                                <strong>Распределение по категориям и неделям:</strong><br>
-                                Отфильтрованные вебинары распределяются по 5 неделям с учетом категорий и следующей логики квот:
-                                <ul>
-                                    <li><strong>Python с нуля:</strong> Если ученику нужен Python, <strong>вся первая неделя</strong> заполняется <em>только</em> вебинарами по основам Python. Распределение остальных категорий начнется со второй недели.</li>
-                                    <li>
-                                        <strong>Стандартное распределение (Начальный балл > 40 или не указан):</strong>
+                        
+                        <div class="accordion" id="planStepsAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="step1Heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#step1Collapse" aria-expanded="false" aria-controls="step1Collapse">
+                                        <strong>Шаг 1:</strong> Определение необходимых заданий
+                                    </button>
+                                </h2>
+                                <div id="step1Collapse" class="accordion-collapse collapse" aria-labelledby="step1Heading" data-bs-parent="#planStepsAccordion">
+                                    <div class="accordion-body">
+                                        На основе <strong>Целевого балла</strong> ученика определяется список заданий ЕГЭ, которые необходимо освоить. Система учитывает стандартные пороги для набора баллов. Например, для 90+ баллов обычно нужны задания 1-27.
+                                        <br><em>Примечание: Задания 26 и 27 являются наиболее сложными и их необходимость напрямую зависит от целевого балла.</em>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                             <div class="accordion-item">
+                                <h2 class="accordion-header" id="step2Heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#step2Collapse" aria-expanded="false" aria-controls="step2Collapse">
+                                        <strong>Шаг 2:</strong> Учет начального балла и истории планов
+                                    </button>
+                                </h2>
+                                <div id="step2Collapse" class="accordion-collapse collapse" aria-labelledby="step2Heading" data-bs-parent="#planStepsAccordion">
+                                    <div class="accordion-body">
+                                        Если <strong>Начальный балл</strong> ученика (за пробник) <strong>&lt;= 40</strong> И (это <strong>первый план</strong> ИЛИ предыдущий план выполнен <strong>менее чем на 60%</strong>), то изучение сложных заданий 26 и/или 27 (если они требуются по целевому баллу) <strong>откладывается на следующий план</strong>. Флаги `task_26_deferred` и `task_27_deferred` в профиле ученика устанавливаются в `True`. Это позволяет сфокусироваться на базовых заданиях.
+                                        <br>Если эти задания были отложены ранее (флаги `True`), они <strong>обязательно включаются</strong> в текущий план, и флаги сбрасываются.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="step3Heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#step3Collapse" aria-expanded="false" aria-controls="step3Collapse">
+                                        <strong>Шаг 3:</strong> Фильтрация вебинаров
+                                    </button>
+                                </h2>
+                                <div id="step3Collapse" class="accordion-collapse collapse" aria-labelledby="step3Heading" data-bs-parent="#planStepsAccordion">
+                                    <div class="accordion-body">
+                                        Из общей базы отбираются только те вебинары, которые:
                                         <ul>
-                                            <li>Если нужны <strong>Задание 26 и Задание 27</strong>: по <strong>25%</strong> недельного объема выделяется на каждое (итого 50%), оставшиеся <strong>50%</strong> - на Базовые задания (1-25).</li>
-                                            <li>Если нужно только <strong>Задание 26</strong> <em>или</em> только <strong>Задание 27</strong>: <strong>34%</strong> недельного объема выделяется на этот сложный номер, оставшиеся <strong>66%</strong> - на Базовые задания.</li>
-                                            <li>Если ни 26, ни 27 не нужны: 100% объема идет на Базовые задания.</li>
+                                            <li>Относятся к <strong>необходимым заданиям</strong> (с учетом шагов 1 и 2).</li>
+                                            <li><strong>Не были просмотрены</strong> учеником ранее.</li>
+                                            <li>Не состоят <strong>только</strong> из заданий, которые уже отмечены как <strong>"известные"</strong>.</li>
+                                            <li>Соответствуют флагу <strong>"Нужен Python с нуля"</strong>: если флаг <em>не</em> установлен, вебинары "Python для начинающих" исключаются.</li>
                                         </ul>
-                                    </li>
-                                    <li>
-                                        <strong>Распределение после отсрочки (Начальный балл &lt;= 40, текущий план - ВТОРОЙ или далее):</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="step4Heading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#step4Collapse" aria-expanded="false" aria-controls="step4Collapse">
+                                        <strong>Шаг 4:</strong> Распределение по неделям (на основе часов)
+                                    </button>
+                                </h2>
+                                <div id="step4Collapse" class="accordion-collapse collapse" aria-labelledby="step4Heading" data-bs-parent="#planStepsAccordion">
+                                    <div class="accordion-body">
+                                        Система заполняет 5 недель плана, стараясь не превышать недельный <strong>бюджет часов</strong> ученика. Каждый вебинар имеет свою "стоимость" в часах:
                                         <ul>
-                                            <li>Если нужны <strong>Задание 26 и Задание 27</strong>: по <strong>30%</strong> недельного объема выделяется на каждое (итого 60%), оставшиеся <strong>40%</strong> - на Базовые задания.</li>
-                                            <li>Если нужно только <strong>Задание 26</strong> <em>или</em> только <strong>Задание 27</strong>: <strong>40%</strong> недельного объема выделяется на этот сложный номер, оставшиеся <strong>60%</strong> - на Базовые задания.</li>
+                                            <li>Python с нуля: <strong>1.5 ч.</strong></li>
+                                            <li>Хард прога / Задание 27: <strong>4.0 ч.</strong></li>
+                                            <li>Остальные (основной курс, практика и т.д.): <strong>3.0 ч.</strong></li>
                                         </ul>
-                                    </li>
-                                    <li><strong>Порядок заполнения недель:</strong> Каждая неделя заполняется вебинарами в порядке приоритета: сначала вебинары по <strong>Заданию 27</strong>, затем по <strong>Заданию 26</strong>, и в конце - <strong>Базовые</strong> вебинары (1-25), пока не будет достигнут расчетный недельный объем или не закончатся подходящие вебинары данной категории.</li>
-                                </ul>
-                                <em>Пример: Ученик хочет 92 балла (нужны 1-25, 27), начальный балл 50, 6 часов/нед (~2 вебинара). Ему нужен только номер 27 из сложных. Значит, квота на Задание 27 ~34%, на Базовые ~66%. В неделю будет рекомендовано примерно 1 вебинар по Заданию 27 и 1-2 базовых вебинара (в зависимости от длительности).</em>
-                            </li>
-                        </ol>
-                        <p>Результатом является список рекомендуемых вебинаров, распределенных по неделям, который отображается на странице создания плана.</p>
+                                        Распределение учитывает следующие приоритеты и логику:
+                                        <ul>
+                                            <li><strong>Python с нуля:</strong> Если нужен, <strong>первая неделя</strong> заполняется <em>только</em> роликами по Python, пока позволяет бюджет часов этой недели.</li>
+                                            <li><strong>Приоритеты заполнения:</strong> В рамках каждой недели (кроме первой с Python) система пытается добавить вебинары в порядке: <strong>Задание 27</strong> -> <strong>Задание 26</strong> -> <strong>Базовые</strong> (1-25 и др.).</li>
+                                            <li><strong>Проверка бюджета:</strong> Перед добавлением вебинара проверяется, поместится ли он в <strong>оставшийся</strong> бюджет часов текущей недели. Если нет, система может попробовать добавить более "дешевый" вебинар (например, базовый вместо хард проги), если он доступен. Если и он не влезает, переход к следующей неделе.</li>
+                                            <li><strong>Сортировка внутри категорий:</strong> Вебинары по Заданию 27 сортируются так, чтобы "кластеры" шли раньше. Остальные сортируются по дате (более старые раньше).</li>
+                                        </ul>
+                                        <em>Цель - максимально заполнить бюджет каждой недели, соблюдая приоритеты и доступность вебинаров.</em>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-3">Результатом является список рекомендуемых вебинаров, распределенных по неделям, который отображается на странице создания плана вместе со сводкой по часам.</p>
 
-                        <h4 class="mt-4 mb-3">Настройка плана вручную</h4>
+
+                        <h4 class="mt-4 mb-3"><i class="fas fa-edit me-2 text-primary"></i>Настройка плана вручную</h4>
                         <p>Автоматически сгенерированный план является рекомендацией. Вы можете его настроить:</p>
-                        <ul>
-                            <li><strong>Изменить выбор вебинаров:</strong> Отметить или снять отметки с рекомендованных вебинаров с помощью чекбоксов.</li>
-                            <li><strong>Добавить другие вебинары:</strong> В разделе "Все вебинары" можно найти и добавить в план те вебинары, которые не были рекомендованы автоматически (например, из других категорий или для повторения).</li>
-                            <li><strong>Распределить по неделям:</strong> Для каждого выбранного вебинара можно указать неделю (от 1 до 5) с помощью выпадающего списка.</li>
-                            <li><strong>Сохранить:</strong> После внесения всех изменений нажмите кнопку "Сохранить план обучения".</li>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check-circle fa-fw me-2 text-muted"></i><strong>Изменить выбор вебинаров:</strong> Отметить или снять отметки с рекомендованных вебинаров с помощью чекбоксов или клика по карточке.</li>
+                            <li><i class="fas fa-plus-circle fa-fw me-2 text-muted"></i><strong>Добавить другие вебинары:</strong> В разделе "Все вебинары" можно найти и добавить в план те вебинары, которые не были рекомендованы автоматически.</li>
+                            <li><i class="fas fa-calendar-week fa-fw me-2 text-muted"></i><strong>Распределить по неделям:</strong> Для каждого выбранного вебинара можно указать неделю (от 1 до 5) с помощью выпадающего списка.</li>
+                            <li><i class="fas fa-save fa-fw me-2 text-muted"></i><strong>Сохранить:</strong> После внесения всех изменений нажмите кнопку <button class="btn btn-sm btn-primary disabled"><i class="fas fa-save me-1"></i> Сохранить план</button>.</li>
                         </ul>
 
-                        <h4 class="mt-4 mb-3">Просмотр и редактирование плана</h4>
+                        <h4 class="mt-4 mb-3"><i class="fas fa-eye me-2 text-primary"></i>Просмотр и редактирование плана</h4>
                         <p>Сохраненные планы доступны в профиле ученика. На странице просмотра плана вы можете:</p>
-                        <ul>
-                            <li>Просматривать распределение вебинаров по неделям.</li>
-                            <li>Видеть прогресс (просмотренные вебинары будут отмечены).</li>
-                            <li>Переходить к просмотру вебинаров по ссылкам.</li>
-                            <li>Отмечать вебинары как просмотренные по одному или все сразу.</li>
-                            <li>Редактировать план (кнопка "Редактировать" вернет вас на страницу настройки плана).</li>
-                            <li>Копировать информацию для ученика (текстовое описание плана с ссылками).</li>
-                            <li>Удалить план при необходимости.</li>
+                         <ul class="list-unstyled">
+                            <li><i class="fas fa-calendar-alt fa-fw me-2 text-muted"></i>Просматривать распределение вебинаров по неделям.</li>
+                            <li><i class="fas fa-tasks fa-fw me-2 text-muted"></i>Видеть прогресс (просмотренные вебинары затемнены и отмечены <i class="fas fa-check text-success"></i>).</li>
+                            <li><i class="fas fa-play-circle fa-fw me-2 text-muted"></i>Переходить к просмотру вебинаров по ссылкам.</li>
+                            <li><i class="fas fa-check-double fa-fw me-2 text-muted"></i>Отмечать вебинары как просмотренные по одному или все сразу.</li>
+                            <li><i class="fas fa-pencil-alt fa-fw me-2 text-muted"></i>Редактировать план.</li>
+                            <li><i class="fas fa-copy fa-fw me-2 text-muted"></i>Копировать информацию для ученика (текстовое описание плана с ссылками).</li>
+                            <li><i class="fas fa-trash fa-fw me-2 text-muted"></i>Удалить план при необходимости.</li>
                         </ul>
                     </section>
 
-                    <section id="faq" class="mb-5">
-                        <h2 class="border-bottom pb-2 mb-4">Часто задаваемые вопросы</h2>
+                    <section id="faq" class="mb-5 pt-3">
+                        <h2 class="section-title">Часто задаваемые вопросы</h2>
 
                         <div class="accordion" id="faqAccordion">
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="faq1">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqAnswer1" aria-expanded="false" aria-controls="faqAnswer1">
-                                        Как система подбирает вебинары для ученика?
+                                       <i class="fas fa-question-circle fa-fw me-2"></i>Как система подбирает вебинары для ученика?
                                     </button>
                                 </h2>
                                 <div id="faqAnswer1" class="accordion-collapse collapse" aria-labelledby="faq1" data-bs-parent="#faqAccordion">
@@ -192,13 +264,12 @@
                                         Система выполняет многошаговый анализ:
                                         <ol>
                                             <li>Определяет <strong>необходимые задания ЕГЭ</strong> на основе <strong>целевого балла</strong>.</li>
-                                            <li>Проверяет <strong>начальный балл</strong> (если есть): если он &lt;= 40, задания 26/27 могут быть <strong>отложены</strong> на следующий план.</li>
+                                            <li>Проверяет <strong>начальный балл</strong> и историю планов: если балл низкий (&lt;= 40) и это ранний этап подготовки, задания 26/27 могут быть <strong>отложены</strong>.</li>
                                             <li>Фильтрует вебинары, исключая <strong>просмотренные</strong>, относящиеся к <strong>известным заданиям</strong>, и вебинары по <strong>Python</strong> (если он не нужен).</li>
-                                            <li>Рассчитывает <strong>недельный объем</strong> вебинаров на основе доступных часов.</li>
-                                            <li><strong>Распределяет</strong> подходящие вебинары по 5 неделям, выделяя <strong>процентные квоты</strong> на Задание 27, Задание 26 и Базовые задания (1-25). Проценты зависят от того, нужны ли оба сложных задания или только одно, а также от того, были ли они отложены из-за низкого начального балла.</li>
+                                            <li><strong>Распределяет</strong> подходящие вебинары по 5 неделям, стараясь не превысить <strong>бюджет часов</strong> ученика, с приоритетом на Задание 27 -> Задание 26 -> Базовые.</li>
                                             <li>Учитывает необходимость <strong>"Python с нуля"</strong>, выделяя под него первую неделю плана.</li>
                                         </ol>
-                                        Подробное описание с конкретными процентами и наборами заданий смотрите в разделе <a href="#plans" onclick="document.getElementById('faqAnswer1').classList.remove('show');">Создание планов обучения</a>.
+                                        Подробное описание смотрите в разделе <a href="#plans" onclick="document.getElementById('faqAnswer1').classList.remove('show'); new bootstrap.Collapse(document.getElementById('step1Collapse')).show();">Создание планов обучения</a>.
                                     </div>
                                 </div>
                             </div>
@@ -206,12 +277,12 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="faq2">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqAnswer2" aria-expanded="false" aria-controls="faqAnswer2">
-                                        Что делать, если ученик уже просмотрел некоторые вебинары?
+                                       <i class="fas fa-history fa-fw me-2"></i>Что делать, если ученик уже просмотрел некоторые вебинары?
                                     </button>
                                 </h2>
                                 <div id="faqAnswer2" class="accordion-collapse collapse" aria-labelledby="faq2" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body">
-                                        Вы можете отметить вебинары как просмотренные на странице плана обучения. Просмотренные вебинары будут отображаться в профиле ученика и не будут рекомендованы для просмотра в новых планах обучения.
+                                        Вы можете отметить вебинары как просмотренные на странице <strong>плана обучения</strong> (кнопка "Отметить") или в <strong>профиле ученика</strong> (раздел "Просмотренные вебинары"). Просмотренные вебинары не будут рекомендованы в новых планах.
                                     </div>
                                 </div>
                             </div>
@@ -219,12 +290,12 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="faq3">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqAnswer3" aria-expanded="false" aria-controls="faqAnswer3">
-                                        Как отметить, что ученик знает определенные задания?
+                                       <i class="fas fa-check-square fa-fw me-2"></i>Как отметить, что ученик знает определенные задания?
                                     </button>
                                 </h2>
                                 <div id="faqAnswer3" class="accordion-collapse collapse" aria-labelledby="faq3" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body">
-                                        На странице профиля ученика есть раздел "Известные задания", где вы можете отметить галочками номера заданий, которые ученик уже знает. После сохранения эта информация будет учитываться при составлении планов обучения.
+                                        На странице <strong>профиля ученика</strong> есть раздел "Известные задания", где вы можете отметить галочками номера заданий, которые ученик уже знает. После сохранения эта информация будет учитываться при составлении планов (вебинары, состоящие <em>только</em> из известных заданий, не будут рекомендованы).
                                     </div>
                                 </div>
                             </div>
@@ -232,12 +303,12 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="faq4">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqAnswer4" aria-expanded="false" aria-controls="faqAnswer4">
-                                        Когда нужно создавать новый план обучения?
+                                       <i class="fas fa-calendar-plus fa-fw me-2"></i>Когда нужно создавать новый план обучения?
                                     </button>
                                 </h2>
                                 <div id="faqAnswer4" class="accordion-collapse collapse" aria-labelledby="faq4" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body">
-                                        Рекомендуется создавать новый план обучения после завершения текущего плана (обычно через 5 недель) или при существенном изменении уровня подготовки ученика. Система уведомит вас, если план устарел (создан более 5 недель назад).
+                                        Рекомендуется создавать новый план обучения после завершения текущего плана (обычно через 5 недель) или при существенном изменении уровня подготовки ученика (например, после успешного пробника). Система уведомит вас на странице просмотра плана, если он устарел (создан более 5 недель назад).
                                     </div>
                                 </div>
                             </div>
@@ -245,12 +316,12 @@
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="faq5">
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqAnswer5" aria-expanded="false" aria-controls="faqAnswer5">
-                                        Как работает автоматическая отметка известных заданий?
+                                        <i class="fas fa-exclamation-triangle fa-fw me-2"></i>Почему Задания 26/27 могут быть отложены?
                                     </button>
                                 </h2>
                                 <div id="faqAnswer5" class="accordion-collapse collapse" aria-labelledby="faq5" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body">
-                                        Когда ученик просматривает все вебинары, связанные с определенным номером задания, система автоматически отмечает это задание как изученное в профиле ученика. Это помогает отслеживать прогресс и правильно планировать дальнейшее обучение.
+                                        Отсрочка сложных заданий 26 и 27 применяется для учеников с низким начальным баллом (&lt;= 40) на ранних этапах обучения. Это позволяет им сначала укрепить базу по заданиям 1-25, что является более эффективной стратегией для поднятия балла с низкого старта. Как только база будет освоена (или если начальный балл выше), система включит задания 26/27 в план.
                                     </div>
                                 </div>
                             </div>
@@ -264,43 +335,16 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Плавная прокрутка к разделам при клике на ссылки оглавления
-        const links = document.querySelectorAll('.list-group-item-action');
-        links.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetId = this.getAttribute('href');
-                const targetElement = document.querySelector(targetId);
-
-                window.scrollTo({
-                    top: targetElement.offsetTop - 20,
-                    behavior: 'smooth'
-                });
-            });
-        });
-
-        // Активация ссылок при прокрутке к разделам
-        window.addEventListener('scroll', function() {
-            const sections = document.querySelectorAll('section');
-            let current = '';
-
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                const sectionHeight = section.clientHeight;
-                if (pageYOffset >= (sectionTop - sectionHeight / 3)) {
-                    current = '#' + section.getAttribute('id');
-                }
-            });
-
-            links.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === current) {
-                    link.classList.add('active');
-                }
-            });
-        });
-    });
+    // Инициализация Scrollspy (если Bootstrap JS подключен глобально)
+    // Если Bootstrap JS подключается отдельно для каждой страницы,
+    // убедитесь, что он загружен до этого скрипта.
+    // var scrollSpy = new bootstrap.ScrollSpy(document.body, {
+    //     target: '#guideNav',
+    //     offset: 100
+    // });
+    // Поскольку data-атрибуты добавлены в HTML, Bootstrap 5 должен 
+    // инициализировать Scrollspy автоматически.
 </script>
 {% endblock %}
