@@ -100,17 +100,6 @@ def create_app(config_class=Config):
         cover_path = os.path.join(app.static_folder, "covers", f"{webinar_id}.png")
         return os.path.exists(cover_path)
 
-    # Контекстный процессор для версии CSS
-    @app.context_processor
-    def inject_css_version():
-        try:
-            css_path = os.path.join(app.static_folder, 'css', 'style.css')
-            timestamp = int(os.path.getmtime(css_path))
-            return dict(css_version=timestamp)
-        except OSError:
-            # Если файл не найден или ошибка доступа, возвращаем стандартное значение
-            return dict(css_version='1')
-
     # Регистрация обработчиков ошибок
     @app.errorhandler(404)
     def page_not_found(e):

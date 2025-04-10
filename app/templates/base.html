@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=css_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block styles %}{% endblock %}
 </head>
 <body>
@@ -33,11 +33,13 @@
                                 <i class="fas fa-home me-1"></i> Главная
                             </a>
                         </li>
+                        {% if not current_user.is_educational_curator %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('students.students_list') }}">
                                 <i class="fas fa-user-graduate me-1"></i> Ученики
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('webinars.webinars_list') }}">
                                 <i class="fas fa-video me-1"></i> Вебинары
@@ -50,11 +52,14 @@
                             </a>
                         </li>
                         {% endif %}
+                        {# Скрываем Руководство для учебных кураторов #}
+                        {% if not current_user.is_educational_curator %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.guide') }}">
                                 <i class="fas fa-question-circle me-1"></i> Руководство
                             </a>
                         </li>
+                        {% endif %}
                         {% if current_user.is_super_admin %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('users.users_list') }}">
@@ -82,8 +87,12 @@
                                         <span class="badge bg-accent me-1">Супер-админ</span>
                                     {% elif current_user.is_admin %}
                                         <span class="badge bg-warning text-dark me-1">Админ</span>
+                                    {% elif current_user.is_educational_curator %}
+                                        <span class="badge bg-success me-1">Учебный куратор</span>
+                                    {% elif current_user.is_organizational_curator %}
+                                        <span class="badge bg-info me-1">Организационный куратор</span>
                                     {% else %}
-                                        <span class="badge bg-info me-1">Куратор</span>
+                                        <span class="badge bg-secondary me-1">{{ current_user.role }}</span>
                                     {% endif %}
                                     @{{ current_user.username }}
                                 </span></li>
@@ -123,7 +132,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center">
                 <p class="mb-0 text-muted">&copy; 2025 CyberOrg. Все права на вебинары принадлежат образовательной платформе Школково.</p>
                 <div>
-                    <span class="text-muted">Система планирования обучения. Версия 0.7. Бета-тестирование.</span>
+                    <span class="text-muted">Система планирования обучения. Версия 0.8. Бета-тестирование.</span>
                 </div>
             </div>
         </div>

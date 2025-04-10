@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение удаления пользователя{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> Подтверждение удаления пользователя</h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                         <i class="fas fa-user-slash fa-4x text-danger mb-3"></i>
+                         <h5>Вы уверены, что хотите удалить пользователя?</h5>
+                         <p class="lead"><strong>{{ user.username }}</strong></p>
+                         {% if user.full_name %}
+                         <p class="text-muted">({{ user.full_name }})</p>
+                         {% endif %}
+                    </div>
+
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-circle me-1"></i> <strong>Внимание!</strong> Это действие необратимо.
+                    </div>
+
+                    <form action="{{ url_for('users.user_delete', user_id=user.id) }}" method="post" class="mt-4">
+                        <div class="d-grid gap-2 d-md-flex justify-content-center">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i> Да, удалить пользователя
+                            </button>
+                            <a href="{{ url_for('users.users_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i> Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

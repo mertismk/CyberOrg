@@ -18,6 +18,8 @@ from .forms import StudentForm
 @bp.route("/")  # Базовый URL /students
 @login_required
 def students_list():
+    if current_user.is_educational_curator:
+        abort(403)
     students = Student.query.all()
     # Шаблон students/templates/students/students.html
     return render_template("students/students.html", students=students)
@@ -26,6 +28,8 @@ def students_list():
 @bp.route("/<int:student_id>")
 @login_required
 def student_detail(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
     student = Student.query.options(
         joinedload(Student.plans).options(  # Загружаем планы и их вебинары
             joinedload(StudyPlan.planned_webinars)
@@ -229,6 +233,8 @@ def student_detail(student_id):
 @bp.route("/new", methods=["GET", "POST"])
 @login_required
 def student_new():
+    if current_user.is_educational_curator:
+        abort(403)
     form = StudentForm()
     if form.validate_on_submit():
         # Проверяем уникальность Platform ID
@@ -266,6 +272,8 @@ def student_new():
 @bp.route("/<int:student_id>/edit", methods=["GET", "POST"])
 @login_required
 def student_edit(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
     student = Student.query.get_or_404(student_id)
     form = StudentForm(obj=student)  # Предзаполняем форму данными студента
 
@@ -303,6 +311,8 @@ def student_edit(student_id):
 @bp.route("/<int:student_id>/mark_webinar_watched", methods=["POST"])
 @login_required
 def mark_webinar_watched(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
     """Отмечает вебинар как просмотренный (исправлено)."""
     student = Student.query.get_or_404(student_id)
 
@@ -535,6 +545,8 @@ def check_and_mark_known_tasks(student_id, watched_webinars_list):
 @bp.route("/<int:student_id>/tasks", methods=["POST"])
 @login_required
 def update_known_tasks(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
     known_task_ids = request.form.getlist("known_tasks")
 
     KnownTaskNumber.query.filter_by(student_id=student_id).delete()
@@ -553,6 +565,8 @@ def update_known_tasks(student_id):
 @bp.route("/<int:student_id>/add_webinars", methods=["GET"])
 @login_required
 def add_webinars_page(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
     student = Student.query.options(
         joinedload(Student.watched_webinars) # Загружаем просмотренные
     ).get_or_404(student_id)

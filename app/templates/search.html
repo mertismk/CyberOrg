@@ -100,6 +100,14 @@
                                     <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-external-link-alt me-1"></i> Перейти к вебинару
                                     </a>
+                                    {# Добавляем кнопку копирования ссылки #}
+                                    <button class="btn btn-sm btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}" title="Копировать ссылку">
+                                        <i class="fas fa-link"></i>
+                                    </button>
+                                    {# Добавляем кнопку для перехода к задачам #}
+                                    <a href="{{ url_for('webinars.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-success" title="Задачи к вебинару">
+                                        <i class="fas fa-tasks"></i>
+                                    </a>
                                 </div>
                             </div>
                         {% endfor %}
@@ -121,4 +129,51 @@
         <p class="text-muted">По вашему запросу "{{ query }}" ничего не найдено. Попробуйте изменить поисковый запрос.</p>
     </div>
 {% endif %}
+{% endblock %}
+
+{# Добавляем JavaScript для копирования #}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const copyButtons = document.querySelectorAll('.copy-link-btn');
+
+    copyButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Предотвращаем возможное стандартное действие кнопки
+            const url = this.getAttribute('data-url');
+            if (!url) return;
+            
+            const originalIcon = this.innerHTML;
+            
+            navigator.clipboard.writeText(url).then(() => {
+                // Успешно скопировано
+                this.innerHTML = '<i class="fas fa-check text-success"></i>';
+                this.title = 'Ссылка скопирована!';
+                // Можно добавить класс для изменения стиля
+                // this.classList.add('btn-success'); 
+                // this.classList.remove('btn-outline-secondary');
+                
+                setTimeout(() => {
+                    this.innerHTML = originalIcon;
+                    this.title = 'Копировать ссылку';
+                    // Возвращаем стили обратно, если добавляли класс
+                    // this.classList.remove('btn-success'); 
+                    // this.classList.add('btn-outline-secondary');
+                }, 1500); // Возвращаем иконку через 1.5 секунды
+
+            }).catch(err => {
+                console.error('Ошибка копирования в буфер обмена: ', err);
+                this.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                this.title = 'Ошибка копирования';
+                // Можно добавить класс для стиля ошибки
+                
+                setTimeout(() => {
+                    this.innerHTML = originalIcon;
+                    this.title = 'Копировать ссылку';
+                }, 2000); // Возвращаем иконку через 2 секунды
+            });
+        });
+    });
+});
+</script>
 {% endblock %} 

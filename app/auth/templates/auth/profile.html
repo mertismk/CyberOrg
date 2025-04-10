@@ -28,8 +28,12 @@
                             <span class="badge bg-accent mb-2 py-2 px-3">Супер-администратор</span>
                         {% elif current_user.is_admin %}
                             <span class="badge bg-warning text-dark mb-2 py-2 px-3">Администратор</span>
+                        {% elif current_user.is_organizational_curator %}
+                            <span class="badge bg-info mb-2 py-2 px-3">Организационный куратор</span>
+                        {% elif current_user.is_educational_curator %}
+                            <span class="badge bg-success mb-2 py-2 px-3">Учебный куратор</span>
                         {% else %}
-                            <span class="badge bg-info mb-2 py-2 px-3">Куратор</span>
+                            <span class="badge bg-secondary mb-2 py-2 px-3">{{ current_user.role }}</span>
                         {% endif %}
                         
                         <div class="mt-3">

@@ -60,8 +60,12 @@
                                 <span class="badge bg-accent">Супер-администратор</span>
                             {% elif user.is_admin %}
                                 <span class="badge bg-warning text-dark">Администратор</span>
+                            {% elif user.is_organizational_curator %}
+                                <span class="badge bg-info">Организационный куратор</span>
+                            {% elif user.is_educational_curator %}
+                                <span class="badge bg-success">Учебный куратор</span>
                             {% else %}
-                                <span class="badge bg-info">Куратор</span>
+                                <span class="badge bg-secondary">{{ user.role }}</span> {# На случай других ролей #}
                             {% endif %}
                         </td>
                         <td class="py-3">
@@ -77,14 +81,11 @@
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 {% if user.id != current_user.id %}
-                                <button type="button" class="btn btn-sm btn-danger"
-                                        title="Удалить"
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#deleteUserModal"
-                                        data-user-id="{{ user.id }}"
-                                        data-username="{{ user.username }}">
+                                <a href="{{ url_for('users.confirm_user_delete', user_id=user.id) }}" 
+                                   class="btn btn-sm btn-danger"
+                                   title="Удалить">
                                     <i class="fas fa-trash"></i>
-                                </button>
+                                </a>
                                 {% endif %}
                             </div>
                         </td>
@@ -100,55 +101,6 @@
     <p class="text-muted mb-0"><i class="fas fa-users me-2"></i> Всего пользователей: <strong>{{ users|length }}</strong></p>
 </div>
 
-<!-- Модальное окно для подтверждения удаления пользователя -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteUserModalLabel">Подтверждение удаления</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center mb-4">
-                    <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" style="width: 80px; height: 80px; background-color: rgba(220, 53, 69, 0.1);">
-                        <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
-                    </div>
-                    <h5>Вы уверены, что хотите удалить пользователя?</h5>
-                    <p class="text-muted"><strong id="deleteUsername"></strong></p>
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle me-2"></i> Это действие нельзя отменить.
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
-                <form id="deleteUserForm" action="" method="post">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i> Удалить
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% block scripts %}
-<script>
-    // Настройка модального окна для удаления пользователя
-    var deleteModal = document.getElementById('deleteUserModal');
-    if (deleteModal) {
-        deleteModal.addEventListener('show.bs.modal', function(event) {
-            var button = event.relatedTarget;
-            var userId = button.getAttribute('data-user-id');
-            var username = button.getAttribute('data-username');
-            
-            var deleteForm = document.getElementById('deleteUserForm');
-            deleteForm.action = "{{ url_for('users.users_list') }}" + userId + '/delete';
-            
-            var deleteUsernameSpan = document.getElementById('deleteUsername');
-            deleteUsernameSpan.textContent = username;
-        });
-    }
-</script>
 {% endblock %}
 {% endblock %} 

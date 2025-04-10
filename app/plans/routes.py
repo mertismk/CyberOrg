@@ -1,6 +1,7 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta, date
+from flask_wtf.csrf import generate_csrf
 
 from app import db
 from app.models import (
@@ -26,19 +27,89 @@ from app.services.plan_service import recommend_webinars
 @bp.route("/new/<int:student_id>", methods=["GET", "POST"])
 @login_required
 def create_study_plan(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
     student = Student.query.get_or_404(student_id)
-    webinars = Webinar.query.options(db.joinedload(Webinar.task_numbers)).all()
+    # --- Данные, нужные для GET и POST --- 
     watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.filter_by(student_id=student_id).all()}
     known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
     known_task_numbers = {task.task_number for task in known_tasks}
-
-    # Определяем, первый ли это план для студента
     plan_count = StudyPlan.query.filter_by(student_id=student.id).count()
     is_first_plan = plan_count == 0
+    last_plan = StudyPlan.query.filter_by(student_id=student.id).order_by(StudyPlan.created_at.desc()).first()
+    last_plan_completion_perc = 0
+    if last_plan:
+        watched_count = WatchedWebinar.query.filter(WatchedWebinar.student_id == student.id, \
+                                                    WatchedWebinar.webinar_id.in_([p.webinar_id for p in last_plan.planned_webinars])).count()
+        total_planned = len(last_plan.planned_webinars)
+        last_plan_completion_perc = int(watched_count / total_planned * 100) if total_planned > 0 else 0
+    # --- Конец общих данных ---
 
-    # Рассчитываем required_tasks для логики и отображения в шаблоне
-    required_tasks = set()
-    target_score = student.target_score or 80 # Дефолтный балл для расчета
+    if request.method == "POST":
+        # Читаем квоты из формы
+        try:
+            quota_t26 = int(request.form.get("quota_t26", 0))
+        except ValueError:
+            quota_t26 = 0
+        try:
+            quota_t27 = int(request.form.get("quota_t27", 0))
+        except ValueError:
+            quota_t27 = 0
+        
+        # Вызываем сервис для получения рекомендаций С УЧЕТОМ КВОТ
+        recommended_webinars, webinar_weeks, _ = recommend_webinars(
+            student=student,
+            known_task_numbers=known_task_numbers,
+            watched_webinar_ids=watched_webinar_ids,
+            is_first_plan=is_first_plan,
+            last_plan_completion_perc=last_plan_completion_perc,
+            quota_t26=quota_t26, # Передаем квоту
+            quota_t27=quota_t27  # Передаем квоту
+        )
+
+        if not recommended_webinars:
+            flash("Не удалось подобрать вебинары для плана с учетом заданных параметров.", "warning")
+            # Редирект обратно на страницу GET с теми же данными
+            # Тут нужна та же логика, что и в GET части ниже
+            return redirect(url_for('.create_study_plan', student_id=student_id))
+
+        study_plan = StudyPlan(student_id=student.id, created_by_id=current_user.id)
+        db.session.add(study_plan)
+        db.session.flush() # Получаем ID для study_plan
+
+        # Сохраняем вебинары, рекомендованные сервисом
+        for webinar in recommended_webinars:
+            week_num = webinar_weeks.get(webinar.id, 1) # Получаем неделю из словаря
+            planned_webinar = PlannedWebinar(
+                study_plan_id=study_plan.id,
+                webinar_id=webinar.id,
+                week_number=week_num,
+            )
+            db.session.add(planned_webinar)
+
+        # Обновляем student.last_plan_id (если нужно)
+        # student.last_plan_id = study_plan.id
+        
+        db.session.commit()
+        flash("План обучения успешно создан!", "success")
+        return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
+
+    # --- GET Запрос --- 
+    # Получаем начальные рекомендации (без квот) или с квотами по умолчанию
+    suitable_webinars, webinar_weeks, weekly_hours_summary = recommend_webinars(
+        student=student,
+        known_task_numbers=known_task_numbers,
+        watched_webinar_ids=watched_webinar_ids,
+        is_first_plan=is_first_plan,
+        last_plan_completion_perc=last_plan_completion_perc,
+        quota_t26=0, # Квоты по умолчанию для GET
+        quota_t27=0  
+    )
+
+    # Остальная логика для GET (расчет required_tasks и т.д.)
+    # ... (расчет required_tasks) ... 
+    required_tasks = set() # Пример - нужна полная логика из старой версии
+    target_score = student.target_score or 80
     tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
     tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
     tasks_80_85 = set(range(1, 24)) | {25}
@@ -53,102 +124,33 @@ def create_study_plan(student_id):
     else: required_tasks = tasks_95_100.copy()
     required_tasks_list = sorted(list(required_tasks))
 
-    # Получаем последний план для расчета completion_percentage
-    last_plan = StudyPlan.query.filter_by(student_id=student.id).order_by(StudyPlan.created_at.desc()).first()
-    last_plan_completion_perc = 0
-    if last_plan:
-        watched_count = WatchedWebinar.query.filter(WatchedWebinar.student_id == student.id, \
-                                                    WatchedWebinar.webinar_id.in_([p.webinar_id for p in last_plan.planned_webinars])).count()
-        total_planned = len(last_plan.planned_webinars)
-        last_plan_completion_perc = int(watched_count / total_planned * 100) if total_planned > 0 else 0
-
-    # Вызываем сервис для получения рекомендаций (СЛОЖНАЯ ВЕРСИЯ)
-    # Возвращены is_first_plan, last_plan_completion_perc
-    # Возвращено weekly_hours_summary
-    suitable_webinars, webinar_weeks, weekly_hours_summary = recommend_webinars(
-        student=student,
-        # webinars=webinars, # Больше не передаем все вебинары
-        known_task_numbers=known_task_numbers,
-        watched_webinar_ids=watched_webinar_ids,
-        is_first_plan=is_first_plan, # Передаем флаг
-        last_plan_completion_perc=last_plan_completion_perc # Передаем процент
-    )
-
-    if request.method == "POST":
-        study_plan = StudyPlan(student_id=student.id, created_by_id=current_user.id)
-        db.session.add(study_plan)
-        db.session.flush() # Получаем ID для study_plan
-
-        webinar_ids = request.form.getlist("webinar_ids") # Получаем ID только выбранных вебинаров
-
-        for webinar_id_str in webinar_ids: # Итерируемся только по выбранным
-            try:
-                webinar_id = int(webinar_id_str)
-                # Получаем номер недели из соответствующего поля week_numbers_webinarId
-                week_number_str = request.form.get(f"week_numbers_{webinar_id}")
-                try:
-                    # Пытаемся преобразовать в число, по умолчанию 1, если не указано или ошибка
-                    week_number = int(week_number_str) if week_number_str else 1
-                    if not 1 <= week_number <= 5: # Проверка диапазона недель
-                         week_number = 1
-                except (ValueError, TypeError):
-                    week_number = 1 # Ставим 1 по умолчанию при любой ошибке
-                
-                planned_webinar = PlannedWebinar(
-                    study_plan_id=study_plan.id,
-                    webinar_id=webinar_id,
-                    week_number=week_number,
-                )
-                db.session.add(planned_webinar)
-            except ValueError:
-                # Пропускаем, если ID вебинара некорректный
-                flash(f"Некорректный ID вебинара: {webinar_id_str}", "warning")
-                continue
-
-        # Читаем квоты из скрытых полей формы
-        quota_basic = int(request.form.get("quota_basic", 0))
-        quota_advanced = int(request.form.get("quota_advanced", 0))
-        advanced_task_number = request.form.get("advanced_task_number") # Может быть пустой строкой
-        try:
-             advanced_task_number = int(advanced_task_number) if advanced_task_number else None
-        except ValueError:
-             advanced_task_number = None # На случай если передано что-то не то
-
-        db.session.commit()
-        # Используем простое сообщение
-        flash("План обучения успешно создан!", "success")
-        # Используем .view_study_plan
-        return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
-
-    # Получаем необходимые данные для рекомендаций
-    webinars = Webinar.query.all()
-    known_tasks_rel = KnownTaskNumber.query.filter_by(student_id=student_id).all()
-    known_task_numbers = {task.task_number for task in known_tasks_rel}
-    watched_webinars_rel = WatchedWebinar.query.filter_by(student_id=student_id).all()
-    watched_webinar_ids = {w.webinar_id for w in watched_webinars_rel}
-
-    # Проверка на предыдущий план
+    webinars = Webinar.query.all() # Все вебинары для ручного выбора, если нужно
     has_previous_plan = bool(last_plan and (datetime.utcnow() - last_plan.created_at).days >= 35)
+    
+    # Генерируем CSRF токен для формы
+    csrf_token_value = generate_csrf()
 
-    # Шаблон plans/templates/plans/create_plan.html
     return render_template(
         "plans/create_plan.html",
         student=student,
-        webinars=webinars, # Все вебинары для ручного добавления
-        suitable_webinars=suitable_webinars, # Рекомендованные
+        webinars=webinars,
+        suitable_webinars=suitable_webinars, # Используем результат recommend_webinars
         known_task_numbers=known_task_numbers,
         watched_webinar_ids=watched_webinar_ids,
-        webinar_weeks=webinar_weeks, # Словарь {webinar_id: week_number}
+        webinar_weeks=webinar_weeks, # Используем результат recommend_webinars
         has_previous_plan=has_previous_plan,
-        weekly_hours_summary=weekly_hours_summary, # Вернули
+        weekly_hours_summary=weekly_hours_summary, # Используем результат recommend_webinars
         required_tasks=required_tasks_list,
-        is_first_plan=is_first_plan # Вернули
+        is_first_plan=is_first_plan, 
+        csrf_token_value=csrf_token_value # Передаем токен
     )
 
 
 @bp.route("/<int:plan_id>")
 @login_required
 def view_study_plan(plan_id):
+    if current_user.is_educational_curator:
+        abort(403)
     plan = StudyPlan.query.options(
         db.joinedload(StudyPlan.student), # Загружаем студента сразу
         db.joinedload(StudyPlan.planned_webinars).joinedload(PlannedWebinar.webinar) # Загружаем вебинары
@@ -233,6 +235,8 @@ def view_study_plan(plan_id):
 @bp.route("/<int:plan_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_study_plan(plan_id):
+    if current_user.is_educational_curator:
+        abort(403)
     plan = StudyPlan.query.options(
          db.joinedload(StudyPlan.student), # Оптимизация: загружаем студента
          db.joinedload(StudyPlan.planned_webinars) # и запланированные вебинары
@@ -398,6 +402,8 @@ def edit_study_plan(plan_id):
 @bp.route("/<int:plan_id>/delete", methods=["POST"])
 @login_required
 def delete_study_plan(plan_id):
+    if current_user.is_educational_curator:
+        abort(403)
     plan = StudyPlan.query.get_or_404(plan_id)
     student_id = plan.student_id # Сохраняем для редиректа
 
@@ -418,6 +424,8 @@ def delete_study_plan(plan_id):
 @bp.route("/<int:plan_id>/mark_all_watched", methods=["POST"])
 @login_required
 def mark_all_webinars_watched(plan_id):
+    if current_user.is_educational_curator:
+        abort(403)
     plan = StudyPlan.query.get_or_404(plan_id)
 
     # Разрешаем всем авторизованным пользователям (кураторам) отмечать вебинары как просмотренные

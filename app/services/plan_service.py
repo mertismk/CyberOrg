@@ -9,7 +9,7 @@ from app import db
 def get_webinar_hours(webinar: Webinar) -> float:
     """Определяет "стоимость" вебинара в часах."""
     if webinar.for_beginners:
-        return 1.5
+        return 2.5
     elif webinar.for_advanced or webinar.for_expert:
         return 4.0
     # По умолчанию (включая for_basic, for_mocks, for_practice, for_minisnap и без флагов)
@@ -23,10 +23,11 @@ def get_next_valid_webinar(webinar_list):
 
 
 def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
-                         is_first_plan=True, last_plan_completion_perc=0.0):
-    """Подбирает подходящие вебинары (v4.1 - учет часов, кап 50%, отложенные T26/27)."""
+                         is_first_plan=True, last_plan_completion_perc=0.0,
+                         quota_t26=0, quota_t27=0):
+    """Подбирает подходящие вебинары (v4.2 - учет часов, квоты T26/27)."""
 
-    print("\n=== Отладка recommend_webinars v4.1 (hours, cap) ===")
+    print("\n=== Отладка recommend_webinars v4.2 (hours, quotas) ===")
     print(f"Student ID: {student.id}")
     # print(f"Task 26 deferred (start): {student.task_26_deferred}") # Атрибут удален
     # print(f"Task 27 deferred (start): {student.task_27_deferred}") # Атрибут удален
@@ -38,9 +39,10 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
     print(f"Last Plan Completion: {last_plan_completion_perc*100:.1f}%")
     print(f"Known tasks: {known_task_numbers}")
     print(f"Watched webinars: {len(watched_webinar_ids)}")
+    print(f"Quota T26: {quota_t26}, Quota T27: {quota_t27}")
 
     # --- 1. Базовые параметры --- 
-    hours_per_week = student.hours_per_week or 9 # Бюджет часов в неделю (минимум 9 по умолчанию)
+    hours_per_week = student.hours_per_week or 9
     print("\nБазовые параметры:")
     print(f"Weekly hours budget: {hours_per_week}")
 
@@ -108,8 +110,26 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
 
     # --- ДОБАВЛЯЕМ ЛОГИКУ ОТКЛАДЫВАНИЯ --- 
     print(f"\nПроверка на откладывание T26/T27:")
-    should_defer = is_first_plan and (student.initial_score is None or student.initial_score <= 40)
-    print(f"  Is first plan: {is_first_plan}, Initial score: {student.initial_score}, Should defer: {should_defer}")
+    
+    # Новая логика: Откладываем только если ВСЕ условия НЕ выполнены
+    # Условие 1: Последний балл >= 60 (Используем initial_score, т.к. нет поля last_mock_score)
+    # Важно: Уточнить, является ли initial_score актуальным последним баллом!
+    score_is_high = student.initial_score is not None and student.initial_score >= 60
+    
+    # Условие 2: Изучено >= 50% заданий 1-25
+    tasks_1_to_25 = set(range(1, 26))
+    known_tasks_1_to_25 = known_task_numbers.intersection(tasks_1_to_25)
+    percentage_known_1_to_25 = (len(known_tasks_1_to_25) / 25) * 100 if tasks_1_to_25 else 0 # 25 - кол-во задач 1-25
+    core_tasks_learned_enough = percentage_known_1_to_25 >= 50
+
+    # Откладываем, только если это первый план И балл низкий И основные задачи не изучены
+    should_defer = is_first_plan and not score_is_high and not core_tasks_learned_enough
+
+    print(f"  Is first plan: {is_first_plan}")
+    print(f"  Initial score: {student.initial_score}, Score >= 60: {score_is_high}")
+    print(f"  Known tasks 1-25: {len(known_tasks_1_to_25)}/{len(tasks_1_to_25)} ({percentage_known_1_to_25:.1f}%), Learned >= 50%: {core_tasks_learned_enough}")
+    print(f"  Should defer T26/T27: {should_defer}")
+
     if should_defer:
         deferred_26 = 26 in required_tasks
         deferred_27 = 27 in required_tasks
@@ -214,31 +234,42 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
     available_t26.sort(key=sort_key_date)
     available_basic.sort(key=sort_key_date)
     
-    # --- 5. Распределение регулярных вебинаров по неделям с учетом часов --- 
+    # --- 5. Распределение регулярных вебинаров по неделям с учетом часов И КВОТ --- 
     print("\nРаспределение регулярных вебинаров по неделям:")
     total_hours_assigned_regular = 0.0
+    assigned_t26_count = 0 # Счетчик добавленных T26
+    assigned_t27_count = 0 # Счетчик добавленных T27
 
     for week_num in range(1, 6):
         print(f"\n--- Неделя {week_num} ---")
-        # Начинаем с часов, уже занятых beginner в 1й неделе
         hours_filled_this_week = weekly_hours_summary[week_num]
-        t26_hours_this_week = 0.0 # Часы T26 в этой неделе для капа
-        t27_hours_this_week = 0.0 # Часы T27 в этой неделе для капа
         
-        # --- Новая логика расчета капов для текущей недели ---
+        # --- Возвращаем расчет процентных капов (активны только при quota <= 0) --- 
+        apply_t26_cap = needs_task_26 and quota_t26 <= 0 
+        apply_t27_cap = needs_task_27 and quota_t27 <= 0 
         max_t26_hours = 0.0
         max_t27_hours = 0.0
-        if needs_task_26 and needs_task_27:
-            max_t26_hours = hours_per_week * 0.25
-            max_t27_hours = hours_per_week * 0.25
-            print(f"  Applying 25% cap for T26 ({max_t26_hours:.1f}h) and T27 ({max_t27_hours:.1f}h)")
-        elif needs_task_27: # Только T27
-            max_t27_hours = hours_per_week * 0.5
-            print(f"  Applying 50% cap for T27 ({max_t27_hours:.1f}h)")
-        elif needs_task_26: # Только T26
-            max_t26_hours = hours_per_week * 0.5
-            print(f"  Applying 50% cap for T26 ({max_t26_hours:.1f}h)")
-        # --- Конец новой логики капов ---
+        if apply_t26_cap or apply_t27_cap:
+             if needs_task_26 and needs_task_27:
+                 # Рассчитываем, но применяем только если apply_tX_cap истинно
+                 cap_value = hours_per_week * 0.25
+                 max_t26_hours = cap_value if apply_t26_cap else float('inf')
+                 max_t27_hours = cap_value if apply_t27_cap else float('inf')
+                 print(f"  Applying caps: T26={'%.2f' % max_t26_hours if apply_t26_cap else 'off (quota)'}, T27={'%.2f' % max_t27_hours if apply_t27_cap else 'off (quota)'}")
+             elif needs_task_27: 
+                 cap_value = hours_per_week * 0.5
+                 max_t27_hours = cap_value if apply_t27_cap else float('inf')
+                 print(f"  Applying caps: T26=off, T27={'%.2f' % max_t27_hours if apply_t27_cap else 'off (quota)'}")
+             elif needs_task_26: 
+                 cap_value = hours_per_week * 0.5
+                 max_t26_hours = cap_value if apply_t26_cap else float('inf')
+                 print(f"  Applying caps: T26={'%.2f' % max_t26_hours if apply_t26_cap else 'off (quota)'}, T27=off")
+        else:
+             print("  Percentage caps disabled due to quotas for both T26 and T27.")
+        # Часы, уже потраченные на T26/T27 в этой неделе (для проверки капа)
+        current_t26_hours_this_week = 0.0
+        current_t27_hours_this_week = 0.0
+        # --- Конец расчета капов ---
 
         # Добавляем оставшиеся beginner вебинары во 2-ю неделю
         if week_num == 2 and remaining_beginner_webinars_overflow:
@@ -262,74 +293,88 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
 
         # Заполняем неделю, пока есть бюджет и доступные вебинары
         while hours_filled_this_week < hours_per_week:
-            added_in_this_attempt = False # Флаг, что удалось добавить ХОТЬ ЧТО-ТО на этой ПОПЫТКЕ (T27/T26/Bas)
+            added_in_this_attempt = False
 
-            # --- Попытка 1: Добавить T27 ---
+            # --- Попытка 1: Добавить T27 --- 
+            should_try_t27 = assigned_t27_count < quota_t27 or quota_t27 <= 0
             webinar_t27 = get_next_valid_webinar(available_t27)
-            if webinar_t27:
+            if should_try_t27 and webinar_t27:
                 if webinar_t27.id in assigned_webinar_ids: # Доп. проверка на всякий случай
                     print(f"  ! Warning: T27 {webinar_t27.id} уже был назначен, пропускаем")
                     continue # Переходим к след итерации while
                 w_hours = get_webinar_hours(webinar_t27)
-                cap_exceeded = False
-                # Проверяем новый кап для T27
-                if max_t27_hours > 0 and t27_hours_this_week + w_hours > max_t27_hours:
-                    cap_exceeded = True
-                    print(f"  - Skip T27 ({w_hours:.1f}h) - exceeds cap ({max_t27_hours:.1f}h) for T27 this week (Current T27:{t27_hours_this_week:.1f}h)")
-                
                 budget_fits = hours_filled_this_week + w_hours <= hours_per_week
-
-                if not cap_exceeded and budget_fits:
+                
+                # --- Измененная проверка капа T27 --- 
+                cap_check = apply_t27_cap and max_t27_hours > 0
+                is_first_t27_this_week = current_t27_hours_this_week == 0.0
+                # Кап превышен, если он активен, И сумма превышает кап, И это НЕ первый T27 вебинар в неделе
+                cap_exceeded = cap_check and (current_t27_hours_this_week + w_hours > max_t27_hours) and not is_first_t27_this_week
+                # --- Конец проверки капа T27 --- 
+                
+                if budget_fits and not cap_exceeded: 
                     # Добавляем T27
                     webinar_weeks[webinar_t27.id] = week_num
                     selected_regular_webinars.append(webinar_t27)
                     assigned_webinar_ids.add(webinar_t27.id)
                     hours_filled_this_week += w_hours
                     total_hours_assigned_regular += w_hours
-                    t27_hours_this_week += w_hours
+                    current_t27_hours_this_week += w_hours # Обновляем часы для капа
+                    assigned_t27_count += 1 # Увеличиваем счетчик добавленных T27
                     added_in_this_attempt = True
                     print(f"  + Add T27 ({w_hours:.1f}h): {webinar_t27.title[:40]}... (Week total: {hours_filled_this_week:.1f}h)")
                     # Не возвращаем в available_t27
                 else:
                     # Не добавили T27 - возвращаем в список и выводим сообщение (если не кап)
                     available_t27.insert(0, webinar_t27)
-                    if not cap_exceeded:
+                    if not budget_fits:
                          print(f"  - Skip T27 ({w_hours:.1f}h) - not enough budget (Rem: {(hours_per_week - hours_filled_this_week):.1f}h)")
-                    # НЕ ставим added_in_this_attempt = True, продолжаем проверять T26/Bas
+                    elif cap_exceeded:
+                         print(f"  - Skip T27 ({w_hours:.1f}h) - exceeds cap ({max_t27_hours:.2f}h) for T27 this week (Current T27:{current_t27_hours_this_week:.1f}h)")
             
-            # --- Попытка 2: Добавить T26 (только если T27 не добавили на этой попытке) ---
-            if not added_in_this_attempt:
+            elif webinar_t27: # Если НЕ должны были пытаться добавить T27 (квота выполнена), но вебинар есть
+                available_t27.insert(0, webinar_t27) # Возвращаем обратно
+            
+            # --- Попытка 2: Добавить T26 --- 
+            should_try_t26 = assigned_t26_count < quota_t26 or quota_t26 <= 0
+            if not added_in_this_attempt and should_try_t26:
                 webinar_t26 = get_next_valid_webinar(available_t26)
                 if webinar_t26:
                     if webinar_t26.id in assigned_webinar_ids: continue # Пропускаем уже добавленные
                     w_hours = get_webinar_hours(webinar_t26)
-                    cap_exceeded = False
-                    # Проверяем новый кап для T26
-                    if max_t26_hours > 0 and t26_hours_this_week + w_hours > max_t26_hours:
-                        cap_exceeded = True
-                        print(f"  - Skip T26 ({w_hours:.1f}h) - exceeds cap ({max_t26_hours:.1f}h) for T26 this week (Current T26:{t26_hours_this_week:.1f}h)")
-                    
                     budget_fits = hours_filled_this_week + w_hours <= hours_per_week
                     
-                    if not cap_exceeded and budget_fits:
+                    # --- Измененная проверка капа T26 --- 
+                    cap_check = apply_t26_cap and max_t26_hours > 0
+                    is_first_t26_this_week = current_t26_hours_this_week == 0.0
+                    cap_exceeded = cap_check and (current_t26_hours_this_week + w_hours > max_t26_hours) and not is_first_t26_this_week
+                    # --- Конец проверки капа T26 --- 
+                    
+                    if budget_fits and not cap_exceeded: 
                         # Добавляем T26
                         webinar_weeks[webinar_t26.id] = week_num
                         selected_regular_webinars.append(webinar_t26)
                         assigned_webinar_ids.add(webinar_t26.id)
                         hours_filled_this_week += w_hours
                         total_hours_assigned_regular += w_hours
-                        t26_hours_this_week += w_hours
+                        current_t26_hours_this_week += w_hours # Обновляем часы для капа
+                        assigned_t26_count += 1 # Увеличиваем счетчик добавленных T26
                         added_in_this_attempt = True
                         print(f"  + Add T26 ({w_hours:.1f}h): {webinar_t26.title[:40]}... (Week total: {hours_filled_this_week:.1f}h)")
                         # Не возвращаем в available_t26
                     else:
                         # Не добавили T26 - возвращаем в список
                         available_t26.insert(0, webinar_t26)
-                        if not cap_exceeded:
+                        if not budget_fits:
                             print(f"  - Skip T26 ({w_hours:.1f}h) - not enough budget (Rem: {(hours_per_week - hours_filled_this_week):.1f}h)")
-                        # НЕ ставим added_in_this_attempt = True, продолжаем проверять Basic
+                            # Если T26 не влез по бюджету, то дальше точно ничего не влезет
+                            print("    (T26 didn't fit budget, ending week fill.)")
+                            break # Прерываем WHILE для этой недели
+                # else: 
+                    # Если T26 не найден (available_t26 пуст) - ничего не делаем,
+                    # added_in_this_attempt останется False, сработает проверка ниже.
             
-            # --- Попытка 3: Добавить Basic (только если T27 и T26 не добавили на этой попытке) ---
+            # --- Попытка 3: Добавить Basic --- 
             if not added_in_this_attempt:
                  webinar_basic = get_next_valid_webinar(available_basic)
                  if webinar_basic:
@@ -370,6 +415,8 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
         # Записываем итоговые часы для текущей недели
         weekly_hours_summary[week_num] = hours_filled_this_week
 
+    print(f"\nAssigned T26: {assigned_t26_count} (quota: {quota_t26})")
+    print(f"Assigned T27: {assigned_t27_count} (quota: {quota_t27})")
     print(f"\n=== Конец recommend_webinars ===")
     # Объединяем beginner и regular вебинары для возврата
     all_selected_webinars = selected_beginner_webinars + selected_regular_webinars

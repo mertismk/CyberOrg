@@ -41,10 +41,25 @@
                             {% endif %}
                         </div>
                         
+                        {# Добавляем поля для имени и фамилии #}
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">Имя</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ user.first_name if user else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Фамилия</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ user.last_name if user else '' }}">
+                            </div>
+                        </div>
+                        
                         <div class="mb-3">
                             <label for="role" class="form-label">Роль</label>
                             <select class="form-select" id="role" name="role" required>
-                                <option value="regular" {% if user and user.role == 'regular' %}selected{% endif %}>Куратор</option>
+                                <option value="educational_curator" {% if user and user.role == 'educational_curator' %}selected{% endif %}>Учебный куратор</option>
+                                <option value="organizational_curator" {% if user and user.role == 'organizational_curator' %}selected{% endif %}>Организационный куратор</option>
                                 <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
                                 <option value="super_admin" {% if user and user.role == 'super_admin' %}selected{% endif %}>Супер-администратор</option>
                             </select>

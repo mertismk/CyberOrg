@@ -102,6 +102,16 @@
                         </div>
                     </div>
                 </div>
+
+                {# Добавляем блок с заметкой #}
+                {% if student.notes %}
+                    <div class="mt-3">
+                        <h6 class="text-muted"><i class="fas fa-sticky-note me-1"></i>Заметка:</h6>
+                        <blockquote class="blockquote bg-light p-3 rounded-3 border-start border-primary border-3">
+                            <p class="mb-0 small student-notes">{{ student.notes }}</p>
+                        </blockquote>
+                    </div>
+                {% endif %}
             </div>
         </div>
         
@@ -562,4 +572,17 @@
         }
     });
 </script>
-{% endblock %} 
+{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Наследуем базовые стили, если нужно #}
+<style>
+    /* Стили для текста заметки */
+    .student-notes {
+        white-space: pre-line;
+        word-wrap: break-word;
+    }
+</style>
+{% endblock %}
+
+{# Убедимся, что ниже нет блока <style> или лишнего {% endblock %} #}
