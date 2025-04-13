@@ -95,7 +95,8 @@
         </button>
     </div>
 
-    {% for week_num in range(1, 6) %}
+    <!-- ВОЗВРАЩЕНО: Жесткий range(1, 5) -->
+    {% for week_num in range(1, 5) %}
         {% set planned_webinars = weeks.get(week_num, []) %}
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -317,6 +318,9 @@
                     
                     <p>📆 Подытожим ваш план по информатике на неделю:</p>
                     
+                    <!-- ИЗМЕНЕНО: СКРЫТЫЙ ЭЛЕМЕНТ ДЛЯ НЕИЗВЕСТНЫХ БАЗОВЫХ ЗАДАНИЙ -->
+                    <div id="basicTasksToStudyData" data-tasks="{{ basic_tasks_to_study|join(',') if basic_tasks_to_study is defined else '' }}" style="display: none;"></div>
+
                     <div id="webinarData" style="display: none;">
                         {% for week_num, planned_list in weeks.items() %}
                             <div class="week" data-week="{{ week_num }}">
@@ -484,20 +488,28 @@
             }
         }
         
-        // Подсчет количества вебинаров по типам
         function countWebinarsForSummary() {
             const weeksData = document.querySelectorAll('#webinarData .week');
+            
+            // ВОЗВРАЩЕНО: Инициализация для 4 недель
             let weeklyCounts = { 1: { beginner: 0, basic: 0, t26: 0, t27: 0 },
                                  2: { beginner: 0, basic: 0, t26: 0, t27: 0 },
                                  3: { beginner: 0, basic: 0, t26: 0, t27: 0 },
-                                 4: { beginner: 0, basic: 0, t26: 0, t27: 0 },
-                                 5: { beginner: 0, basic: 0, t26: 0, t27: 0 } };
+                                 4: { beginner: 0, basic: 0, t26: 0, t27: 0 } };
             let totalCounts = { beginner: 0, basic: 0, t26: 0, t27: 0 };
             let hasBeginnerInWeek1 = false;
 
+            // ИЗМЕНЕНО: Читаем НЕИЗВЕСТНЫЕ базовые задания из data-атрибута
+            const basicTasksElement = document.getElementById('basicTasksToStudyData'); // Изменен ID
+            const basicTasksString = basicTasksElement ? basicTasksElement.getAttribute('data-tasks') : '';
+            const basicTasksList = basicTasksString ? basicTasksString.split(',').map(Number) : [];
+            // ИЗМЕНЕНО: Форматируем как "(по номерам X, Y, Z)" или "(базовые)"
+            const basicTasksFormatted = basicTasksList.length > 0 ? `(по номерам ${basicTasksList.join(', ')})` : '(базовые)'; 
+
             weeksData.forEach(weekElement => {
                 const weekNum = parseInt(weekElement.getAttribute('data-week'), 10);
-                if (!weekNum || weekNum < 1 || weekNum > 5) return;
+                // ВОЗВРАЩЕНО: Проверка диапазона 1-4
+                if (!weekNum || weekNum < 1 || weekNum > 4) return;
 
                 const webinars = weekElement.querySelectorAll('.webinar');
                 webinars.forEach(webinar => {
@@ -535,104 +547,67 @@
                 return `${count} ${titleSet[index]}`;
             }
 
-            // --- Update HTML ---
+            // --- Update HTML --- 
             const resultDiv = document.getElementById('webinarCountResult');
             resultDiv.innerHTML = ''; // Clear previous content
 
             if (hasBeginnerInWeek1) {
-                // Week 1 Specific Summary
-                let week1Text = `<h6>На 1-й неделе:</h6><ul class="list-unstyled ps-3">`; // Используем ul для лучшего форматирования
+                // Week 1 Specific Summary (логика для Недели 1 без изменений)
+                let week1Text = `<h6>На 1-й неделе:</h6><ul class="list-unstyled ps-3">`;
                 const week1BeginnerCount = weeklyCounts[1].beginner;
                 const week1BasicCount = weeklyCounts[1].basic;
                 const week1T26Count = weeklyCounts[1].t26;
                 const week1T27Count = weeklyCounts[1].t27;
                 const week1OtherCount = week1BasicCount;
-
-                if (week1BeginnerCount > 0) {
-                     week1Text += `<li>✔&nbsp;${getWebinarText(week1BeginnerCount, 'ролик')} курса Python с нуля</li>`;
-                }
-                if (week1OtherCount > 0) {
-                    week1Text += `<li>✔&nbsp;${getWebinarText(week1OtherCount)} основного курса (базовые)</li>`;
-                }
-                // Добавляем отдельный пункт для T26 Недели 1
-                if (week1T26Count > 0) {
-                    week1Text += `<li>✔&nbsp;${getWebinarText(week1T26Count)} по Заданию 26</li>`;
-                }
-                // Добавляем отдельный пункт для T27 Недели 1
-                if (week1T27Count > 0) {
-                    week1Text += `<li>✔&nbsp;${getWebinarText(week1T27Count)} по Заданию 27</li>`;
-                }
-                if (week1BeginnerCount === 0 && week1OtherCount === 0 && week1T26Count === 0 && week1T27Count === 0) { // Добавили проверку T26
-                    week1Text += `<li>✔&nbsp;Нет вебинаров на этой неделе</li>`;
-                }
+                if (week1BeginnerCount > 0) { week1Text += `<li>✔&nbsp;${getWebinarText(week1BeginnerCount, 'ролик')} курса Python с нуля</li>`; }
+                if (week1OtherCount > 0) { week1Text += `<li>✔&nbsp;${getWebinarText(week1OtherCount)} основного курса ${basicTasksFormatted}</li>`; }
+                if (week1T26Count > 0) { week1Text += `<li>✔&nbsp;${getWebinarText(week1T26Count)} по Заданию 26</li>`; }
+                if (week1T27Count > 0) { week1Text += `<li>✔&nbsp;${getWebinarText(week1T27Count)} по Заданию 27</li>`; }
+                if (week1BeginnerCount === 0 && week1OtherCount === 0 && week1T26Count === 0 && week1T27Count === 0) { week1Text += `<li>✔&nbsp;Нет вебинаров на этой неделе</li>`; }
                 week1Text += `</ul>`;
                 resultDiv.innerHTML += week1Text;
 
-                // Weeks 2-5 Average Summary
-                let totalBasicW2_5 = 0;
-                let totalT26W2_5 = 0;
-                let totalT27W2_5 = 0;
-                for (let w = 2; w <= 5; w++) {
-                    totalBasicW2_5 += weeklyCounts[w].basic;
-                    totalT26W2_5 += weeklyCounts[w].t26;
-                    totalT27W2_5 += weeklyCounts[w].t27;
+                // ВОЗВРАЩЕНО: Weeks 2-4 Average Summary
+                let totalBasicW2_4 = 0;
+                let totalT26W2_4 = 0;
+                let totalT27W2_4 = 0;
+                for (let w = 2; w <= 4; w++) { 
+                    totalBasicW2_4 += weeklyCounts[w]?.basic || 0;
+                    totalT26W2_4 += weeklyCounts[w]?.t26 || 0;
+                    totalT27W2_4 += weeklyCounts[w]?.t27 || 0;
                 }
-                // Calculate average over 4 weeks
-                const avgBasicW2_5 = Math.ceil(totalBasicW2_5 / 4);
-                const avgT26W2_5 = Math.ceil(totalT26W2_5 / 4);
-                const avgT27W2_5 = Math.ceil(totalT27W2_5 / 4);
-                const totalAvgOtherW2_5 = avgBasicW2_5;
+                const numWeeksForAvg = 3; // Всегда 3 недели (2, 3, 4)
+                const avgBasicW2_4 = Math.ceil(totalBasicW2_4 / numWeeksForAvg); 
+                const avgT26W2_4 = Math.ceil(totalT26W2_4 / numWeeksForAvg);
+                const avgT27W2_4 = Math.ceil(totalT27W2_4 / numWeeksForAvg);
+                const totalAvgOtherW2_4 = avgBasicW2_4;
 
-                 let weeks2_5Text = `<h6 class="mt-2">На неделях 2-5 (в среднем):</h6><ul class="list-unstyled ps-3">`;
-                 if (totalAvgOtherW2_5 > 0) {
-                     weeks2_5Text += `<li>✔&nbsp;~${getWebinarText(totalAvgOtherW2_5)} основного курса (базовые) в неделю</li>`;
-                 }
-                 // Добавляем отдельный пункт для T26 недель 2-5
-                 if (avgT26W2_5 > 0) {
-                    weeks2_5Text += `<li>✔&nbsp;~${getWebinarText(avgT26W2_5)} по Заданию 26 в неделю</li>`;
-                 }
-                 // Добавляем отдельный пункт для T27 недель 2-5
-                 if (avgT27W2_5 > 0) {
-                    weeks2_5Text += `<li>✔&nbsp;~${getWebinarText(avgT27W2_5)} по Заданию 27 в неделю</li>`;
-                 }
-
-                 if (totalAvgOtherW2_5 === 0 && avgT26W2_5 === 0 && avgT27W2_5 === 0) { // Добавили проверку T26
-                     weeks2_5Text += `<li>✔&nbsp;Нет вебинаров основного курса на этих неделях</li>`;
-                 }
-                 weeks2_5Text += `</ul>`;
-                 resultDiv.innerHTML += weeks2_5Text;
+                // Текст для недель 2-4
+                let weeks2_4Text = `<h6 class="mt-2">На неделях 2-4 (в среднем):</h6><ul class="list-unstyled ps-3">`; 
+                if (totalAvgOtherW2_4 > 0) { weeks2_4Text += `<li>✔&nbsp;~${getWebinarText(totalAvgOtherW2_4)} основного курса ${basicTasksFormatted} в неделю</li>`; }
+                if (avgT26W2_4 > 0) { weeks2_4Text += `<li>✔&nbsp;~${getWebinarText(avgT26W2_4)} по Заданию 26 в неделю</li>`; }
+                if (avgT27W2_4 > 0) { weeks2_4Text += `<li>✔&nbsp;~${getWebinarText(avgT27W2_4)} по Заданию 27 в неделю</li>`; }
+                if (totalAvgOtherW2_4 === 0 && avgT26W2_4 === 0 && avgT27W2_4 === 0) { weeks2_4Text += `<li>✔&nbsp;Нет вебинаров основного курса на этих неделях</li>`; }
+                weeks2_4Text += `</ul>`;
+                resultDiv.innerHTML += weeks2_4Text;
 
             } else {
-                // Original Average Summary (No Beginner in Week 1 or no beginner at all)
-                const avgBasic = Math.ceil(totalCounts.basic / 5);
-                const avgT26 = Math.ceil(totalCounts.t26 / 5);
-                const avgT27 = Math.ceil(totalCounts.t27 / 5);
+                // ВОЗВРАЩЕНО: Original Average Summary (для 4 недель)
+                const numWeeksForTotalAvg = 4;
+                const avgBasic = Math.ceil(totalCounts.basic / numWeeksForTotalAvg); 
+                const avgT26 = Math.ceil(totalCounts.t26 / numWeeksForTotalAvg);
+                const avgT27 = Math.ceil(totalCounts.t27 / numWeeksForTotalAvg);
                 const totalAvgOther = avgBasic;
 
                 let avgText = `<h6>В среднем в неделю:</h6><ul class="list-unstyled ps-3">`;
-                if (totalAvgOther > 0) {
-                    avgText += `<li>✔&nbsp;~${getWebinarText(totalAvgOther)} основного курса (базовые)</li>`;
-                }
-                
-                // Добавляем отдельный пункт для T26 (среднее)
-                if (avgT26 > 0) {
-                    avgText += `<li>✔&nbsp;~${getWebinarText(avgT26)} по Заданию 26</li>`;
-                }
-                
-                // Добавляем отдельный пункт для T27 (среднее)
-                if (avgT27 > 0) {
-                    avgText += `<li>✔&nbsp;~${getWebinarText(avgT27)} по Заданию 27</li>`;
-                }
-
-                 // Check if there are *any* beginner webinars *at all*
+                if (totalAvgOther > 0) { avgText += `<li>✔&nbsp;~${getWebinarText(totalAvgOther)} основного курса ${basicTasksFormatted}</li>`; }
+                if (avgT26 > 0) { avgText += `<li>✔&nbsp;~${getWebinarText(avgT26)} по Заданию 26</li>`; }
+                if (avgT27 > 0) { avgText += `<li>✔&nbsp;~${getWebinarText(avgT27)} по Заданию 27</li>`; }
                 if (totalCounts.beginner > 0) {
-                    const avgBeginner = Math.ceil(totalCounts.beginner / 5);
+                    const avgBeginner = Math.ceil(totalCounts.beginner / numWeeksForTotalAvg); 
                     avgText += `<li>✔&nbsp;~${getWebinarText(avgBeginner, 'ролик')} курса Python с нуля</li>`;
                 }
-
-                if (totalAvgOther === 0 && totalCounts.beginner === 0) {
-                     avgText += `<li>✔&nbsp;Нет запланированных вебинаров</li>`;
-                }
+                if (totalAvgOther === 0 && totalCounts.beginner === 0 && avgT26 === 0 && avgT27 === 0) { avgText += `<li>✔&nbsp;Нет запланированных вебинаров</li>`; }
                 avgText += `</ul>`;
                 resultDiv.innerHTML += avgText;
             }
@@ -640,7 +615,7 @@
              // Always add homework line
             resultDiv.innerHTML += `<p class="mt-2">✔&nbsp;домашняя работа к каждому вебинару</p>`;
         }
-
+        
         if (document.getElementById('webinarData')) {
             countWebinarsForSummary();
         }

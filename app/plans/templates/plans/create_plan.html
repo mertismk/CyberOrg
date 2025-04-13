@@ -206,10 +206,10 @@
                         {% endif %}
 
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i> Система подобрала {{ suitable_webinars|length }} вебинаров на ближайшие 5 недель на основе целевого балла и текущего уровня ученика (с учетом квот по умолчанию).
+                            <i class="fas fa-info-circle me-2"></i> Система подобрала {{ suitable_webinars|length }} вебинаров на ближайшие 4 недели на основе целевого балла и текущего уровня ученика (с учетом квот по умолчанию).
                         </div>
                         <div class="recommended-webinars">
-                            {% for week_num in range(1, 6) %}
+                            {% for week_num in range(1, 5) %}
                             <div class="week-container mb-4 border rounded p-3" data-week="{{ week_num }}">
                                 <h5 class="week-title border-bottom pb-2 mb-3">Неделя {{ week_num }}</h5>
                                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 week-content">
@@ -275,7 +275,7 @@
                                                     </div>                                                    
                                                     <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
                                                         <select class="form-select form-select-sm week-select" name="week_numbers_{{ webinar.id }}" style="width: 120px;">
-                                                            {% for week in range(1, 6) %}
+                                                            {% for week in range(1, 5) %}
                                                                 <option value="{{ week }}" {% if week == week_num %}selected{% endif %}>Неделя {{ week }}</option>
                                                             {% endfor %}
                                                         </select>
@@ -458,7 +458,7 @@
                                             </div>
                                             <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
                                                 <select class="form-select form-select-sm week-select" name="week_numbers_{{ webinar.id }}" style="width: 120px;">
-                                                    {% for week in range(1, 6) %}
+                                                    {% for week in range(1, 5) %}
                                                         <option value="{{ week }}">Неделя {{ week }}</option>
                                                     {% endfor %}
                                                 </select>

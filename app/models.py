@@ -5,6 +5,11 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
+# Константы для ролей
+ROLE_EDUCATIONAL_CURATOR = 'educational_curator'
+ROLE_ORGANIZATIONAL_CURATOR = 'organizational_curator'
+ROLE_ADMIN = 'admin'
+ROLE_SUPER_ADMIN = 'super_admin'
 
 # Модель для вебинаров
 class Webinar(db.Model):
@@ -17,6 +22,7 @@ class Webinar(db.Model):
     )
     is_programming = db.Column(db.Boolean, default=False)  # Решение прогой
     is_manual = db.Column(db.Boolean, default=False)  # Решение руками
+    is_excel = db.Column(db.Boolean, default=False)  # Решение в Excel
     homework_number = db.Column(db.Integer)
     category = db.Column(db.Integer)  # 1: теория, 2: практика, 3: разбор ДЗ
     for_beginners = db.Column(db.Boolean, default=False)  # Курс Python с нуля
@@ -37,9 +43,25 @@ class Webinar(db.Model):
 
     planned_in = db.relationship("PlannedWebinar", back_populates="webinar")
     watched_by = db.relationship("WatchedWebinar", back_populates="webinar")
+    tasks = db.relationship(
+        "WebinarTask", backref="webinar", cascade="all, delete-orphan"
+    )
 
     # Добавляем именованное ограничение уникальности для URL
     __table_args__ = (db.UniqueConstraint("url", name="uq_webinar_url"),)
+
+
+# Модель для задач к вебинару
+class WebinarTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)  # Текст задачи
+    webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False
+    )  # ID пользователя, добавившего задачу
+
+    created_by = db.relationship("User")
 
 
 # Модель для номеров заданий
@@ -157,9 +179,8 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    role = db.Column(
-        db.String(20), nullable=False, default="regular"
-    )  # 'regular', 'admin', 'super_admin'
+    # Обновляем поле role
+    role = db.Column(db.String(50), nullable=False, default=ROLE_ORGANIZATIONAL_CURATOR)
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
@@ -171,16 +192,28 @@ class User(UserMixin, db.Model):
 
     @property
     def is_admin(self):
-        return self.role in ["admin", "super_admin"]
+        # Только admin и super_admin являются администраторами
+        return self.role in [ROLE_ADMIN, ROLE_SUPER_ADMIN]
 
     @property
     def is_super_admin(self):
-        return self.role == "super_admin"
+        return self.role == ROLE_SUPER_ADMIN
+
+    # Новые свойства для удобства
+    @property
+    def is_organizational_curator(self):
+        return self.role == ROLE_ORGANIZATIONAL_CURATOR
+
+    @property
+    def is_educational_curator(self):
+        return self.role == ROLE_EDUCATIONAL_CURATOR
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
+        if not self.password_hash:
+            return False
         return check_password_hash(self.password_hash, password)
 
 

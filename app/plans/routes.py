@@ -157,7 +157,6 @@ def view_study_plan(plan_id):
     ).get_or_404(plan_id)
     student = plan.student
 
-    # Организация вебинаров по неделям
     webinars_by_week = {}
     for planned in plan.planned_webinars:
         week = planned.week_number
@@ -210,15 +209,18 @@ def view_study_plan(plan_id):
         required_tasks.discard(26)
         required_tasks.discard(27)
 
+    # Создаем список НЕИЗВЕСТНЫХ базовых заданий (1-25) для отображения в скобках
+    basic_tasks_to_study = sorted([t for t in required_tasks if t <= 25 and t not in known_task_numbers])
+
     week_dates = {}
     if plan.created_at:
         start_date = plan.created_at
-        for i in range(1, 6):
+        for i in range(1, 5):
             week_start = start_date + timedelta(days=(i-1)*7)
             week_end = week_start + timedelta(days=6)
             week_dates[i] = {'start': week_start, 'end': week_end}
 
-    # Передача данных в шаблон (без флагов is_first_plan и show_deferral_message_tX)
+    # Передача данных в шаблон
     return render_template(
         "plans/view_plan.html",
         plan=plan,
@@ -227,8 +229,10 @@ def view_study_plan(plan_id):
         now=now,
         known_task_numbers=known_task_numbers,
         timedelta=timedelta,
-        required_tasks=sorted(list(required_tasks)), # Используем рассчитанные display-задания
+        required_tasks=sorted(list(required_tasks)),
         week_dates=week_dates,
+        # Передаем список НЕИЗВЕСТНЫХ базовых заданий
+        basic_tasks_to_study=basic_tasks_to_study 
     )
 
 
@@ -259,12 +263,11 @@ def edit_study_plan(plan_id):
                  # Получаем номер недели из соответствующего поля week_numbers_webinarId
                 week_number_str = request.form.get(f"week_numbers_{webinar_id}")
                 try:
-                    # Пытаемся преобразовать в число, по умолчанию 1, если не указано или ошибка
                     week_number = int(week_number_str) if week_number_str else 1
-                    if not 1 <= week_number <= 5: # Проверка диапазона недель
-                         week_number = 1
+                    if not 1 <= week_number <= 4:
+                         week_number = 1 
                 except (ValueError, TypeError):
-                    week_number = 1 # Ставим 1 по умолчанию при любой ошибке
+                    week_number = 1
 
                 planned_webinar = PlannedWebinar(
                     study_plan_id=plan.id,
@@ -281,7 +284,7 @@ def edit_study_plan(plan_id):
         flash("План обучения обновлен!", "success")
         return redirect(url_for("plans.view_study_plan", plan_id=plan.id))
 
-    # Данные для формы редактирования
+    # Данные для формы редактирования (GET)
     # Загружаем planned_webinars с вебинарами, используя явный запрос вместо свойства
     current_planned_webinars = PlannedWebinar.query.options(
         db.joinedload(PlannedWebinar.webinar).joinedload(Webinar.task_numbers)

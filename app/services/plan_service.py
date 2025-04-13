@@ -47,7 +47,7 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
     print(f"Weekly hours budget: {hours_per_week}")
 
     webinar_weeks = {} # Словарь для хранения недели каждого вебинара {webinar_id: week_num}
-    weekly_hours_summary = {w: 0.0 for w in range(1, 6)} # Часы по неделям
+    weekly_hours_summary = {w: 0.0 for w in range(1, 5)} # Часы по неделям
     selected_beginner_webinars = [] # Отдельно для beginner (всегда в Неделю 1)
     selected_regular_webinars = []  # Для всех остальных вебинаров
     assigned_webinar_ids = set() # Чтобы не дублировать вебинары
@@ -240,7 +240,7 @@ def recommend_webinars(student, known_task_numbers, watched_webinar_ids,
     assigned_t26_count = 0 # Счетчик добавленных T26
     assigned_t27_count = 0 # Счетчик добавленных T27
 
-    for week_num in range(1, 6):
+    for week_num in range(1, 5):
         print(f"\n--- Неделя {week_num} ---")
         hours_filled_this_week = weekly_hours_summary[week_num]
         

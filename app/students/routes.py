@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload  
+from sqlalchemy import or_
 
 from app import db 
 from app.models import (
@@ -20,7 +21,26 @@ from .forms import StudentForm
 def students_list():
     if current_user.is_educational_curator:
         abort(403)
-    students = Student.query.all()
+    
+    # Получаем поисковый запрос
+    query = request.args.get('q', '').strip()
+    
+    # Базовый запрос к ученикам
+    students_query = Student.query
+
+    # Если есть поисковый запрос, фильтруем
+    if query:
+        search_term = f"%{query}%"
+        students_query = students_query.filter(
+            or_(
+                Student.first_name.ilike(search_term),
+                Student.last_name.ilike(search_term),
+                Student.platform_id.ilike(search_term)
+            )
+        )
+        
+    students = students_query.order_by(Student.last_name, Student.first_name).all()
+
     # Шаблон students/templates/students/students.html
     return render_template("students/students.html", students=students)
 

@@ -2,7 +2,10 @@
 
 {% block title %}CyberOrg - Вебинары{% endblock %}
 
+{% from "_form_macros.html" import render_field %}
+
 {% block content %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="fw-bold">Вебинары</h1>
     <div class="d-flex align-items-center gap-3">
@@ -12,18 +15,31 @@
     </div>
 </div>
 
-{% if webinars %}
+{# --- Обновленный блок поиска и фильтров --- #}
     <div class="webinar-filters mb-4">
-            <!-- Поиск и фильтры -->
+    <!-- Поиск и основные фильтры -->
         <div class="row mb-3">
-            <div class="col-md-4 mb-3 mb-md-0">
+        <div class="col-md-6 mb-3 mb-md-0">
+            {# Форма поиска (без кнопки submit) #}
+            <form action="{{ url_for('webinars.webinars_list') }}" method="get" class="mb-0" id="webinarSearchForm">
                     <div class="input-group">
                     <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" id="webinarFilter" class="form-control border-start-0" placeholder="Поиск вебинаров...">
+                    {# Используем search_query для сохранения значения поля #}
+                    {# Добавляем span для градиента #}
+                    <input type="search" id="webinarSearch" class="form-control border-start-0" name="q" placeholder="Поиск по вебинарам..." value="{{ search_query }}">
+                    {# Убираем кнопку Найти #}
+                    {# <button class="btn btn-primary" type="submit">Найти</button> #}
+                    {% if search_query %}
+                        <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-secondary" title="Сбросить поиск">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    {% endif %}
                 </div>
+            </form>
                 </div>
-                <div class="col-md-8">
-                <div class="filter-buttons">
+        <div class="col-md-6">
+            {# Основные фильтры курса - теперь работают на клиенте поверх поиска #}
+            <div class="filter-buttons course-category-filter">
                     <button type="button" class="filter-btn active" data-filter="all">Все</button>
                     <button type="button" class="filter-btn" data-filter="for_beginners">Python с нуля</button>
                     <button type="button" class="filter-btn" data-filter="for_basic">Основной курс</button>
@@ -36,7 +52,7 @@
                 </div>
             </div>
             
-            <!-- Расширенные фильтры -->
+    <!-- Расширенные фильтры (работают на клиенте) -->
         <div class="card border-0 mb-0">
             <div class="card-header bg-white">
                 <a href="#advancedFilters" data-bs-toggle="collapse" class="text-decoration-none text-dark d-flex justify-content-between align-items-center">
@@ -50,7 +66,7 @@
                             <!-- Фильтр по дате -->
                             <div class="col-md-6">
                                 <label class="form-label"><i class="fas fa-calendar-alt me-1"></i> По дате</label>
-                            <div class="filter-buttons w-100">
+                        <div class="filter-buttons date-filter w-100">
                                 <button type="button" class="filter-btn date-filter active" data-filter="all">Все</button>
                                 <button type="button" class="filter-btn date-filter" data-filter="new">Новые</button>
                                 <button type="button" class="filter-btn date-filter" data-filter="old">Старые</button>
@@ -60,17 +76,18 @@
                             <!-- Фильтр по типу решения -->
                             <div class="col-md-6">
                                 <label class="form-label"><i class="fas fa-code me-1"></i> Тип решения</label>
-                            <div class="filter-buttons w-100">
+                        <div class="filter-buttons solution-filter w-100">
                                 <button type="button" class="filter-btn solution-filter active" data-filter="all">Все</button>
                                 <button type="button" class="filter-btn solution-filter" data-filter="is_programming">Программирование</button>
                                 <button type="button" class="filter-btn solution-filter" data-filter="is_manual">Ручное решение</button>
+                                <button type="button" class="filter-btn solution-filter" data-filter="is_excel">Excel</button>
                             </div>
                             </div>
                             
                             <!-- Фильтр по категории -->
                             <div class="col-md-6">
                                 <label class="form-label"><i class="fas fa-tags me-1"></i> Категория</label>
-                            <div class="filter-buttons w-100">
+                        <div class="filter-buttons category-filter w-100">
                                 <button type="button" class="filter-btn category-filter active" data-filter="all">Все</button>
                                 <button type="button" class="filter-btn category-filter" data-filter="category-1">Обязательный</button>
                                 <button type="button" class="filter-btn category-filter" data-filter="category-2">Повторение</button>
@@ -101,8 +118,12 @@
                 </div>
             </div>
             
-            <!-- Плиточное отображение вебинаров -->
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+{# --- Конец обновленного блока --- #}
+
+{# Плиточное отображение вебинаров #}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="webinar-grid-container">
+    {# Возвращаем оригинальный цикл вместо include #}
+    {% if webinars %}
                 {% for webinar in webinars %}
                     <div class="col webinar-item 
                         {% if webinar.for_beginners %}for_beginners{% endif %}
@@ -114,6 +135,7 @@
                         {% if webinar.for_minisnap %}for_minisnap{% endif %}
                         {% if webinar.is_programming %} is_programming{% endif %}
                         {% if webinar.is_manual %} is_manual{% endif %}
+                        {% if webinar.is_excel %} is_excel{% endif %}
                         {% if webinar.category %} category-{{ webinar.category }}{% endif %}
                         {% for task in webinar.task_numbers %} task-{{ task.number }}{% endfor %}
                         {% if webinar.date %} date-{{ webinar.date.strftime('%Y-%m-%d') }}{% endif %}
@@ -167,6 +189,8 @@
                                 <span class="badge bg-primary me-1 mb-1">Программирование</span>
                                     {% elif webinar.is_manual %}
                                 <span class="badge bg-warning text-dark me-1 mb-1">Ручное решение</span>
+                                    {% elif webinar.is_excel %}
+                                <span class="badge bg-success me-1 mb-1">Excel</span>
                                     {% endif %}
                                 </div>
                                 
@@ -205,33 +229,36 @@
                             </div>
                             
                             <div class="card-footer bg-transparent">
-                                <div class="d-grid gap-2">
+                                <div class="d-grid gap-2 mb-3">
                                     <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary">
                                         <i class="fas fa-external-link-alt me-2"></i> Перейти к вебинару
                                     </a>
                                     <button class="btn btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}">
                                         <i class="fas fa-link me-2"></i> Скопировать ссылку
                                     </button>
+                                    {# Новая кнопка-ссылка на страницу задач #}
+                                    <a href="{{ url_for('.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-outline-success">
+                                        <i class="fas fa-tasks me-2"></i> Задачи ({{ webinar.tasks|length }})
+                                    </a>
+                                    {# Кнопка для сворачивания комментариев #}
                                     <button class="btn btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComments{{ webinar.id }}" aria-expanded="false" aria-controls="collapseComments{{ webinar.id }}">
                                         <i class="fas fa-comments me-2"></i> Комментарии ({{ webinar.comments|length }})
                                     </button>
                                 </div>
-                                
-                                <div class="collapse mt-2" id="collapseComments{{ webinar.id }}" aria-labelledby="headingComments{{ webinar.id }}" data-bs-parent="#webinarAccordion{{ webinar.id }}">
-                                    <div class="card card-body bg-light">
+
+                                {# Возвращаем блок Комментариев (теперь не панель вкладки, а collapse) #}
+                                <div class="collapse mt-2" id="collapseComments{{ webinar.id }}"> {# Вернули collapse #}
+                                    <div class="card card-body bg-light border-0">
                                         <!-- Форма добавления комментария -->
-                                        <div class="mt-3">
-                                            <h6><i class="fas fa-comments me-1"></i> Комментарии:</h6>
-                                            <form action="{{ url_for('webinars.add_webinar_comment', webinar_id=webinar.id) }}" method="post" class="mb-3">
-                                                <div class="input-group">
-                                                    <input type="text" name="comment_text" class="form-control form-control-sm" placeholder="Добавить комментарий..." required>
-                                                    <button class="btn btn-primary" type="submit">
-                                                        <i class="fas fa-paper-plane"></i>
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                        
+                                        <form action="{{ url_for('webinars.add_webinar_comment', webinar_id=webinar.id) }}" method="post" class="mb-3">
+                                            <div class="input-group">
+                                                <input type="text" name="comment_text" class="form-control form-control-sm" placeholder="Добавить комментарий..." required>
+                                                <button class="btn btn-sm btn-primary" type="submit">
+                                                    <i class="fas fa-paper-plane"></i>
+                                                </button>
+                                            </div>
+                                        </form>
+
                                         <!-- Список комментариев -->
                                         {% if webinar.comments %}
                                             {% for comment in webinar.comments|sort(attribute='created_at', reverse=true) %}
@@ -265,7 +292,7 @@
 
                                 {# Кнопки редактирования/удаления для админов #}
                                 {% if current_user.is_admin %}
-                                <hr class="my-2">
+                                <hr class="my-3">
                                 <div class="d-flex justify-content-end gap-2">
                                     <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-warning" title="Редактировать">
                                         <i class="fas fa-edit"></i>
@@ -282,20 +309,36 @@
                         </div>
                     </div>
                 {% endfor %}
-    </div>
 {% else %}
+        <div class="col-12 no-results-message-initial">
     <div class="alert alert-info text-center">
         <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-3" style="max-height: 150px;">
-        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> В базе данных нет вебинаров</h5>
-        <p>Импортируйте их из Excel-файла, нажав на кнопку выше.</p>
+                <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> 
+                {% if search_query %}
+                    Вебинары по запросу "{{ search_query }}" не найдены
+                {% else %}
+                    В базе данных нет вебинаров
+                {% endif %}
+                </h5>
+                <p>
+                {% if search_query %}
+                    Попробуйте изменить запрос или <a href="{{ url_for('webinars.webinars_list') }}">сбросить поиск</a>.
+                {% elif current_user.is_admin %}
+                    Импортируйте их из Excel-файла, нажав на кнопку выше.
+                {% else %}
+                    Обратитесь к администратору для добавления вебинаров.
+                {% endif %}
+                </p>
+            </div>
     </div>
 {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Обработчик ошибок загрузки изображений
+        // Обработчик ошибок загрузки изображений (можно оставить для вебинаров, не найденных локально)
         document.querySelectorAll('.webinar-cover img').forEach(function(img) {
             img.onerror = function() {
                 this.src = "{{ url_for('static', filename='images/sorry.png') }}";
@@ -303,49 +346,42 @@
             };
         });
         
-        // Текущее состояние фильтров
+        // Текущее состояние КЛИЕНТСКИХ фильтров
         const activeFilters = {
             courseCategory: 'all',
             date: 'all',
             solution: 'all',
             category: 'all',
-            tasks: [] // Для множественного выбора заданий
+            tasks: []
         };
         
-        // Элементы DOM
-        const filterInput = document.getElementById('webinarFilter');
+        // Элементы DOM для КЛИЕНТСКИХ фильтров
         const cardsContainer = document.querySelector('.row.g-4'); // Контейнер карточек
-        const filterButtons = document.querySelectorAll('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter)'); // Основные кнопки курса
+        const courseCategoryFilterButtons = document.querySelectorAll('.course-category-filter .filter-btn');
         const dateFilterButtons = document.querySelectorAll('.date-filter');
         const solutionFilterButtons = document.querySelectorAll('.solution-filter');
         const categoryFilterButtons = document.querySelectorAll('.category-filter');
         const taskFilterSelect = document.getElementById('taskFilterSelect');
         const resetButton = document.getElementById('resetAllFilters');
 
-        // Функция для копирования ссылок
+        // Функция для копирования ссылок (остается без изменений)
         function setupCopyButtons() {
             document.querySelectorAll('.copy-link-btn').forEach(button => {
-                button.removeEventListener('click', copyLinkHandler); // Удаляем старый обработчик, если есть
+                button.removeEventListener('click', copyLinkHandler);
                 button.addEventListener('click', copyLinkHandler);
             });
         }
-
-        // Обработчик для копирования ссылок
         function copyLinkHandler(e) {
             e.preventDefault();
             const url = this.getAttribute('data-url');
             if (!url) return;
-            
             const originalText = this.innerHTML;
-            
-            // Создаем временный элемент для копирования
             const tempInput = document.createElement('input');
             tempInput.style.position = 'absolute';
             tempInput.style.left = '-1000px';
             tempInput.value = url;
             document.body.appendChild(tempInput);
             tempInput.select();
-            
             try {
                 document.execCommand('copy');
                 this.innerHTML = '<i class="fas fa-check me-2"></i>Скопировано!';
@@ -357,89 +393,51 @@
                 this.classList.remove('btn-outline-secondary');
                 this.classList.add('btn-danger');
             }
-            
             document.body.removeChild(tempInput);
-            
             setTimeout(() => {
                 this.innerHTML = originalText;
                 this.classList.remove('btn-success', 'btn-danger');
                 this.classList.add('btn-outline-secondary');
             }, 1500);
         }
-
-        // Инициализируем обработчики копирования при загрузке страницы
         setupCopyButtons();
 
-        // Фильтрация по тексту
-        if (filterInput) {
-            filterInput.addEventListener('keyup', function() {
-                applyFiltersAndSort();
+        // --- Инициализация и обработка КЛИЕНТСКИХ фильтров --- 
+
+        // Привязываем обработчики к кнопкам фильтров
+        function setupFilterButtons(buttons, filterKey) {
+            buttons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+                    buttons.forEach(btn => btn.classList.remove('active'));
+                    if (filterKey === 'courseCategory') { // Особая стилизация для кнопок курса
+                         buttons.forEach(btn => btn.classList.add('btn-outline-primary'));
+                         buttons.forEach(btn => btn.classList.remove('btn-primary'));
+                this.classList.remove('btn-outline-primary');
+                         this.classList.add('btn-primary');
+                    }
+                this.classList.add('active');
+                    activeFilters[filterKey] = filter;
+                    applyClientFiltersAndSort();
+                });
             });
         }
-        
-        // Фильтрация по основным кнопкам курса
-        filterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                filterButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
-                filterButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
-                this.classList.remove('btn-outline-primary');
-                this.classList.add('active', 'btn-primary');
-                activeFilters.courseCategory = filter;
-                applyFiltersAndSort();
-            });
-        });
-        
-        // Фильтрация по дате
-        dateFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                // Убираем active только у кнопок этой группы
-                dateFilterButtons.forEach(btn => btn.classList.remove('active')); 
-                this.classList.add('active');
-                activeFilters.date = filter;
-                applyFiltersAndSort();
-            });
-        });
-        
-        // Фильтрация по типу решения
-        solutionFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                // Убираем active только у кнопок этой группы
-                solutionFilterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                activeFilters.solution = filter;
-                applyFiltersAndSort();
-            });
-        });
-        
-        // Фильтрация по категории
-        categoryFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                // Убираем active только у кнопок этой группы
-                categoryFilterButtons.forEach(btn => btn.classList.remove('active')); 
-                this.classList.add('active');
-                activeFilters.category = filter;
-                applyFiltersAndSort();
-            });
-        });
-        
-        // Фильтрация по номерам заданий (ОДИНОЧНЫЙ ВЫБОР через SELECT)
+
+        setupFilterButtons(courseCategoryFilterButtons, 'courseCategory');
+        setupFilterButtons(dateFilterButtons, 'date');
+        setupFilterButtons(solutionFilterButtons, 'solution');
+        setupFilterButtons(categoryFilterButtons, 'category');
+
+        // Фильтрация по номерам заданий (Select)
         if (taskFilterSelect) {
             taskFilterSelect.addEventListener('change', function() {
                 const filter = this.value;
-                if (filter === 'all') {
-                    activeFilters.tasks = [];
-                } else {
-                    activeFilters.tasks = [filter];
-                }
-                applyFiltersAndSort();
+                activeFilters.tasks = (filter === 'all') ? [] : [filter];
+                applyClientFiltersAndSort();
             });
         }
-        
-        // Кнопка сброса всех фильтров
+
+        // Кнопка сброса КЛИЕНТСКИХ фильтров
         if (resetButton) {
             resetButton.addEventListener('click', function() {
                 activeFilters.courseCategory = 'all';
@@ -448,11 +446,8 @@
                 activeFilters.category = 'all';
                 activeFilters.tasks = [];
 
-                if (filterInput) {
-                    filterInput.value = '';
-                }
-
-                filterButtons.forEach(btn => {
+                // Сбрасываем кнопки курса
+                courseCategoryFilterButtons.forEach(btn => {
                     btn.classList.remove('active', 'btn-primary');
                     btn.classList.add('btn-outline-primary');
                     if (btn.getAttribute('data-filter') === 'all') {
@@ -460,87 +455,57 @@
                         btn.classList.remove('btn-outline-primary');
                     }
                 });
-
-                dateFilterButtons.forEach(btn => {
+                // Сбрасываем остальные кнопки
+                [dateFilterButtons, solutionFilterButtons, categoryFilterButtons].forEach(group => {
+                     group.forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('data-filter') === 'all') {
                         btn.classList.add('active');
                     }
                 });
-
-                solutionFilterButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active');
-                    }
                 });
-
-                categoryFilterButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active');
-                    }
-                });
-
+                // Сбрасываем select
                 if (taskFilterSelect) {
                     taskFilterSelect.value = 'all';
                 }
 
-                applyFiltersAndSort();
+                applyClientFiltersAndSort();
             });
         }
         
-        // Функция применения всех фильтров И СОРТИРОВКИ
-        function applyFiltersAndSort() {
+        // Функция применения КЛИЕНТСКИХ фильтров И СОРТИРОВКИ
+        function applyClientFiltersAndSort() {
             if (!cardsContainer) return;
 
-            if (!window.originalCards || window.originalCards.length === 0) {
-                window.originalCards = Array.from(document.querySelectorAll('.webinar-item'));
-            }
-            
-            const allCards = window.originalCards.map(card => card.cloneNode(true));
-            const searchText = filterInput ? filterInput.value.toLowerCase() : '';
+            // Всегда берем карточки, которые сейчас видны в DOM (уже отфильтрованы сервером)
+            const currentCards = Array.from(cardsContainer.querySelectorAll('.webinar-item')); 
 
-            // ФИЛЬТРАЦИЯ
-            const filteredCards = [];
-            
-            allCards.forEach(card => {
+            // КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ
+            currentCards.forEach(card => {
                 let shouldShow = true;
-                const cardText = card.textContent.toLowerCase();
                 const cardClasses = Array.from(card.classList);
                 
-                // 1. Текстовый поиск
-                if (searchText && !cardText.includes(searchText)) {
-                    shouldShow = false;
-                }
-
-                // 2. Категория курса
-                if (shouldShow && activeFilters.courseCategory !== 'all') {
+                // 1. Категория курса
+                if (activeFilters.courseCategory !== 'all') {
                     if (!cardClasses.some(cls => cls.includes(activeFilters.courseCategory))) {
                         shouldShow = false;
                     }
                 }
-
-                // 3. Тип решения
+                // 2. Тип решения
                 if (shouldShow && activeFilters.solution !== 'all') {
                     if (!cardClasses.some(cls => cls.includes(activeFilters.solution))) {
                         shouldShow = false;
                     }
                 }
-
-                // 4. Категория обязательности
+                // 3. Категория обязательности
                 if (shouldShow && activeFilters.category !== 'all') {
                     if (!cardClasses.some(cls => cls.includes(activeFilters.category))) {
                         shouldShow = false;
                     }
                 }
-
-                // 5. Задания
+                // 4. Задания
                 if (shouldShow && activeFilters.tasks.length > 0) {
-                    const cardTaskClasses = cardClasses
-                        .filter(cls => cls.includes('task-'))
-                        .map(cls => cls.trim());
-                    
+                    const cardTaskClasses = cardClasses.filter(cls => cls.includes('task-')).map(cls => cls.trim());
                     let hasAnyTask = false;
                     for (const task of activeFilters.tasks) {
                         if (cardTaskClasses.some(cls => cls === task)) {
@@ -553,12 +518,12 @@
                     }
                 }
 
-                if (shouldShow) {
-                    filteredCards.push(card);
-                }
+                // Показываем или скрываем карточку
+                card.style.display = shouldShow ? '' : 'none';
             });
 
-            // СОРТИРОВКА
+            // СОРТИРОВКА (Применяем к видимым карточкам)
+            const visibleCards = Array.from(cardsContainer.querySelectorAll('.webinar-item:not([style*="display: none"]) '));
             const extractDate = (card) => {
                 const dateClasses = Array.from(card.classList).filter(cls => cls.includes('date-'));
                 if (dateClasses.length > 0) {
@@ -566,62 +531,132 @@
                     try {
                         const date = new Date(dateStr);
                         return isNaN(date.getTime()) ? null : date;
-                    } catch(e) {
-                        return null;
-                    }
+                    } catch(e) { return null; }
                 }
                 return null;
             };
 
-            filteredCards.sort((a, b) => {
+            visibleCards.sort((a, b) => {
                 const dateA = extractDate(a);
                 const dateB = extractDate(b);
                 if (!dateA && !dateB) return 0;
-                if (!dateA) return 1;
-                if (!dateB) return -1;
+                if (!dateA) return 1; // Вебинары без даты идут в конец при сортировке по старым
+                if (!dateB) return -1; // Вебинары без даты идут в начало при сортировке по новым
                 return activeFilters.date === 'new' ? dateB - dateA : dateA - dateB;
             });
             
-            // ПЕРЕСТРАИВАЕМ DOM
-            while (cardsContainer.firstChild) {
-                cardsContainer.removeChild(cardsContainer.firstChild);
-            }
-            
-            if (filteredCards.length === 0) {
-                const noResultsMessage = document.createElement('div');
-                noResultsMessage.className = 'col-12 text-center my-5';
+            // ПЕРЕСТРАИВАЕМ DOM только для отсортированных видимых карточек
+            visibleCards.forEach(card => cardsContainer.appendChild(card));
+
+            // Проверяем, остались ли видимые карточки, и показываем сообщение
+            const noVisibleCards = cardsContainer.querySelector('.webinar-item:not([style*="display: none"]) ') === null;
+            let noResultsMessage = cardsContainer.querySelector('.no-results-message');
+
+            if (noVisibleCards && !noResultsMessage) {
+                noResultsMessage = document.createElement('div');
+                noResultsMessage.className = 'col-12 text-center my-5 no-results-message'; // Добавляем класс
                 noResultsMessage.innerHTML = `
                     <div class="alert alert-info">
                         <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет результатов" class="img-fluid mb-3" style="max-height: 150px;">
                         <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> Нет вебинаров</h5>
-                        <p>Попробуйте изменить фильтры или поисковый запрос.</p>
-                        <button class="btn btn-sm btn-outline-primary ms-3" id="resetFiltersBtn">Сбросить фильтры</button>
+                        <p>Попробуйте изменить фильтры или <a href="{{ url_for('webinars.webinars_list') }}">сбросить поиск</a>.</p>
+                        <button class="btn btn-sm btn-outline-primary ms-3" id="resetClientFiltersBtn">Сбросить клиентские фильтры</button>
                     </div>
                 `;
                 cardsContainer.appendChild(noResultsMessage);
-                document.getElementById('resetFiltersBtn').addEventListener('click', function() {
+                document.getElementById('resetClientFiltersBtn').addEventListener('click', function() {
                     if (resetButton) resetButton.click();
                 });
-            } else {
-                filteredCards.forEach(card => {
-                    cardsContainer.appendChild(card);
-                    
-                    // Восстанавливаем обработчики ошибок для новых изображений после фильтрации
-                    card.querySelectorAll('.webinar-cover img').forEach(function(img) {
-                        img.onerror = function() {
-                            this.src = "{{ url_for('static', filename='images/sorry.png') }}";
-                            this.classList.add('fallback-img');
-                        };
-                    });
-                });
+            } else if (!noVisibleCards && noResultsMessage) {
+                noResultsMessage.remove(); // Удаляем сообщение, если карточки появились
             }
-            
-            // Повторно устанавливаем обработчики для кнопок копирования после фильтрации
+
+            // Повторно устанавливаем обработчики для кнопок копирования
             setupCopyButtons();
         }
+
+        // --- Логика для "живого" поиска --- 
+        const searchInput = document.getElementById('webinarSearch');
+        const gridContainer = document.getElementById('webinar-grid-container');
+        let searchTimeout;
+
+        if (searchInput && gridContainer) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                
+                searchTimeout = setTimeout(() => {
+                    // Добавляем класс 'loading' для визуальной обратной связи
+                    gridContainer.classList.add('loading');
+                    
+                    fetch(`/webinars/filter?q=${encodeURIComponent(query)}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            return response.text();
+                        })
+                        .then(html => {
+                            // Парсим полученный HTML
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            // Находим новый контейнер с карточками в полученном HTML
+                            const newGridContent = doc.getElementById('webinar-grid-container');
+                            
+                            if (newGridContent) {
+                                // Заменяем содержимое старого контейнера на содержимое нового
+                                gridContainer.innerHTML = newGridContent.innerHTML;
+                            } else {
+                                // Если контейнер не найден в ответе, показываем ошибку или пустое состояние
+                                gridContainer.innerHTML = '<div class="col-12 alert alert-warning">Не удалось обновить список вебинаров.</div>';
+                                console.error("Контейнер #webinar-grid-container не найден в ответе от /webinars/filter");
+                            }
+                            
+                            // Повторно инициализируем кнопки копирования и обработчики ошибок изображений
+                            setupCopyButtons();
+                            // Добавляем повторный вызов клиентской фильтрации/сортировки
+                            applyClientFiltersAndSort(); 
+                        })
+                        .catch(error => {
+                            console.error('Ошибка при получении отфильтрованных вебинаров:', error);
+                            gridContainer.innerHTML = '<div class="col-12 alert alert-danger">Ошибка загрузки вебинаров. Попробуйте позже.</div>';
+                        })
+                        .finally(() => {
+                             // Удаляем класс 'loading' 
+                             gridContainer.classList.remove('loading');
+                        });
+                }, 300); // Задержка в 300 мс перед отправкой запроса
+            });
+        }
         
-        activeFilters.date = 'old';
-        applyFiltersAndSort();
+        // --- Стилизация плейсхолдера градиентом --- 
+        function applyPlaceholderStyle() {
+             if (searchInput && searchInput.value === '' && searchInput.placeholder === 'Поиск по вебинарам...') {
+                  // Этот метод не сработает для градиента, используем трюк с псевдоэлементом или JS для стилизации
+                  // Просто добавим класс для примера, стили должны быть в CSS
+                  // searchInput.classList.add('smart-search-placeholder'); // Не сработает как ожидается
+                  
+                  // Более надежный, но сложный способ - создать div поверх input для плейсхолдера
+                  // или использовать JS для изменения стилей при фокусе/блюре. 
+                  // Пока оставим без градиентного плейсхолдера, т.к. это усложнит код.
+                  
+                  // Вместо градиента, можно просто сделать текст фиолетовым:
+                  searchInput.style.setProperty('--placeholder-color', '#6a11cb'); // Фиолетовый
+             } else {
+                 searchInput.style.setProperty('--placeholder-color', ''); // Сброс цвета
+             }
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', applyPlaceholderStyle);
+            searchInput.addEventListener('focus', applyPlaceholderStyle);
+            searchInput.addEventListener('blur', applyPlaceholderStyle);
+            applyPlaceholderStyle(); // Применить при загрузке
+        }
+
+        // --- Применяем сортировку по умолчанию при загрузке --- 
+        activeFilters.date = 'old'; // Сортировка по старым по умолчанию
+        applyClientFiltersAndSort();
     });
 </script>
 {% endblock %}
@@ -660,7 +695,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.4);
+        /* background: rgba(0, 0, 0, 0.4); */ /* Отключаем затемнение */
         z-index: 1;
     }
     
@@ -704,6 +739,40 @@
     
     .fallback-img {
         opacity: 0.7;
+    }
+    
+    .webinar-task-text {
+        white-space: pre-line; /* Сохраняем переносы строк и переносим текст */
+        word-wrap: break-word; /* Дополнительно для переноса очень длинных слов */
+    }
+    
+    /* Стиль для индикатора загрузки */
+    #webinar-grid-container.loading {
+        opacity: 0.5;
+        pointer-events: none; /* Блокируем взаимодействие во время загрузки */
+    }
+    
+    /* Стиль для плейсхолдера (простой цвет) */
+    #webinarSearch::placeholder {
+      color: var(--placeholder-color, #6c757d); /* Используем переменную или дефолтный серый */
+      opacity: 1; /* Firefox */
+    }
+    #webinarSearch:-ms-input-placeholder { /* Internet Explorer 10-11 */
+     color: var(--placeholder-color, #6c757d);
+    }
+    #webinarSearch::-ms-input-placeholder { /* Microsoft Edge */
+     color: var(--placeholder-color, #6c757d);
+    }
+</style>
+{# Добавляем стили для градиента (для текста, не плейсхолдера) #}
+<style>
+.smart-search-gradient {
+    background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+    font-weight: bold; /* Можно добавить жирность для лучшей видимости */
     }
 </style>
 {% endblock %} 

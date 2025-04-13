@@ -36,6 +36,7 @@ class WebinarForm(FlaskForm):
     # Используем отдельные чекбоксы для типа решения
     is_programming = BooleanField('Программное решение')
     is_manual = BooleanField('Ручное решение')
+    is_excel = BooleanField('Решение в Excel')
 
     category = SelectField('Категория', choices=CATEGORY_CHOICES, validators=[Optional()])
 
@@ -44,4 +45,10 @@ class WebinarForm(FlaskForm):
 
     cover_url = StringField('Ссылка на обложку', validators=[Optional(), URL(message='Некорректный URL обложки')])
 
-    submit = SubmitField('Сохранить изменения') 
+    submit = SubmitField('Сохранить изменения')
+
+
+# Форма для добавления задачи к вебинару
+class WebinarTaskForm(FlaskForm):
+    text = TextAreaField('Текст задачи', validators=[DataRequired()])
+    submit = SubmitField('Добавить задачу') 

@@ -10,6 +10,22 @@
     </a>
 </div>
 
+{# Новая форма поиска #}
+<div class="mb-4">
+    <form action="{{ url_for('students.students_list') }}" method="get">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="search" class="form-control border-start-0" name="q" placeholder="Поиск по имени, фамилии, ID..." value="{{ request.args.get('q', '') }}">
+            <button class="btn btn-primary" type="submit">Найти</button>
+            {% if request.args.get('q') %}
+                <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-secondary" title="Сбросить поиск">
+                    <i class="fas fa-times"></i>
+                </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
 {% if students %}
     <div class="card">
         <div class="card-body p-0">
@@ -71,7 +87,7 @@
     </div>
     
     <div class="d-flex justify-content-between align-items-center mt-4">
-        <p class="text-muted mb-0"><i class="fas fa-users me-2"></i> Всего учеников: <strong>{{ students|length }}</strong></p>
+        <p class="text-muted mb-0"><i class="fas fa-users me-2"></i> Всего найдено учеников: <strong>{{ students|length }}</strong></p>
         
         <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -87,11 +103,25 @@
 {% else %}
     <div class="alert alert-info text-center py-5">
         <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет учеников" class="img-fluid mb-4" style="max-height: 150px;">
-        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> Список учеников пуст</h5>
-        <p class="mb-4">Добавьте первого ученика, нажав на кнопку выше</p>
+        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i>
+        {% if request.args.get('q') %}
+            Ученики по запросу "{{ request.args.get('q') }}" не найдены
+        {% else %}
+            Список учеников пуст
+        {% endif %}
+        </h5>
+        <p class="mb-4">
+        {% if request.args.get('q') %}
+            Попробуйте изменить поисковый запрос или <a href="{{ url_for('students.students_list') }}">сбросить поиск</a>.
+        {% else %}
+             Добавьте первого ученика, нажав на кнопку выше.
+        {% endif %}
+        </p>
+        {% if not request.args.get('q') %}
         <a href="{{ url_for('students.student_new') }}" class="btn btn-accent">
             <i class="fas fa-user-plus me-2"></i> Добавить первого ученика
         </a>
+        {% endif %}
     </div>
 {% endif %}
 {% endblock %} 
