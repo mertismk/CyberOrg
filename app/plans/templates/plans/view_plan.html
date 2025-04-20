@@ -536,15 +536,32 @@
 
             // Helper function for pluralization
             function getWebinarText(count, type = 'вебинар') {
-                count = Math.max(0, count);
+                count = Math.max(0, count); // Ensure count is not negative
+                // Check if count is between 0 and 1, if so, set to 1 for display text purposes
+                // We only do this rounding *for the text* if the original average was > 0
+                // The *calculation* of average uses ceil as before or the new logic.
+                let displayCount = count; 
+                // Let's apply the "minimum 1 if > 0" logic directly to the number passed to this function
+                // NO, the average calculation should handle this. This function just formats the number.
+
                 const cases = [2, 0, 1, 1, 1, 2]; // Cases for singular, paucal, plural
                 const titles = {
                     'вебинар': ['вебинар', 'вебинара', 'вебинаров'],
                     'ролик': ['ролик', 'ролика', 'роликов'] // Добавим 'ролик' для beginner
                 };
                 const titleSet = titles[type] || titles['вебинар'];
-                const index = (count % 100 > 4 && count % 100 < 20) ? 2 : cases[Math.min(count % 10, 5)];
-                return `${count} ${titleSet[index]}`;
+                const index = (displayCount % 100 > 4 && displayCount % 100 < 20) ? 2 : cases[Math.min(displayCount % 10, 5)];
+                return `${displayCount} ${titleSet[index]}`;
+            }
+            
+            // Helper function to calculate average with "min 1 if > 0" rule
+            function calculateAverage(total, weeks) {
+                if (weeks <= 0) return 0;
+                const rawAvg = total / weeks;
+                if (rawAvg > 0 && rawAvg < 1) {
+                    return 1; // Round up to 1 if between 0 and 1
+                }
+                return Math.ceil(rawAvg); // Otherwise, use ceiling
             }
 
             // --- Update HTML --- 
@@ -577,9 +594,9 @@
                     totalT27W2_4 += weeklyCounts[w]?.t27 || 0;
                 }
                 const numWeeksForAvg = 3; // Всегда 3 недели (2, 3, 4)
-                const avgBasicW2_4 = Math.ceil(totalBasicW2_4 / numWeeksForAvg); 
-                const avgT26W2_4 = Math.ceil(totalT26W2_4 / numWeeksForAvg);
-                const avgT27W2_4 = Math.ceil(totalT27W2_4 / numWeeksForAvg);
+                const avgBasicW2_4 = calculateAverage(totalBasicW2_4, numWeeksForAvg);
+                const avgT26W2_4 = calculateAverage(totalT26W2_4, numWeeksForAvg);
+                const avgT27W2_4 = calculateAverage(totalT27W2_4, numWeeksForAvg);
                 const totalAvgOtherW2_4 = avgBasicW2_4;
 
                 // Текст для недель 2-4
@@ -594,9 +611,9 @@
             } else {
                 // ВОЗВРАЩЕНО: Original Average Summary (для 4 недель)
                 const numWeeksForTotalAvg = 4;
-                const avgBasic = Math.ceil(totalCounts.basic / numWeeksForTotalAvg); 
-                const avgT26 = Math.ceil(totalCounts.t26 / numWeeksForTotalAvg);
-                const avgT27 = Math.ceil(totalCounts.t27 / numWeeksForTotalAvg);
+                const avgBasic = calculateAverage(totalCounts.basic, numWeeksForTotalAvg);
+                const avgT26 = calculateAverage(totalCounts.t26, numWeeksForTotalAvg);
+                const avgT27 = calculateAverage(totalCounts.t27, numWeeksForTotalAvg);
                 const totalAvgOther = avgBasic;
 
                 let avgText = `<h6>В среднем в неделю:</h6><ul class="list-unstyled ps-3">`;
@@ -604,7 +621,7 @@
                 if (avgT26 > 0) { avgText += `<li>✔&nbsp;~${getWebinarText(avgT26)} по Заданию 26</li>`; }
                 if (avgT27 > 0) { avgText += `<li>✔&nbsp;~${getWebinarText(avgT27)} по Заданию 27</li>`; }
                 if (totalCounts.beginner > 0) {
-                    const avgBeginner = Math.ceil(totalCounts.beginner / numWeeksForTotalAvg); 
+                    const avgBeginner = calculateAverage(totalCounts.beginner, numWeeksForTotalAvg);
                     avgText += `<li>✔&nbsp;~${getWebinarText(avgBeginner, 'ролик')} курса Python с нуля</li>`;
                 }
                 if (totalAvgOther === 0 && totalCounts.beginner === 0 && avgT26 === 0 && avgT27 === 0) { avgText += `<li>✔&nbsp;Нет запланированных вебинаров</li>`; }

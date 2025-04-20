@@ -1,55 +1,85 @@
 {% extends "base.html" %}
-{% from "_form_macros.html" import render_field %}
+{% from "_form_macros.html" import render_field, render_checkbox_field %}
 
 {% block title %}Редактировать вебинар - {{ webinar.title }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('webinars.webinars_list') }}">Вебинары</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Редактировать: {{ webinar.title }}</li>
+        </ol>
+    </nav>
+
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
+        <div class="col-lg-9 col-xl-8">
+            <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h2 class="mb-0">Редактировать вебинар</h2>
+                    <h2 class="mb-0 h4"><i class="fas fa-edit me-2"></i>Редактировать вебинар</h2>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" novalidate>
                         {{ form.hidden_tag() }} {# CSRF Token #}
 
-                        <fieldset class="mb-3">
-                            <legend class="h5 mb-3 border-bottom pb-2">Основная информация</legend>
-                            {{ render_field(form.title, class='form-control') }}
-                            {{ render_field(form.url, class='form-control') }}
-                            {{ render_field(form.date, class='form-control', type='date') }}
-                            {{ render_field(form.cover_url, class='form-control') }}
-                        </fieldset>
+                        <h5 class="mb-3 border-bottom pb-2"><i class="fas fa-info-circle me-2 text-primary"></i>Основная информация</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                {{ render_field(form.title, class='form-control', label_visible=True) }}
+                            </div>
+                            <div class="col-md-12">
+                                {{ render_field(form.url, class='form-control', label_visible=True) }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ render_field(form.date, class='form-control', type='date', label_visible=True) }}
+                            </div>
+                             <div class="col-md-12">
+                                {{ render_field(form.cover_url, class='form-control', label_visible=True, placeholder='https://example.com/image.jpg') }}
+                            </div>
+                        </div>
 
-                        <fieldset class="mb-3">
-                            <legend class="h5 mb-3 border-bottom pb-2">Детали</legend>
-                            {{ render_field(form.task_numbers, class='form-control', placeholder='Например: 1, 5, 17') }}
-                            
-                            <div class="mb-3">
-                                <label class="form-label">Тип решения</label>
-                                <div class="form-check">
-                                    {{ render_field(form.is_programming, class='form-check-input') }}
-                                    {{ form.is_programming.label(class='form-check-label') }}
-                                </div>
-                                <div class="form-check">
-                                    {{ render_field(form.is_manual, class='form-check-input') }}
-                                    {{ form.is_manual.label(class='form-check-label') }}
-                                </div>
-                                <div class="form-check">
-                                    {{ render_field(form.is_excel, class='form-check-input') }}
-                                    {{ form.is_excel.label(class='form-check-label') }}
-                                </div>
+                        <h5 class="mb-3 border-bottom pb-2"><i class="fas fa-cogs me-2 text-primary"></i>Детали вебинара</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                {{ render_field(form.task_numbers, class='form-control', placeholder='Например: 1, 5, 17', label_visible=True) }}
+                            </div>
+                             <div class="col-md-6">
+                                {{ render_field(form.category, class='form-select', label_visible=True) }}
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-medium">Тип решения</label>
+                                {{ render_checkbox_field(form.is_programming) }}
+                                {{ render_checkbox_field(form.is_manual) }}
+                                {{ render_checkbox_field(form.is_excel) }}
                             </div>
 
-                            {{ render_field(form.category, class='form-select') }}
-                            {{ render_field(form.course_category, class='form-select') }}
-                        </fieldset>
+                            {# --- Замена Select на Checkboxes для Категории Курса --- #}
+                            {# ВАЖНО: Это потребует изменений в forms.py и routes.py! #}
+                            <div class="col-md-6">
+                                <label class="form-label fw-medium">Категория курса</label>
+                                {{ render_checkbox_field(form.for_beginners) }}
+                                {{ render_checkbox_field(form.for_basic) }}
+                                {{ render_checkbox_field(form.for_advanced) }}
+                                {{ render_checkbox_field(form.for_expert) }}
+                                {{ render_checkbox_field(form.for_mocks) }}
+                                {{ render_checkbox_field(form.for_practice) }}
+                                {{ render_checkbox_field(form.for_minisnap) }}
+                                {# Если у вас нет этих полей в EditWebinarForm, их нужно добавить #}
+                                {# Старое поле Select, закомментировано:
+                                {{ render_field(form.course_category, class='form-select', label_visible=True) }} 
+                                #}
+                            </div>
+                            {# --- Конец замены --- #}
+                        </div>
+                        
+                        <hr class="my-4">
 
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-secondary me-md-2">Отмена</a>
-                            {{ form.submit(class='btn btn-primary') }}
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-secondary">Отмена</a>
+                            {{ form.submit(class='btn btn-primary px-4') }} {# Кнопка сохранения чуть шире #}
                         </div>
                     </form>
                 </div>
@@ -57,4 +87,17 @@
         </div>
     </div>
 </div>
+
+{# Макрос для чекбоксов, если его нет в _form_macros.html #}
+{# {% macro render_checkbox_field(field) %}
+<div class="form-check mb-2">
+    {{ field(class='form-check-input', **kwargs)|safe }}
+    {{ field.label(class='form-check-label') }}
+    {% if field.errors %}
+        <div class="invalid-feedback d-block">
+            {{ field.errors|join(', ') }}
+        </div>
+    {% endif %}
+</div>
+{% endmacro %} #}
 {% endblock %} 

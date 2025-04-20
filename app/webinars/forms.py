@@ -3,17 +3,13 @@ from wtforms import StringField, SubmitField, SelectField, DateField, BooleanFie
 from wtforms.validators import DataRequired, Optional, URL, ValidationError
 import re
 
-# Choices for categories
-CATEGORY_CHOICES = [('', 'Не выбрана'), ('1', 'Обязательный'), ('2', 'Повторение'), ('3', 'Необязательный')]
-COURSE_CATEGORY_CHOICES = [
-    ('', 'Не выбрана'),
-    ('python с нуля', 'Python с нуля'),
-    ('основной курс', 'Основной курс'),
-    ('хард прога', 'Хард прога'),
-    ('задание 27', 'Задание 27'),
-    ('разбор пробников', 'Разбор пробников'),
-    ('нарешка', 'Нарешка'),
-    ('мини-щелчок', 'Мини-щелчок')
+# Обновленные Choices for categories
+CATEGORY_CHOICES = [
+    ('', 'Не выбрана'), 
+    ('1', 'Обязательный'), 
+    ('2', 'Повторение'), 
+    ('3', 'Не обязательный'), 
+    ('4', 'Для продвинутых') # Добавлена категория 4
 ]
 
 def validate_task_numbers(form, field):
@@ -33,15 +29,23 @@ class WebinarForm(FlaskForm):
     date = DateField('Дата вебинара (ГГГГ-ММ-ДД)', format='%Y-%m-%d', validators=[Optional()])
     task_numbers = StringField('Номера заданий (через запятую)', validators=[Optional(), validate_task_numbers])
 
-    # Используем отдельные чекбоксы для типа решения
+    # Чекбоксы для типа решения (без изменений)
     is_programming = BooleanField('Программное решение')
     is_manual = BooleanField('Ручное решение')
     is_excel = BooleanField('Решение в Excel')
 
-    category = SelectField('Категория', choices=CATEGORY_CHOICES, validators=[Optional()])
+    # Категория важности - обновлены choices
+    category = SelectField('Категория важности', choices=CATEGORY_CHOICES, coerce=str, validators=[Optional()]) # Используем coerce=str, т.к. choices - строки
 
-    # Используем SelectField для категории курса
-    course_category = SelectField('Категория курса', choices=COURSE_CATEGORY_CHOICES, validators=[Optional()])
+    # --- Замена SelectField на BooleanField для Категории Курса --- 
+    for_beginners = BooleanField('Python с нуля') 
+    for_basic = BooleanField('Основной курс') 
+    for_advanced = BooleanField('Хард прога') 
+    for_expert = BooleanField('Задание 27') 
+    for_mocks = BooleanField('Разбор пробников') 
+    for_practice = BooleanField('Нарешка') 
+    for_minisnap = BooleanField('Мини-щелчок') 
+    # --- Конец замены --- 
 
     cover_url = StringField('Ссылка на обложку', validators=[Optional(), URL(message='Некорректный URL обложки')])
 

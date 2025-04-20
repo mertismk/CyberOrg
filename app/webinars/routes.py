@@ -1,5 +1,5 @@
 import os
-from flask import render_template, request, redirect, url_for, flash, abort
+from flask import render_template, request, redirect, url_for, flash, abort, current_app
 from flask_login import login_required, current_user
 import pandas as pd
 from datetime import datetime
@@ -9,6 +9,7 @@ from sqlalchemy.engine.row import Row
 import re
 from flask_wtf.csrf import generate_csrf
 import pymorphy3
+from sqlalchemy.dialects import postgresql # Для вывода SQL
 
 from app import db
 from app.models import (
@@ -48,25 +49,44 @@ def webinars_list():
 @bp.route("/filter")
 @login_required
 def filter_webinars():
+    current_app.logger.debug("--- filter_webinars route START ---") # <--- Логгирование
+    # Извлекаем все параметры из запроса
     query = request.args.get("q", "").strip()
-    webinars = _get_filtered_webinars_query(query)
+    course_category = request.args.get("course_category", "all")
+    date_filter = request.args.get("date_filter", "all") # По умолчанию 'all', можно изменить на 'old'
+    solution = request.args.get("solution", "all")
+    category = request.args.get("category", "all")
+    task_num_str = request.args.get("task_num", "all") # Получаем как строку (e.g., "task-5")
+    
+    current_app.logger.debug(f"Received query: '{query}', course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}") # <--- Логгирование
+
+    webinars = _get_filtered_webinars_query(
+        query=query,
+        course_category=course_category,
+        date_filter=date_filter,
+        solution=solution,
+        category=category,
+        task_num_str=task_num_str
+    )
+    current_app.logger.debug(f"Webinars found by _get_filtered_webinars_query: {len(webinars) if webinars else 0}") # <--- Логгирование
 
     watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.all()}
-    task_form = WebinarTaskForm()  # Добавляем создание формы задач
+    task_form = WebinarTaskForm()
 
+    current_app.logger.debug("--- filter_webinars route END ---") # <--- Логгирование
     # Возвращаем отрендеренный ОСНОВНОЙ шаблон с отфильтрованными данными
     return render_template(
         "webinars/webinars.html",
         webinars=webinars,
         watched_webinar_ids=watched_webinar_ids,
-        task_form=task_form,  # Передаем форму задач
-        search_query=query,  # Передаем запрос
-        current_user=current_user,  # current_user нужен для кнопок удаления/редактирования
+        task_form=task_form,
+        search_query=query,
+        current_user=current_user,
     )
 
 
 # Вспомогательная функция для получения отфильтрованного и ОТСОРТИРОВАННОГО СПИСКА вебинаров
-def _get_filtered_webinars_query(query):
+def _get_filtered_webinars_query(query=None, course_category='all', date_filter='all', solution='all', category='all', task_num_str='all'):
     # Базовый запрос с загрузкой связанных данных
     base_query = Webinar.query.options(
         joinedload(Webinar.created_by),
@@ -75,97 +95,89 @@ def _get_filtered_webinars_query(query):
         selectinload(Webinar.tasks).joinedload(WebinarTask.created_by),
     )
 
+    filters = [] # Список для хранения всех условий фильтрации SQLAlchemy
+
+    # 1. Фильтр по текстовому запросу (q)
     if query:
-        # --- Упрощенный поиск по подстроке ---
-        final_filter = None
-        term_ilike = f"%{query}%" # Ищем вхождение строки запроса
-        task_number_filter = None
-
-        # Проверка на номер задания
-        match_num = re.fullmatch(r"(\d+)", query)
-        match_num_hash = re.fullmatch(r"№(\d+)", query)
-        if match_num:
-            task_number_filter = Webinar.task_numbers.any(
-                TaskNumber.number == int(match_num.group(1))
-            )
-        elif match_num_hash:
-            task_number_filter = Webinar.task_numbers.any(
-                TaskNumber.number == int(match_num_hash.group(1))
-            )
-
-        # Формируем условия поиска по основным полям + задачам + комментариям
-        conditions = [
+        term_ilike = f"%{query}%"
+        current_app.logger.debug(f"DEBUG: Applying text search: {term_ilike}")
+        # Ищем в названии, URL, тексте задач
+        text_search_filter = or_(
             Webinar.title.ilike(term_ilike),
-            Webinar.url.ilike(term_ilike),
-            Webinar.tasks.any(WebinarTask.text.ilike(term_ilike)),
-            Webinar.comments.any(WebinarComment.text.ilike(term_ilike)),
-        ]
-        if task_number_filter is not None:
-            conditions.append(task_number_filter)
-
-        final_filter = or_(*conditions)
-        # --- Конец упрощенного поиска по подстроке ---
-
-        # --- Применение фильтра и получение результатов ---
-        if final_filter is not None:
-            filtered_webinars = base_query.filter(final_filter).all()
-        else:
-            filtered_webinars = [] # На случай, если final_filter не создался
-
-        # --- Ранжирование и сортировка в Python (используем только исходный query) ---
-        if not filtered_webinars:
-             return [] # Если SQL фильтр ничего не нашел
-
-        search_term_for_ranking = query.lower() # Для регистронезависимого сравнения в Python
-        term_pattern = re.compile(re.escape(search_term_for_ranking), re.IGNORECASE)
-
-        webinars_with_scores = []
-        title_weight = 5
-        task_num_weight = 4
-        comment_weight = 2
-        task_text_weight = 3 # Оставляем вес для задач
-        url_weight = 1
-        # exact_word_bonus больше не нужен в этой логике
-
-        for webinar in filtered_webinars:
-            score = 0
-            term_score = 0 # Считаем очки для единственного термина - query
-
-            found_in_title = term_pattern.search(webinar.title)
-            found_in_tasks = any(term_pattern.search(task.text) for task in webinar.tasks)
-            found_in_comments = any(term_pattern.search(comment.text) for comment in webinar.comments)
-            # Упрощенный поиск в URL - только если query содержит цифры (похоже на ID)
-            found_in_url = bool(re.search(r'\d', query) and term_pattern.search(webinar.url))
-
-            task_nums = {t.number for t in webinar.task_numbers}
-            is_task_num_match = False
-            if match_num:
-                is_task_num_match = int(match_num.group(1)) in task_nums
-            elif match_num_hash:
-                 is_task_num_match = int(match_num_hash.group(1)) in task_nums
-
-            if found_in_title: term_score += title_weight
-            if found_in_tasks: term_score += task_text_weight
-            if found_in_comments: term_score += comment_weight
-            if found_in_url: term_score += url_weight
-            if is_task_num_match: term_score += task_num_weight
-
-            score = term_score # Финальный счет равен счету для query
-            webinars_with_scores.append((webinar, score))
-
-        # Сортировка
-        webinars_with_scores.sort(
-            key=lambda item: (item[1], item[0].date is None, item[0].date, item[0].id),
-            reverse=True,
+            Webinar.url.ilike(term_ilike), # Возможно, стоит искать только ID?
+            Webinar.tasks.any(WebinarTask.text.ilike(term_ilike))
         )
+        # Дополнительно ищем по номеру задания, если query - число
+        if query.isdigit():
+            task_number_search = Webinar.task_numbers.any(TaskNumber.number == int(query))
+            text_search_filter = or_(text_search_filter, task_number_search)
+        
+        filters.append(text_search_filter)
 
-        return [item[0] for item in webinars_with_scores]
+    # 2. Фильтр по категории курса (course_category)
+    if course_category != 'all':
+        current_app.logger.debug(f"DEBUG: Applying course category filter: {course_category}")
+        # Используем getattr для динамического доступа к полям модели
+        if hasattr(Webinar, course_category):
+            filters.append(getattr(Webinar, course_category) == True)
+        else:
+            current_app.logger.warning(f"DEBUG: Invalid course_category value: {course_category}")
 
+    # 3. Фильтр по типу решения (solution)
+    if solution != 'all':
+        current_app.logger.debug(f"DEBUG: Applying solution filter: {solution}")
+        if hasattr(Webinar, solution):
+             filters.append(getattr(Webinar, solution) == True)
+        else:
+             current_app.logger.warning(f"DEBUG: Invalid solution value: {solution}")
+
+    # 4. Фильтр по категории важности (category)
+    if category != 'all' and category.startswith('category-'):
+        try:
+            category_num = int(category.split('-')[-1])
+            current_app.logger.debug(f"DEBUG: Applying category filter: {category_num}")
+            filters.append(Webinar.category == category_num)
+        except (ValueError, IndexError):
+            current_app.logger.warning(f"DEBUG: Invalid category value: {category}")
+
+    # 5. Фильтр по номеру задания (task_num)
+    if task_num_str != 'all' and task_num_str.startswith('task-'):
+        try:
+            task_num = int(task_num_str.split('-')[-1])
+            current_app.logger.debug(f"DEBUG: Applying task number filter: {task_num}")
+            filters.append(Webinar.task_numbers.any(TaskNumber.number == task_num))
+        except (ValueError, IndexError):
+             current_app.logger.warning(f"DEBUG: Invalid task_num_str value: {task_num_str}")
+
+    # Применяем все собранные фильтры
+    final_query = base_query
+    if filters:
+        final_query = base_query.filter(and_(*filters))
+        try:
+            # Отладка SQL только если есть фильтры
+            compiled_query = final_query.statement.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
+            current_app.logger.debug(f"DEBUG: Compiled SQL Query:\n{compiled_query}\n")
+        except Exception as e:
+            current_app.logger.error(f"DEBUG: Could not compile query: {e}")
+            current_app.logger.debug(f"DEBUG: Query object: {final_query}")
     else:
-        # --- Если нет запроса query - простой запрос всех вебинаров с сортировкой по дате ---
-        return base_query.order_by(
-            Webinar.date.desc().nullslast(), Webinar.id.desc()
-        ).all()
+        current_app.logger.debug("DEBUG: No filters applied, fetching all.")
+
+    # 6. Сортировка по дате (date_filter)
+    if date_filter == 'new':
+        current_app.logger.debug("DEBUG: Sorting by date descending (newest first)")
+        final_query = final_query.order_by(Webinar.date.desc().nullslast(), Webinar.id.desc())
+    elif date_filter == 'old':
+        current_app.logger.debug("DEBUG: Sorting by date ascending (oldest first)")
+        final_query = final_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    else: # По умолчанию (или date_filter == 'all') - как было раньше
+        current_app.logger.debug("DEBUG: Default sorting (date desc)")
+        final_query = final_query.order_by(Webinar.date.desc().nullslast(), Webinar.id.desc())
+
+    # Выполняем запрос
+    filtered_webinars = final_query.all()
+    current_app.logger.debug(f"DEBUG: Query results (filtered_webinars): {filtered_webinars}")
+    return filtered_webinars
 
 
 @bp.route("/import", methods=["GET", "POST"])
@@ -404,30 +416,12 @@ def edit_webinar(webinar_id):
 
     form = WebinarForm(obj=webinar)
 
-    # Преобразуем список номеров заданий в строку для формы
-    if webinar.task_numbers:
+    # --- ВОЗВРАЩАЕМ ФОРМАТИРОВАНИЕ НОМЕРОВ ЗАДАНИЙ ДЛЯ ОТОБРАЖЕНИЯ В ФОРМЕ --- 
+    if request.method == 'GET' and webinar.task_numbers:
         form.task_numbers.data = ", ".join(
             sorted([str(task.number) for task in webinar.task_numbers])
         )
-
-    # Устанавливаем значение для course_category
-    # Найдем ключ в COURSE_CATEGORY_CHOICES, соответствующий булевым флагам вебинара
-    selected_course_category = ""
-    if webinar.for_beginners:
-        selected_course_category = "python с нуля"
-    elif webinar.for_basic:
-        selected_course_category = "основной курс"
-    elif webinar.for_advanced:
-        selected_course_category = "хард прога"
-    elif webinar.for_expert:
-        selected_course_category = "задание 27"
-    elif webinar.for_mocks:
-        selected_course_category = "разбор пробников"
-    elif webinar.for_practice:
-        selected_course_category = "нарешка"
-    elif webinar.for_minisnap:
-        selected_course_category = "мини-щелчок"
-    form.course_category.data = selected_course_category
+    # --- КОНЕЦ ВОЗВРАЩЕНИЯ БЛОКА --- 
 
     if form.validate_on_submit():
         # Обновляем основные поля
@@ -442,17 +436,20 @@ def edit_webinar(webinar_id):
         webinar.is_excel = form.is_excel.data
 
         # Обновляем категорию
-        webinar.category = int(form.category.data) if form.category.data else None
+        try:
+            webinar.category = int(form.category.data) if form.category.data else None
+        except (ValueError, TypeError):
+            webinar.category = None # Если значение некорректное или пустое
+            flash("Некорректное значение для Категории важности.", "warning")
 
-        # Обновляем категорию курса на основе выбора в SelectField
-        selected_course = form.course_category.data
-        webinar.for_beginners = selected_course == "python с нуля"
-        webinar.for_basic = selected_course == "основной курс"
-        webinar.for_advanced = selected_course == "хард прога"
-        webinar.for_expert = selected_course == "задание 27"
-        webinar.for_mocks = selected_course == "разбор пробников"
-        webinar.for_practice = selected_course == "нарешка"
-        webinar.for_minisnap = selected_course == "мини-щелчок"
+        # Обновляем категории курса на основе чекбоксов
+        webinar.for_beginners = form.for_beginners.data
+        webinar.for_basic = form.for_basic.data
+        webinar.for_advanced = form.for_advanced.data
+        webinar.for_expert = form.for_expert.data
+        webinar.for_mocks = form.for_mocks.data
+        webinar.for_practice = form.for_practice.data
+        webinar.for_minisnap = form.for_minisnap.data
 
         # Обновляем номера заданий
         current_tasks = {task.number for task in webinar.task_numbers}

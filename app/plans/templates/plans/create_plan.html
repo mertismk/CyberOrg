@@ -2,6 +2,101 @@
 
 {% block title %}{{ student.first_name }} {{ student.last_name }} - Создание плана{% endblock %}
 
+{% block styles %}
+<style>
+    /* Стили для улучшения интерфейса */
+    .webinar-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .webinar-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .filter-buttons .btn {
+        margin-bottom: 5px;
+    }
+    .webinar-cover {
+        height: 180px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+        background-color: #f8f9fa;
+        border-radius: calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;
+    }
+    .webinar-cover img {
+        object-fit: contain;
+        max-width: 100%;
+        max-height: 100%;
+        padding: 0;
+    }
+    .webinar-cover .btn {
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .webinar-cover .btn:hover {
+        opacity: 1;
+    }
+    .task-badge-container {
+        min-height: 50px; /* Обеспечивает минимальную высоту */
+        display: block; /* Или inline-block, если нужно */
+    }
+    .badge {
+        display: inline-block; /* Убедитесь, что бэджи могут переноситься */
+        margin-right: 2px;
+        margin-bottom: 3px; /* Добавляет отступ снизу */
+    }
+    .webinar-title {
+        min-height: 60px; /* Минимальная высота для заголовка */
+        display: -webkit-box;
+        -webkit-line-clamp: 3; /* Ограничиваем 3 строками */
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .card-body {
+        padding: 1rem; /* Стандартный отступ */
+    }
+    .selected-webinar {
+        border: 2px solid #0d6efd; /* Выделяем выбранные */
+    }
+    .week-section .card {
+        background-color: #f8f9fa; /* Легкий фон для карточек в плане */
+    }
+    .available-webinars-container .card {
+        background-color: #ffffff; /* Белый фон для доступных */
+    }
+    .week-container {
+        min-height: 200px; /* Чтобы контейнер не схлопывался */
+        background-color: rgba(0,0,0,0.02);
+        border: 1px dashed #ddd;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+    .week-container-header {
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #555;
+    }
+    .webinar-placeholder {
+        text-align: center;
+        color: #aaa;
+        padding: 20px;
+        font-style: italic;
+    }
+
+    /* Стили для мобильных устройств */
+    @media (max-width: 768px) {
+        .filter-buttons {
+            margin-top: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -155,6 +250,7 @@
                 </div>
                 
                 {# Добавляем блок настройки квот СЮДА #}
+                <!-- 
                 <div class="card shadow mb-4">
                     <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0"><i class="fas fa-sliders-h me-2"></i>Настройка квот Т26/Т27</h5>
@@ -177,6 +273,7 @@
                         </div>
                     </div>
                 </div>
+                -->
                 
                 <div class="card shadow mb-4">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -226,77 +323,102 @@
                                         {# Если не пуст, отображаем вебинары из этого списка #}
                                         {% for webinar in webinars_for_this_week %}
                                             <div class="col webinar-item">
-                                                <div class="card webinar-card h-100 selected-webinar" data-id="{{ webinar.id }}">
+                                                <div class="card webinar-card h-100 shadow-sm {% if webinar.id in watched_webinar_ids %}border-secondary bg-light opacity-75{% elif webinar.id in (request.form.getlist('webinar_ids') if request.method == 'POST' else []) %}border-primary{% endif %}" 
+                                                     data-webinar-id="{{ webinar.id }}"
+                                                     data-week="{{ webinar_weeks.get(webinar.id, 1) }}"> 
                                                     <div class="webinar-cover">
                                                         {% if webinar.cover_url %}
-                                                            <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
+                                                            <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}" style="object-fit: cover; height: 100%; width: 100%; border-radius: calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;">
                                                         {% else %}
-                                                            <div class="text-center text-muted">
-                                                                <i class="fas fa-video fa-3x"></i>
+                                                            <div class="d-flex align-items-center justify-content-center h-100 w-100" style="background-color: #e9ecef;">
+                                                                <i class="fas fa-photo-video fa-3x text-muted"></i>
                                                             </div>
                                                         {% endif %}
-                                                        <div class="position-absolute top-0 end-0 m-2">
-                                                            <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle" title="Открыть вебинар">
-                                                                <i class="fas fa-external-link-alt"></i>
-                                                            </a>
-                                                            <button type="button" class="btn btn-sm btn-light rounded-circle copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку">
-                                                                <i class="fas fa-copy"></i>
+                                                    </div>
+                                                    <div class="card-body d-flex flex-column">
+                                                        <div class="d-flex align-items-start mb-2">
+                                                            <div class="form-check pt-1 me-2 flex-shrink-0">
+                                                                <input type="checkbox" class="form-check-input webinar-checkbox" name="webinar_ids" value="{{ webinar.id }}" id="webinar-check-{{ webinar.id }}" checked>
+                                                                <input type="hidden" name="week_numbers_{{ webinar.id }}" value="{{ webinar_weeks.get(webinar.id, 1) }}">
+                                                            </div>
+                                                            <div class="flex-grow-1">
+                                                                <label for="webinar-check-{{ webinar.id }}" class="fw-bold webinar-title mb-1" style="cursor: pointer;">
+                                                                    {{ webinar.title }}
+                                                                </label>
+                                                                <p class="card-text small text-muted mb-2 d-flex align-items-center">
+                                                                    <i class="far fa-calendar-alt me-1"></i> {{ webinar.date|moscow_time if webinar.date else 'Не указана' }}
+                                                                    <a href="{{ webinar.url }}" target="_blank" class="ms-auto link-secondary" title="Открыть в Школково" onclick="event.stopPropagation();">
+                                                                        <i class="fas fa-external-link-alt fa-sm"></i>
+                                                                    </a>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {# --- Начало блока тегов --- #}
+                                                        <div class="mt-auto pt-2">
+                                                            {# Теги для задач #}
+                                                            <div class="mb-2">
+                                                                {% for task in webinar.task_numbers|sort(attribute='number') %}
+                                                                    <span class="badge bg-secondary me-1 mb-1">№{{ task.number }}</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-light text-dark border me-1 mb-1">Без задач</span>
+                                                                {% endfor %}
+                                                            </div>
+
+                                                            {# Теги категории, типа решения и ТИПА КУРСА (измененная логика) #}
+                                                            <div class="mb-2">
+                                                                {# Категория (Обяз/Повтор/Необяз/Продв) #}
+                                                                {% if webinar.category == 1 %}<span class="badge bg-success me-1 mb-1"><i class="fas fa-star me-1"></i>Обязательный</span>{% endif %}
+                                                                {% if webinar.category == 2 %}<span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-redo me-1"></i>Повторение</span>{% endif %}
+                                                                {% if webinar.category == 3 %}<span class="badge bg-info text-dark me-1 mb-1"><i class="fas fa-leaf me-1"></i>Не обязательный</span>{% endif %}
+                                                                {% if webinar.category == 4 %}<span class="badge bg-danger me-1 mb-1"><i class="fas fa-fire me-1"></i>Для продвинутых</span>{% endif %}
+
+                                                                {# Тип решения #}
+                                                                {% if webinar.is_programming %}<span class="badge bg-primary me-1 mb-1"><i class="fas fa-code me-1"></i>Код</span>{% endif %}
+                                                                {% if webinar.is_manual %}<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-pencil-alt me-1"></i>Руки</span>{% endif %}
+                                                                {% if webinar.is_excel %}<span class="badge bg-success me-1 mb-1"><i class="fas fa-file-excel me-1"></i>Excel</span>{% endif %}
+                                                                
+                                                                {# --- ИЗМЕНЕННАЯ ЛОГИКА ТЕГА ТИПА КУРСА --- #}
+                                                                {% set webinar_task_nums = webinar.task_numbers|map(attribute='number')|list %}
+                                                                {% if webinar.for_beginners %}
+                                                                    <span class="badge bg-info text-dark me-1 mb-1"><i class="fas fa-baby me-1"></i>Python с нуля</span>
+                                                                {% elif 27 in webinar_task_nums %}
+                                                                    <span class="badge bg-purple me-1 mb-1"><i class="fas fa-crown me-1"></i>Задание 27</span>
+                                                                {% elif 26 in webinar_task_nums %}
+                                                                    <span class="badge bg-orange text-dark me-1 mb-1"><i class="fas fa-brain me-1"></i>Задание 26</span>
+                                                                {% elif not webinar.for_mocks and not webinar.for_practice and not webinar.for_minisnap %}
+                                                                    {# Показываем 'Основной курс' только если это не пробник/практика/минищелчок и не 26/27/beginners #}
+                                                                    <span class="badge bg-success me-1 mb-1"><i class="fas fa-graduation-cap me-1"></i>Основной курс</span>
+                                                                {% endif %}
+                                                                {# --- КОНЕЦ ИЗМЕНЕНИЙ --- #}
+                                                                
+                                                                {# Доп. типы (пробник, нарешка, щелчок) #}
+                                                                {% if webinar.for_mocks %}<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-file-alt me-1"></i>Разбор пробника</span>{% endif %}
+                                                                {% if webinar.for_practice %}<span class="badge bg-primary me-1 mb-1"><i class="fas fa-dumbbell me-1"></i>Нарешка</span>{% endif %}
+                                                                {% if webinar.for_minisnap %}<span class="badge bg-dark me-1 mb-1"><i class="fas fa-bolt me-1"></i>Мини-щелчок</span>{% endif %}
+                                                            </div>
+                                                        </div>
+                                                        {# --- Конец блока тегов --- #}
+
+                                                        <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                                                            <span class="small text-muted">Длит: ~{{ get_webinar_hours(webinar) }} ч.</span>
+                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-webinar-btn" title="Убрать из рекомендованных">
+                                                                <i class="fas fa-times"></i>
                                                             </button>
                                                         </div>
                                                     </div>
-                                                    <div class="card-body">
-                                                        <h6 class="card-title webinar-title">{{ webinar.title }}</h6>
-                                                        <div class="task-badge-container mb-2">
-                                                            {% for task in webinar.task_numbers %}
-                                                                <span class="badge bg-secondary me-1 mb-1">№{{ task.number }}</span>
-                                                            {% endfor %}
-                                                            
-                                                            {% if webinar.category == 1 %}
-                                                                <span class="badge bg-success me-1 mb-1">Обязательный</span>
-                                                            {% elif webinar.category == 2 %}
-                                                                <span class="badge bg-info me-1 mb-1">Повторение</span>
-                                                            {% elif webinar.category == 3 %}
-                                                                <span class="badge bg-secondary me-1 mb-1">Необязательный</span>
-                                                            {% endif %}
-                                                            
-                                                            {% if webinar.is_programming and webinar.is_manual %}
-                                                                <span class="badge bg-primary me-1 mb-1">Программирование</span>
-                                                                <span class="badge bg-warning text-dark me-1 mb-1">Ручное решение</span>
-                                                            {% elif webinar.is_programming %}
-                                                                <span class="badge bg-primary me-1 mb-1">Программирование</span>
-                                                            {% elif webinar.is_manual %}
-                                                                <span class="badge bg-warning text-dark me-1 mb-1">Ручное решение</span>
-                                                            {% endif %}
-                                                        </div>
-                                                        <div class="mt-2 small text-muted">
-                                                            <div>Дата: {{ webinar.date|moscow_time }}</div>
-                                                            <div>ID: {{ webinar.url[-5:] if webinar.url|length >= 5 else webinar.url }}</div>
-                                                        </div>
-                                                    </div>                                                    
-                                                    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                                                        <select class="form-select form-select-sm week-select" name="week_numbers_{{ webinar.id }}" style="width: 120px;">
-                                                            {% for week in range(1, 5) %}
-                                                                <option value="{{ week }}" {% if week == week_num %}selected{% endif %}>Неделя {{ week }}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input webinar-checkbox" type="checkbox" 
-                                                                id="webinar{{ webinar.id }}" name="webinar_ids" 
-                                                                value="{{ webinar.id }}" checked>
-                                                        </div>
-                                                    </div>                        
                                                 </div>
                                             </div>
                                         {% endfor %}
                                     {% else %}
                                         {# Если список пуст, показываем сообщение #}
                                         <div class="col-12">
-                                            <p class="text-muted text-center py-3">Нет рекомендованных вебинаров на эту неделю.</p>
+                                            <p class="text-muted fst-italic">На этой неделе рекомендуемых вебинаров нет.</p>
                                         </div>
                                     {% endif %}
-                                </div> {# Конец .week-content #}
-                            </div> {# Конец .week-container #}
-                            {% endfor %} {# Конец цикла по неделям #}
+                                </div> {# End row for week content #}
+                            </div> {# End week-container #}
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -393,9 +515,8 @@
                         <!-- РАСШИРЕННЫЕ ФИЛЬТРЫ (Конец) -->
                         
                         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 all-webinars">
-                            {% for webinar in webinars %}
-                                {% if webinar.id not in suitable_webinars|map(attribute='id')|list and webinar.id not in watched_webinar_ids %}
-                                    <div class="col webinar-item 
+                            {% for webinar in other_webinars %}
+                                <div class="col webinar-item 
                                         {% if webinar.for_beginners %}for_beginners{% endif %}
                                         {% if webinar.for_basic %}for_basic{% endif %}
                                         {% if webinar.for_advanced %}for_advanced{% endif %}
@@ -462,15 +583,9 @@
                                                         <option value="{{ week }}">Неделя {{ week }}</option>
                                                     {% endfor %}
                                                 </select>
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input webinar-checkbox" type="checkbox" 
-                                                        id="additional_webinar{{ webinar.id }}" name="webinar_ids" 
-                                                        value="{{ webinar.id }}">
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                {% endif %}
                             {% endfor %}
                         </div>
                     </div>

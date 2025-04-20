@@ -24,7 +24,7 @@ class Webinar(db.Model):
     is_manual = db.Column(db.Boolean, default=False)  # Решение руками
     is_excel = db.Column(db.Boolean, default=False)  # Решение в Excel
     homework_number = db.Column(db.Integer)
-    category = db.Column(db.Integer)  # 1: теория, 2: практика, 3: разбор ДЗ
+    category = db.Column(db.Integer)  # 1: Обязательный, 2: Повторение, 3: Не обязательный, 4: Для продвинутых
     for_beginners = db.Column(db.Boolean, default=False)  # Курс Python с нуля
     for_basic = db.Column(db.Boolean, default=False)  # Основной курс
     for_advanced = db.Column(db.Boolean, default=False)  # Хард прога

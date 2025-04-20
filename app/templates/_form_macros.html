@@ -31,4 +31,18 @@
       <small class="form-text text-muted">{{ field.description }}</small>
     {% endif %}
   </div>
-{% endmacro %} 
+{% endmacro %}
+
+{# --- Добавляем макрос для чекбоксов --- #}
+{% macro render_checkbox_field(field, div_class=None) %}
+<div class="form-check mb-2 {{ div_class if div_class else '' }}">
+    {{ field(class='form-check-input' + (' is-invalid' if field.errors else ''))|safe }}
+    {{ field.label(class='form-check-label') }}
+    {% if field.errors %}
+        <div class="invalid-feedback d-block">
+            {{ field.errors|join(', ') }}
+        </div>
+    {% endif %}
+</div>
+{% endmacro %}
+{# --- Конец макроса для чекбоксов --- #} 
