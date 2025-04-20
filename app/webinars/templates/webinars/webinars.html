@@ -458,7 +458,7 @@
         if (resetButton) {
             resetButton.addEventListener('click', function() {
                 activeFilters.courseCategory = 'all';
-                activeFilters.date = 'all';
+                activeFilters.date = 'old';
                 activeFilters.solution = 'all';
                 activeFilters.category = 'all';
                 activeFilters.tasks = [];
@@ -478,7 +478,7 @@
 
                 dateFilterButtons.forEach(btn => {
                     btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'all') {
+                    if (btn.getAttribute('data-filter') === 'old') {
                         btn.classList.add('active');
                     }
                 });

@@ -170,9 +170,9 @@ def _get_filtered_webinars_query(query=None, course_category='all', date_filter=
     elif date_filter == 'old':
         current_app.logger.debug("DEBUG: Sorting by date ascending (oldest first)")
         final_query = final_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
-    else: # По умолчанию (или date_filter == 'all') - как было раньше
-        current_app.logger.debug("DEBUG: Default sorting (date desc)")
-        final_query = final_query.order_by(Webinar.date.desc().nullslast(), Webinar.id.desc())
+    else: # По умолчанию (или date_filter == 'all') - ИЗМЕНЕНО НА СТАРЫЕ СНАЧАЛА
+        current_app.logger.debug("DEBUG: Default sorting (date asc - oldest first)") # ИЗМЕНЕН ЛОГ
+        final_query = final_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc()) # ИЗМЕНЕНА СОРТИРОВКА
 
     # Выполняем запрос
     filtered_webinars = final_query.all()
