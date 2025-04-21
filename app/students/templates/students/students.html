@@ -88,7 +88,7 @@
                                 <a href="{{ url_for('students.student_edit', student_id=student.id) }}" class="btn btn-sm btn-secondary" title="Редактировать">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="{{ url_for('plans.create_study_plan', student_id=student.id) }}" class="btn btn-sm btn-accent" title="Создать план">
+                                <a href="{{ url_for('plans.select_tasks', student_id=student.id) }}" class="btn btn-sm btn-accent" title="Создать план">
                                     <i class="fas fa-calendar-plus"></i>
                                 </a>
                             </div>
@@ -150,7 +150,7 @@
                                             <a href="{{ url_for('students.student_edit', student_id=student.id) }}" class="btn btn-sm btn-secondary" title="Редактировать">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{{ url_for('plans.create_study_plan', student_id=student.id) }}" class="btn btn-sm btn-accent" title="Создать план">
+                                            <a href="{{ url_for('plans.select_tasks', student_id=student.id) }}" class="btn btn-sm btn-accent" title="Создать план">
                                                 <i class="fas fa-calendar-plus"></i>
                                             </a>
                                         </div>

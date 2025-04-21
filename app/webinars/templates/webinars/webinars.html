@@ -3,10 +3,10 @@
 {% block title %}CyberOrg - Вебинары{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="fw-bold">Вебинары</h1>
+<div class="d-flex justify-content-between align-items-center mb-5">
+    <h1 class="display-4 mb-0" style="font-weight: 600; letter-spacing: -0.5px; color: #1d1d1f;">Вебинары</h1>
     <div class="d-flex align-items-center gap-3">
-        <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-accent">
+        <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-accent px-4 py-2" style="border-radius: 20px; background-color: #0071e3; border: none; font-weight: 500;">
             <i class="fas fa-file-import me-2"></i> Импортировать вебинары
         </a>
     </div>
@@ -18,38 +18,38 @@
         <div class="row mb-3">
             <div class="col-md-4 mb-3 mb-md-0">
                     <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" id="webinarFilter" class="form-control border-start-0" placeholder="Поиск вебинаров...">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius: 20px 0 0 20px; border-color: #d2d2d7;"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="webinarFilter" class="form-control border-start-0" placeholder="Поиск вебинаров..." style="border-radius: 0 20px 20px 0; border-color: #d2d2d7; padding-left: 0;">
                 </div>
                 </div>
                 <div class="col-md-8">
-                <div class="filter-buttons">
-                    <button type="button" class="filter-btn active" data-filter="all">Все</button>
-                    <button type="button" class="filter-btn" data-filter="for_beginners">Python с нуля</button>
-                    <button type="button" class="filter-btn" data-filter="for_basic">Основной курс</button>
-                    <button type="button" class="filter-btn" data-filter="for_advanced">Хард прога</button>
-                    <button type="button" class="filter-btn" data-filter="for_expert">Задание 27</button>
-                    <button type="button" class="filter-btn" data-filter="for_mocks">Разбор пробников</button>
-                    <button type="button" class="filter-btn" data-filter="for_practice">Нарешка</button>
-                    <button type="button" class="filter-btn" data-filter="for_minisnap">Мини-щелчок</button>
+                <div class="filter-buttons" style="background-color: #f5f5f7; border-radius: 16px; padding: 6px; display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                    <button type="button" class="filter-btn active" data-filter="all" style="flex: 0 0 auto;">Все</button>
+                    <button type="button" class="filter-btn" data-filter="for_beginners" style="flex: 0 0 auto; background-color: #5ac8fa; color: white; border-color: #5ac8fa;">Python с нуля</button>
+                    <button type="button" class="filter-btn" data-filter="for_basic" style="flex: 0 0 auto; background-color: #34c759; color: white; border-color: #34c759;">Основной курс</button>
+                    <button type="button" class="filter-btn" data-filter="for_advanced" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Хард прога</button>
+                    <button type="button" class="filter-btn" data-filter="for_expert" style="flex: 0 0 auto; background-color: #af52de; color: white; border-color: #af52de;">Задание 27</button>
+                    <button type="button" class="filter-btn" data-filter="for_mocks" style="flex: 0 0 auto; background-color: #6c757d; color: white; border-color: #6c757d;">Разбор пробников</button>
+                    <button type="button" class="filter-btn" data-filter="for_practice" style="flex: 0 0 auto; background-color: #0071e3; color: white; border-color: #0071e3;">Нарешка</button>
+                    <button type="button" class="filter-btn" data-filter="for_minisnap" style="flex: 0 0 auto; background-color: #1d1d1f; color: white; border-color: #1d1d1f;">Мини-щелчок</button>
                 </div>
                 </div>
             </div>
             
             <!-- Расширенные фильтры -->
         <div class="card border-0 mb-0">
-            <div class="card-header bg-white">
-                <a href="#advancedFilters" data-bs-toggle="collapse" class="text-decoration-none text-dark d-flex justify-content-between align-items-center">
-                    <span><i class="fas fa-filter me-2"></i> Расширенная фильтрация</span>
-                    <i class="fas fa-chevron-down"></i>
+            <div class="card-header bg-white" style="border: none; border-radius: 12px 12px 0 0;">
+                <a href="#advancedFilters" data-bs-toggle="collapse" class="text-decoration-none text-dark d-flex justify-content-between align-items-center p-2">
+                    <span><i class="fas fa-filter me-2" style="color: #0071e3;"></i> Расширенная фильтрация</span>
+                    <i class="fas fa-chevron-down" style="color: #86868b;"></i>
                     </a>
                 </div>
                 <div id="advancedFilters" class="collapse">
-                    <div class="card-body">
+                    <div class="card-body" style="background-color: #f9f9f9; border-radius: 0 0 12px 12px;">
                         <div class="row g-3">
                             <!-- Фильтр по дате -->
                             <div class="col-md-6">
-                                <label class="form-label"><i class="fas fa-calendar-alt me-1"></i> По дате</label>
+                                <label class="form-label" style="font-weight: 500; color: #1d1d1f;"><i class="fas fa-calendar-alt me-1" style="color: #0071e3;"></i> По дате</label>
                             <div class="filter-buttons w-100">
                                 <button type="button" class="filter-btn date-filter active" data-filter="all">Все</button>
                                 <button type="button" class="filter-btn date-filter" data-filter="new">Новые</button>
@@ -59,31 +59,31 @@
                             
                             <!-- Фильтр по типу решения -->
                             <div class="col-md-6">
-                                <label class="form-label"><i class="fas fa-code me-1"></i> Тип решения</label>
+                                <label class="form-label" style="font-weight: 500; color: #1d1d1f;"><i class="fas fa-code me-1" style="color: #0071e3;"></i> Тип решения</label>
                             <div class="filter-buttons solution-filter w-100">
                                 <button type="button" class="filter-btn solution-filter active" data-filter="all">Все</button>
-                                <button type="button" class="filter-btn solution-filter" data-filter="is_programming">Программирование</button>
-                                <button type="button" class="filter-btn solution-filter" data-filter="is_manual">Ручное решение</button>
-                                <button type="button" class="filter-btn solution-filter" data-filter="is_excel">Электронные таблицы</button>
+                                <button type="button" class="filter-btn solution-filter" data-filter="is_programming" style="background-color: #0071e3; color: white; border-color: #0071e3;">Программирование</button>
+                                <button type="button" class="filter-btn solution-filter" data-filter="is_manual" style="background-color: #ff9500; color: white; border-color: #ff9500;">Ручное решение</button>
+                                <button type="button" class="filter-btn solution-filter" data-filter="is_excel" style="background-color: #34c759; color: white; border-color: #34c759;">Электронные таблицы</button>
                             </div>
                             </div>
                             
                             <!-- Фильтр по категории -->
                             <div class="col-md-6">
-                                <label class="form-label"><i class="fas fa-tags me-1"></i> Категория</label>
+                                <label class="form-label" style="font-weight: 500; color: #1d1d1f;"><i class="fas fa-tags me-1" style="color: #0071e3;"></i> Категория</label>
                             <div class="filter-buttons w-100">
                                 <button type="button" class="filter-btn category-filter active" data-filter="all">Все</button>
-                                <button type="button" class="filter-btn category-filter" data-filter="category-1">Обязательный</button>
-                                <button type="button" class="filter-btn category-filter" data-filter="category-2">Повторение</button>
-                                <button type="button" class="filter-btn category-filter" data-filter="category-3">Не обязательный</button>
-                                <button type="button" class="filter-btn category-filter" data-filter="category-4">Для продвинутых</button>
+                                <button type="button" class="filter-btn category-filter" data-filter="category-1" style="background-color: #34c759; color: white; border-color: #34c759;">Обязательный</button>
+                                <button type="button" class="filter-btn category-filter" data-filter="category-2" style="background-color: #ff9500; color: white; border-color: #ff9500;">Повторение</button>
+                                <button type="button" class="filter-btn category-filter" data-filter="category-3" style="background-color: #ff3b30; color: white; border-color: #ff3b30;">Необязательный</button>
+                                <button type="button" class="filter-btn category-filter" data-filter="category-4" style="background-color: #ff2d55; color: white; border-color: #ff2d55;">Для продвинутых</button>
                             </div>
                             </div>
                             
                             <!-- Фильтр по номерам заданий -->
                             <div class="col-md-6">
-                                <label for="taskFilterSelect" class="form-label"><i class="fas fa-hashtag me-1"></i> Номер задания</label>
-                                <select class="form-select" id="taskFilterSelect">
+                                <label for="taskFilterSelect" class="form-label" style="font-weight: 500; color: #1d1d1f;"><i class="fas fa-hashtag me-1" style="color: #0071e3;"></i> Номер задания</label>
+                                <select class="form-select" id="taskFilterSelect" style="border-radius: 20px; border-color: #d2d2d7; padding: 0.5rem 1rem; font-size: 0.9rem;">
                                     <option value="all" selected>Все задания</option>
                                     {% for i in range(1, 28) %}
                                         <option value="task-{{ i }}">№{{ i }}</option>
@@ -93,7 +93,7 @@
                             
                             <!-- Сброс фильтров -->
                             <div class="col-12">
-                            <button type="button" class="btn btn-accent" id="resetAllFilters">
+                            <button type="button" class="btn btn-accent" id="resetAllFilters" style="border-radius: 20px; background-color: #0071e3; border: none; padding: 8px 20px; font-weight: 500;">
                                     <i class="fas fa-undo me-2"></i> Сбросить все фильтры
                                 </button>
                         </div>
@@ -146,7 +146,7 @@
                                 <!-- Номера заданий -->
                                 <div class="task-badge-container">
                                     {% for task in webinar.task_numbers %}
-                                        <span class="badge bg-secondary me-1 mb-1">№{{ task.number }}</span>
+                                        <span class="badge bg-secondary me-1 mb-1 text-white">№{{ task.number }}</span>
                                     {% endfor %}
                                 </div>
                                 
@@ -158,9 +158,9 @@
                                     {% elif webinar.category == 2 %}
                                         <span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-redo"></i> Повторение</span>
                                     {% elif webinar.category == 3 %}
-                                        <span class="badge bg-pink text-dark me-1 mb-1"><i class="fas fa-pencil-alt"></i> Не обязательный</span>
+                                        <span class="badge bg-danger me-1 mb-1"><i class="fas fa-pencil-alt"></i> Необязательный</span>
                                     {% elif webinar.category == 4 %}
-                                        <span class="badge bg-danger me-1 mb-1"><i class="fas fa-rocket"></i> Для продвинутых</span>
+                                        <span class="badge bg-pink text-dark me-1 mb-1"><i class="fas fa-rocket"></i> Для продвинутых</span>
                                     {% endif %}
                                     <!-- Тип решения -->
                                     {% if webinar.is_programming %}
@@ -203,19 +203,19 @@
                             
                             <div class="card-footer bg-transparent">
                                 <div class="d-grid gap-2 mb-2">
-                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary">
+                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary" style="border-radius: 20px; font-weight: 500;">
                                         <i class="fas fa-external-link-alt me-2"></i> Перейти к вебинару
                                     </a>
                                 </div>
                                 
                                 <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-                                    <a href="{{ url_for('.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-success flex-grow-1">
+                                    <a href="{{ url_for('.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-success flex-grow-1" style="border-radius: 15px; font-weight: 500;">
                                         <i class="fas fa-tasks me-1"></i> Задачи ({{ webinar.tasks|length }})
                                     </a>
-                                    <button class="btn btn-sm btn-outline-info flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComments{{ webinar.id }}" aria-expanded="false" aria-controls="collapseComments{{ webinar.id }}">
+                                    <button class="btn btn-sm btn-outline-info flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComments{{ webinar.id }}" aria-expanded="false" aria-controls="collapseComments{{ webinar.id }}" style="border-radius: 15px; font-weight: 500;">
                                         <i class="fas fa-comments me-1"></i> Комментарии ({{ webinar.comments|length }})
                                     </button>
-                                    <button class="btn btn-sm btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку">
+                                    <button class="btn btn-sm btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку" style="border-radius: 15px; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;">
                                         <i class="fas fa-link"></i>
                                     </button>
                                 </div>
@@ -287,10 +287,10 @@
                 {% endfor %}
     </div>
 {% else %}
-    <div class="alert alert-info text-center">
-        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-3" style="max-height: 150px;">
-        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> В базе данных нет вебинаров</h5>
-        <p>Импортируйте их из Excel-файла, нажав на кнопку выше.</p>
+    <div class="alert alert-info text-center" style="background-color: #f5f5f7; border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06); padding: 3rem 2rem;">
+        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-4" style="max-height: 180px;">
+        <h5 class="mt-2 mb-3" style="font-weight: 600; color: #1d1d1f;"><i class="fas fa-info-circle me-2" style="color: #0071e3;"></i> В базе данных нет вебинаров</h5>
+        <p class="mb-0" style="color: #86868b;">Импортируйте их из Excel-файла, нажав на кнопку выше.</p>
     </div>
 {% endif %}
 {% endblock %}
@@ -396,10 +396,8 @@
         filterButtons.forEach(function(button) {
             button.addEventListener('click', function() {
                 const filter = this.getAttribute('data-filter');
-                filterButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
-                filterButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
-                this.classList.remove('btn-outline-primary');
-                this.classList.add('active', 'btn-primary');
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
                 activeFilters.courseCategory = filter;
                 fetchFilteredWebinars();
             });
@@ -468,11 +466,9 @@
                 }
 
                 filterButtons.forEach(btn => {
-                    btn.classList.remove('active', 'btn-primary');
-                    btn.classList.add('btn-outline-primary');
+                    btn.classList.remove('active');
                     if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active', 'btn-primary');
-                        btn.classList.remove('btn-outline-primary');
+                        btn.classList.add('active');
                     }
                 });
 
@@ -596,39 +592,82 @@
 
 {% block styles %}
 <style>
-    /* --- Общие стили страницы --- */
+    /* --- Apple-inspired общие стили --- */
     body {
-        background-color: #f8f9fa; /* Слегка серый фон для контраста */
+        background-color: #f5f5f7; /* Светло-серый фон в стиле Apple */
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
+    .container {
+        max-width: 1200px;
+    }
+
+    h1 {
+        font-weight: 600; /* Полужирный, как в Apple */
+        letter-spacing: -0.5px;
+    }
+
+    /* --- Стили фильтров в стиле Apple --- */
     .webinar-filters .card {
-        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075)!important; /* Мягкая тень для фильтров */
+        border: none;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
     }
 
-    /* --- Стили карточки вебинара --- */
-    .webinar-card {
-        border: none; /* Убираем стандартную границу */
-        border-radius: 12px; /* Более скругленные углы */
+    .filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .filter-btn {
         background-color: #fff;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Более выраженная, но мягкая тень */
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        height: 100%; /* Гарантируем одинаковую высоту */
-        display: flex; /* Используем flex для выравнивания футера */
+        border: 1px solid #d2d2d7;
+        border-radius: 20px;
+        padding: 6px 16px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #1d1d1f;
+        transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover {
+        background-color: #f5f5f7;
+        transform: translateY(-1px);
+    }
+
+    .filter-btn.active {
+        background-color: #0071e3;
+        color: white;
+        border-color: #0071e3;
+    }
+
+    /* --- Стили карточки вебинара в стиле Apple --- */
+    .webinar-card {
+        border: none;
+        border-radius: 16px;
+        background-color: #fff;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        transition: all 0.35s cubic-bezier(0.25, 0.1, 0.25, 1.0);
+        height: 100%;
+        display: flex;
         flex-direction: column;
+        overflow: hidden;
     }
 
     .webinar-card:hover {
-        transform: translateY(-5px) scale(1.02); /* Легкое поднятие и увеличение */
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12); /* Усиление тени при наведении */
+        transform: translateY(-6px) scale(1.01);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
     }
 
     /* Обложка */
     .webinar-cover {
         position: relative;
         overflow: hidden;
-        /* Используем padding-top для сохранения аспекта 16:9 */
-        padding-top: 56.25%; /* 9 / 16 * 100% */
-        border-radius: 12px 12px 0 0;
+        padding-top: 56.25%;
+        background-color: #f5f5f7;
     }
 
     .webinar-cover img, .webinar-cover .fallback-img {
@@ -638,22 +677,26 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        border-radius: 12px 12px 0 0;
+        transition: transform 0.5s ease;
+    }
+    
+    .webinar-card:hover .webinar-cover img {
+        transform: scale(1.05);
     }
     
     .webinar-cover .fallback-img {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #e9ecef;
-        color: #adb5bd;
-        font-size: 2.5rem; /* Размер иконки */
+        background-color: #f5f5f7;
+        color: #86868b;
+        font-size: 2.5rem;
     }
 
     /* Тело карточки */
     .webinar-card .card-body {
-        padding: 1rem 1.25rem;
-        flex-grow: 1; /* Позволяет телу расти */
+        padding: 1.25rem 1.5rem;
+        flex-grow: 1;
         display: flex;
         flex-direction: column;
     }
@@ -661,10 +704,9 @@
     .webinar-title {
         font-weight: 600;
         font-size: 1.1rem;
-        margin-bottom: 0.5rem; /* Уменьшаем отступ снизу */
-        /* Ограничение по высоте оставляем */
-        height: auto; /* Убираем фикс высоту, полагаемся на line-clamp */
-        max-height: 4.2em; /* Примерно 3 строки */
+        margin-bottom: 0.75rem;
+        color: #1d1d1f;
+        max-height: 4.2em;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 3; 
@@ -674,7 +716,7 @@
 
     .webinar-meta {
         font-size: 0.85rem;
-        color: #6c757d; /* Приглушенный цвет */
+        color: #86868b;
         margin-bottom: 0.75rem;
     }
 
@@ -685,54 +727,109 @@
     /* Секции с бейджами */
     .badge-section {
         margin-bottom: 0.75rem;
-        min-height: 25px; /* Минимальная высота для выравнивания */
+        min-height: 25px;
     }
+    
     .badge-section .badge {
-         margin-bottom: 4px; /* Небольшой отступ снизу для переноса */
+        margin-bottom: 4px;
+        font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
     }
-    .badge-section i { /* Иконки для бейджей */
+    
+    .badge-section i {
         margin-right: 3px;
         font-size: 0.9em;
     }
     
     .task-badge-container {
-        min-height: 0; /* Убираем фикс высоту отсюда */
+        min-height: 0;
         margin-bottom: 0.75rem;
     }
-     .task-badge-container .badge {
+    
+    .task-badge-container .badge {
         font-size: 0.8em;
-     }
+        background-color: #6c757d;
+        color: white;
+        font-weight: 500;
+        padding: 5px 10px;
+        border-radius: 12px;
+    }
 
     /* Футер карточки */
     .webinar-card .card-footer {
         background-color: #fff;
-        border-top: 1px solid #eee; /* Тонкая линия-разделитель */
-        padding: 0.75rem 1.25rem; 
-        border-radius: 0 0 12px 12px;
+        border-top: 1px solid #f5f5f7;
+        padding: 1rem 1.5rem 1.25rem;
+        border-radius: 0 0 16px 16px;
     }
     
     .webinar-card .card-footer .btn-primary {
-        /* Можно добавить акцент */
-        /* background-color: var(--bs-accent); */
-        /* border-color: var(--bs-accent); */
+        background-color: #0071e3;
+        border-color: #0071e3;
         font-weight: 500;
+        border-radius: 20px;
+        padding: 8px 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .webinar-card .card-footer .btn-primary:hover {
+        background-color: #0077ed;
+        transform: translateY(-1px);
     }
     
     .webinar-card .card-footer .btn-sm {
-        padding: 0.25rem 0.5rem;
+        padding: 5px 12px;
         font-size: 0.8rem;
+        border-radius: 15px;
     }
+    
     .webinar-card .card-footer .d-flex .btn i {
-        margin-right: 0.3rem; /* Отступ для иконок в маленьких кнопках */
+        margin-right: 0.3rem;
     }
     
     .webinar-card .card-footer .copy-link-btn i {
-        margin-right: 0; /* Убираем отступ у иконки копирования */
+        margin-right: 0;
     }
 
     /* Комментарии */
     .collapse .card-body {
-        padding: 0.75rem; /* Уменьшаем padding у комментариев */
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    /* Кастомные цвета бейджей */
+    .bg-success {
+        background-color: #34c759 !important;
+    }
+    
+    .bg-warning {
+        background-color: #ff9500 !important;
+    }
+    
+    .bg-danger {
+        background-color: #ff3b30 !important;
+    }
+    
+    .bg-pink {
+        background-color: #ff2d55 !important;
+    }
+    
+    .bg-primary {
+        background-color: #0071e3 !important;
+    }
+    
+    .bg-info {
+        background-color: #5ac8fa !important;
+    }
+    
+    .bg-secondary {
+        background-color: #6c757d !important;
+    }
+    
+    .bg-accent {
+        background-color: #af52de !important;
     }
 
     /* Адаптивность */
@@ -742,13 +839,11 @@
             -webkit-line-clamp: 2;
             max-height: 2.8em;
         }
+        
+        .filter-btn {
+            font-size: 0.8rem;
+            padding: 5px 10px;
+        }
     }
-
-    /* Кастомный розовый цвет */
-    .bg-pink {
-        background-color: #f7a8b8; /* Нежно-розовый */
-        color: #3d2b2f; /* Темный текст для контраста */
-    }
-
 </style>
 {% endblock %} 

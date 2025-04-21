@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Выбор заданий для плана - {{ student.first_name }} {{ student.last_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-outline-secondary mb-2">
+            <i class="fas fa-arrow-left me-2"></i> К профилю ученика
+        </a>
+        <h1 class="fw-bold mb-0">Выбор заданий для плана</h1>
+        <p class="text-muted">{{ student.first_name }} {{ student.last_name }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-tasks me-2"></i>Выберите задания для плана</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Отметьте задания, которые вы хотите включить в план обучения. 
+                На основе вашего выбора будут предложены подходящие вебинары.</p>
+                
+                <form action="{{ url_for('plans.create_study_plan', student_id=student.id) }}" method="post">
+                    {{ form.hidden_tag() }}
+                    
+                    <input type="hidden" name="is_tasks_selection" value="1">
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0">Рекомендуемые задания для {{ student.target_score or 80 }} баллов</h6>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="select-all-btn">
+                                    <i class="fas fa-check-square me-1"></i> Выбрать все
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="deselect-all-btn">
+                                    <i class="fas fa-square me-1"></i> Снять выбор
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-light p-3 rounded mb-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for task_number in range(1, 28) %}
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input task-checkbox" type="checkbox" 
+                                               id="task{{ task_number }}" name="selected_tasks" value="{{ task_number }}"
+                                               {% if task_number in recommended_tasks %}checked{% endif %}
+                                               {% if task_number in known_task_numbers %}disabled{% endif %}>
+                                        <label class="form-check-label btn btn-sm 
+                                               {% if task_number in recommended_tasks %}btn-primary
+                                               {% elif task_number in known_task_numbers %}btn-success
+                                               {% else %}btn-outline-secondary{% endif %}" 
+                                               for="task{{ task_number }}">
+                                            {{ task_number }}
+                                            {% if task_number in known_task_numbers %}
+                                                <i class="fas fa-check ms-1"></i>
+                                            {% endif %}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        {% if known_task_numbers %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-info-circle me-2"></i> Задания, отмеченные как <strong>изученные</strong>, автоматически исключены из плана.
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-accent">
+                            <i class="fas fa-chevron-right me-2"></i> Перейти к выбору вебинаров
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle me-2"></i>Информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-bullseye me-2"></i>Целевой балл: {{ student.target_score or 'Не указан' }}</h6>
+                    <p class="small text-muted mb-0">
+                        На основе целевого балла сформированы рекомендации по заданиям
+                    </p>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-clock me-2"></i>Часов в неделю: {{ student.hours_per_week or 'Не указано' }}</h6>
+                    <p class="small text-muted mb-0">
+                        Количество часов влияет на объем плана
+                    </p>
+                </div>
+                
+                {% if known_task_numbers %}
+                    <div class="mb-4">
+                        <h6 class="fw-bold"><i class="fas fa-graduation-cap me-2"></i>Уже изучены</h6>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            {% for task in known_task_numbers|sort %}
+                                <span class="badge bg-success">{{ task }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-lightbulb me-2"></i> <strong>Совет:</strong> 
+                    Выбирайте задания в соответствии с целями и возможностями ученика.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Выбрать/снять выбор со всех заданий
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const deselectAllBtn = document.getElementById('deselect-all-btn');
+        const taskCheckboxes = document.querySelectorAll('.task-checkbox:not(:disabled)');
+        
+        selectAllBtn.addEventListener('click', function() {
+            taskCheckboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+        
+        deselectAllBtn.addEventListener('click', function() {
+            taskCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+    });
+</script>
+{% endblock %} 

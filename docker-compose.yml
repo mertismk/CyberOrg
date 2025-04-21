@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: cyberorg_postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: cyberorg
+      POSTGRES_PASSWORD: cyberorg
+      POSTGRES_DB: cyberorg
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data: 

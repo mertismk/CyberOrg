@@ -1,23 +1,141 @@
 {% extends "base.html" %}
 
+{% macro render_webinar_card(webinar, known_tasks, watched_ids, is_checked=False, selected_week=1) %}
+<div class="webinar-item" data-webinar-id="{{ webinar.id }}" data-title="{{ webinar.title|lower }}" data-tasks="{{ webinar.task_numbers|map(attribute='number')|join(',') }}">
+    {# Card structure from the first template #}
+    <div class="card webinar-card h-100 {% if is_checked %}selected-webinar{% endif %}" data-id="{{ webinar.id }}">
+        <div class="webinar-cover">
+             {% if webinar.cover_url %}
+                {# Use image if available #}
+                <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
+            {% else %}
+                {# Placeholder icon #}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-video fa-3x"></i>
+                </div>
+            {% endif %}
+            {# Buttons overlayed on cover #}
+            <div class="position-absolute top-0 end-0 m-2">
+                <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle webinar-action-button" title="Открыть вебинар">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+                <button type="button" class="btn btn-sm btn-light rounded-circle copy-link-btn webinar-action-button" data-url="{{ webinar.url }}" title="Скопировать ссылку">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <h6 class="card-title webinar-title">{{ webinar.title }}</h6>
+            <div class="task-badge-container">
+                {# Task badges from the first template #}
+                {% for task in webinar.task_numbers|sort(attribute='number') %}
+                    <span class="badge {% if task.number in known_tasks %}bg-success{% else %}bg-secondary{% endif %} me-1">
+                        №{{ task.number }} {% if task.number in known_tasks %}<i class="fas fa-check"></i>{% endif %}
+                    </span>
+                {% else %}
+                    <span class="badge bg-light text-dark border">Без номера</span> {# Adjusted style #}
+                {% endfor %}
+                
+                {# Обновленное отображение тэгов с текстовыми метками #}
+                <div class="mt-2">
+                    {% set webinar_task_nums = webinar.task_numbers|map(attribute='number')|list %}
+                    
+                    {# Тип вебинара #}
+                    {% if webinar.for_beginners %}
+                        <span class="badge bg-info text-dark webinar-type-beginners"><i class="fas fa-code me-1"></i>Python</span>
+                    {% elif 27 in webinar_task_nums %}
+                        <span class="badge bg-purple webinar-type-expert"><i class="fas fa-crown me-1"></i>№27</span>
+                    {% elif 26 in webinar_task_nums %}
+                        <span class="badge bg-orange text-dark webinar-type-task26"><i class="fas fa-brain me-1"></i>№26</span>
+                    {% elif webinar.for_advanced %}
+                        <span class="badge bg-warning text-dark webinar-type-advanced"><i class="fas fa-fire me-1"></i>Хард</span>
+                    {% endif %}
+                    
+                    {# Категория #}
+                    {% if webinar.category == 1 %}
+                        <span class="badge bg-success webinar-cat-1"><i class="fas fa-star me-1"></i>Обяз</span>
+                    {% elif webinar.category == 2 %}
+                        <span class="badge bg-warning text-dark webinar-cat-2"><i class="fas fa-redo me-1"></i>Повт</span>
+                    {% elif webinar.category == 3 %}
+                        <span class="badge bg-info text-dark webinar-cat-3"><i class="fas fa-leaf me-1"></i>Доп</span>
+                    {% elif webinar.category == 4 %}
+                        <span class="badge bg-danger webinar-cat-4"><i class="fas fa-fire me-1"></i>Продв</span>
+                    {% endif %}
+                    
+                    {# Формат #}
+                    {% if webinar.for_mocks %}
+                        <span class="badge bg-secondary webinar-format-mocks"><i class="fas fa-file-alt me-1"></i>Тест</span>
+                    {% elif webinar.for_practice %}
+                        <span class="badge bg-primary webinar-format-practice"><i class="fas fa-dumbbell me-1"></i>Практика</span>
+                    {% elif webinar.for_minisnap %}
+                        <span class="badge bg-dark webinar-format-minisnap"><i class="fas fa-bolt me-1"></i>Мини</span>
+                    {% endif %}
+                    
+                    {# Тип решения #}
+                    {% if webinar.is_programming %}
+                        <span class="badge bg-primary webinar-solution-programming"><i class="fas fa-code me-1"></i>Прог</span>
+                    {% elif webinar.is_manual %}
+                        <span class="badge bg-secondary webinar-solution-manual"><i class="fas fa-pencil-alt me-1"></i>Руч</span>
+                    {% elif webinar.is_excel %}
+                        <span class="badge bg-success webinar-solution-excel"><i class="fas fa-file-excel me-1"></i>Excel</span>
+                    {% endif %}
+                </div>
+            </div>
+             <div class="mt-2 small text-muted">
+                 {# Date and ID display from the first template #}
+                <span><i class="far fa-calendar-alt"></i> {{ webinar.date.strftime('%d.%m.%Y') if webinar.date else 'Нет даты' }}</span> |
+                <span>ID: {{ webinar.url[-5:] if webinar.url and webinar.url|length >= 5 else 'N/A' }}</span>
+            </div>
+        </div>
+        <div class="card-footer bg-transparent border-top pt-2 d-flex justify-content-between align-items-center"> {# Added border-top and padding #}
+            {# Week select from the first template #}
+            <select class="form-select form-select-sm week-select webinar-action-button" name="week_numbers_{{ webinar.id }}" style="width: 120px;" {% if not is_checked %}disabled{% endif %}>
+                {% for week in range(1, 5) %}
+                <option value="{{ week }}" {% if selected_week == week %}selected{% endif %}>Неделя {{ week }}</option>
+                {% endfor %}
+            </select>
+             {# --- ADDED: Hidden input to ensure all selected webinar IDs are submitted --- #}
+            <input type="hidden" name="webinar_ids_in_plan" value="{{ webinar.id }}" {% if not is_checked %}disabled{% endif %} class="webinar-hidden-input">
+            {# --- END ADDED --- #}
+            {# Checkbox switch from the first template #}
+            <div class="form-check form-switch webinar-action-button">
+                <input class="form-check-input webinar-checkbox" type="checkbox" role="switch" {# Added role #}
+                       id="webinar_{{ webinar.id }}" name="webinar_ids"
+                       value="{{ webinar.id }}" {% if is_checked %}checked{% endif %}
+                       data-initial-week="{{ selected_week }}">
+                <label class="form-check-label" for="webinar_{{ webinar.id }}"></label> {# Added label for accessibility #}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
 {% block title %}{{ student.first_name }} {{ student.last_name }} - Создание плана{% endblock %}
 
 {% block styles %}
 <style>
-    /* Стили для улучшения интерфейса */
+    /* --- ОБНОВЛЕННЫЕ СТИЛИ --- */
     .webinar-card {
         transition: all 0.2s ease;
         cursor: pointer;
+        display: flex; /* Ensure cards take height */
+        flex-direction: column;
+    }
+    .webinar-card .card-body {
+        flex-grow: 1; /* Allow body to grow */
+    }
+     .webinar-card .card-footer {
+        flex-shrink: 0; /* Prevent footer from shrinking */
+        align-items: center; /* Vertically align items in footer */
     }
     .webinar-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     }
     .filter-buttons .btn {
         margin-bottom: 5px;
     }
     .webinar-cover {
-        height: 180px;
+        height: 150px; /* Adjusted height */
         display: flex;
         justify-content: center;
         align-items: center;
@@ -41,41 +159,88 @@
         opacity: 1;
     }
     .task-badge-container {
-        min-height: 50px; /* Обеспечивает минимальную высоту */
-        display: block; /* Или inline-block, если нужно */
+        min-height: 45px; /* Adjusted height */
+        display: block; /* Or inline-block, if needed */
     }
     .badge {
-        display: inline-block; /* Убедитесь, что бэджи могут переноситься */
+        display: inline-block; /* Ensure badges can wrap */
         margin-right: 2px;
-        margin-bottom: 3px; /* Добавляет отступ снизу */
+        margin-bottom: 3px; /* Add bottom margin */
     }
+    
+    /* Стили для компактных тэгов */
+    .badge i {
+        margin-right: 0; /* Убираем отступ для иконок */
+    }
+    .badge.bg-purple {
+        background-color: #8e44ad !important; /* Фиолетовый для №27 */
+    }
+    .badge.bg-orange {
+        background-color: #e67e22 !important; /* Оранжевый для №26 */
+    }
+    .filter-btn {
+        border-radius: 50rem;
+        padding: 0.25rem 0.75rem;
+        margin-right: 0.25rem;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+    .filter-btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    
     .webinar-title {
-        min-height: 60px; /* Минимальная высота для заголовка */
+        min-height: 4.5em; /* Approx 3 lines height */
+        max-height: 4.5em;
+        line-height: 1.5em;
         display: -webkit-box;
-        -webkit-line-clamp: 3; /* Ограничиваем 3 строками */
+        -webkit-line-clamp: 3; /* Limit to 3 lines */
         -webkit-box-orient: vertical;
         overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 0.75rem; /* Increased space below title */
     }
     .card-body {
-        padding: 1rem; /* Стандартный отступ */
+        padding: 0.8rem; /* Slightly reduced padding */
+        display: flex;
+        flex-direction: column;
     }
+     .card-body > div:last-of-type { /* Push date/ID to bottom */
+        margin-top: auto;
+    }
+
     .selected-webinar {
-        border: 2px solid #0d6efd; /* Выделяем выбранные */
+        border: 2px solid var(--bs-primary); /* Highlight selected */
     }
     .week-section .card {
-        background-color: #f8f9fa; /* Легкий фон для карточек в плане */
+        background-color: #eef2f7; /* Light blueish background for cards in plan */
     }
     .available-webinars-container .card {
-        background-color: #ffffff; /* Белый фон для доступных */
+        background-color: #ffffff; /* White background for available */
     }
     .week-container {
-        min-height: 200px; /* Чтобы контейнер не схлопывался */
+        min-height: 200px; /* Ensure container doesn't collapse */
         background-color: rgba(0,0,0,0.02);
-        border: 1px dashed #ddd;
+        border: 1px dashed #ccc; /* Dashed border */
         padding: 15px;
         margin-bottom: 20px;
         border-radius: 5px;
+        display: grid; /* Use grid for layout */
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Responsive grid */
+        gap: 1rem; /* Gap between cards */
     }
+    .available-webinars-container .row { /* Keep row for available */
+         min-height: 200px;
+         background-color: rgba(0,0,0,0.01);
+         border: 1px dashed #ddd;
+         padding: 15px;
+         border-radius: 5px;
+    }
+
     .week-container-header {
         font-weight: bold;
         margin-bottom: 15px;
@@ -86,34 +251,69 @@
         color: #aaa;
         padding: 20px;
         font-style: italic;
+        grid-column: 1 / -1; /* Span full width in grid */
+        align-self: center; /* Center vertically */
+    }
+    .available-webinars-container .webinar-placeholder {
+        grid-column: auto; /* Reset for row layout */
+        align-self: auto;
     }
 
-    /* Стили для мобильных устройств */
+    /* Styles for mobile devices */
     @media (max-width: 768px) {
         .filter-buttons {
             margin-top: 10px;
         }
+        .week-container {
+             grid-template-columns: 1fr; /* Single column on mobile */
+        }
     }
+
+    /* Style for disabled select when not checked */
+    .week-select:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: #e9ecef;
+    }
+
+    /* SortableJS helper classes */
+    .sortable-ghost {
+        opacity: 0.4;
+        background: #c8ebfb;
+    }
+    .sortable-chosen {
+        /* Add styles for the item being actively dragged if needed */
+    }
+    .sortable-drag {
+        /* Add styles for the item being dragged if needed */
+    }
+    /* --- КОНЕЦ ОБНОВЛЕННЫХ СТИЛЕЙ --- */
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container py-4"> {# Changed container-fluid to container for standard width #}
     <div class="d-flex justify-content-between align-items-center mb-3">
+        {# Title aligned with new template structure #}
         <h2>Создание плана для {{ student.first_name }} {{ student.last_name }}</h2>
-        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Назад к ученику
-        </a>
+        <div>
+            <button type="submit" form="create-plan-form" class="btn btn-primary me-2">
+                <i class="fas fa-save me-1"></i> Сохранить план
+            </button>
+            <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-outline-secondary mb-2">
+                <i class="fas fa-arrow-left me-1"></i> Назад к профилю
+            </a>
+        </div>
     </div>
 
-    {# Возвращаем информационное сообщение #}
+    {# Display deferral message if applicable (from old template) #}
     {% if is_first_plan and (student.initial_score is none or student.initial_score <= 40) %}
         {% set target_requires_26 = 26 in required_tasks %}
         {% set target_requires_27 = 27 in required_tasks %}
         {% if target_requires_26 or target_requires_27 %}
             <div class="alert alert-info alert-dismissible fade show" role="alert">
                 <i class="fas fa-info-circle me-2"></i>
-                <strong>Обратите внимание:</strong> Задания 
+                <strong>Обратите внимание:</strong> Задания
                 {% if target_requires_26 and target_requires_27 %}26 и 27{% elif target_requires_26 %}26{% else %}27{% endif %}
                  будут рекомендованы, начиная со следующего плана, т.к. это первый план и начальный балл невысок.
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -121,820 +321,1078 @@
         {% endif %}
     {% endif %}
 
-    <div class="row">
-        <!-- Информация об ученике -->
-        <div class="col-md-3 mb-4">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Информация об ученике</h5>
+    <form method="post" id="create-plan-form" action="{{ url_for('plans.create_study_plan', student_id=student.id) }}"> {# Ensure form action is correct #}
+        {# CSRF Token #}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}"/>
+
+        {# Block with information and plan parameters - Merged from both templates #}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                 {# Title from the first template #}
+                <h5 class="mb-0">Параметры плана</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Студент:</strong> {{ student.first_name }} {{ student.last_name }}</p>
+                        <p><strong>Целевой балл:</strong> {{ student.target_score or 'Не указан' }}</p>
+                        <p><strong>Часов в неделю:</strong> {{ student.hours_per_week or 'Не указано' }}</p>
+                        <p><strong>Уровень Python:</strong> {% if student.needs_python_basics %}Начинающий{% else %}Базовый{% endif %}</p>
+                    </div>
+                    <div class="col-md-6">
+                        {# Quotas for T26 and T27 #}
+                        <div class="mb-3">
+                            <label for="quota_t26" class="form-label">Квота вебинаров на Задание 26 на каждую неделю (0 - без квоты)</label>
+                            <input type="number" class="form-control" id="quota_t26" name="quota_t26" value="{{ request.args.get('quota_t26', 0) }}" min="0"> {# Use request.args if needed #}
+                        </div>
+                        <div class="mb-3">
+                            <label for="quota_t27" class="form-label">Квота вебинаров на Задание 27 на каждую неделю (0 - без квоты)</label>
+                            <input type="number" class="form-control" id="quota_t27" name="quota_t27" value="{{ request.args.get('quota_t27', 0) }}" min="0"> {# Use request.args if needed #}
+                        </div>
+                        <div class="alert alert-info" role="alert">
+                            <small><i class="fa-solid fa-circle-info"></i> <strong>Примечание:</strong> Квоты применяются отдельно для каждой недели. Например, если указана квота "2 вебинара на Задание 27", то система предложит максимум 2 вебинара на задание 27 в каждую из 4-х недель (всего до 8 вебинаров за весь период обучения).</small>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" id="recalculate-recommendations">
+                            <i class="fas fa-redo me-1"></i> Пересчитать рекомендации
+                        </button>
+                        <div class="form-text">Нажмите, чтобы обновить список рекомендуемых вебинаров с учетом квот.</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <h5>{{ student.last_name }} {{ student.first_name }}</h5>
-                    <p class="text-muted">ID на платформе: {{ student.platform_id }}</p>
-                    
-                    <dl class="row mb-0">
-                        <dt class="col-sm-5">Целевой балл:</dt>
-                        <dd class="col-sm-7">{{ student.target_score or 'Не указан' }}</dd>
-                        
-                        <dt class="col-sm-5">Часов в неделю:</dt>
-                        <dd class="col-sm-7">{{ student.hours_per_week or 'Не указано' }}</dd>
-                        
-                        <dt class="col-sm-5">Уровень:</dt>
-                        <dd class="col-sm-7">
-                            {% if student.is_beginner %}
-                                <span class="badge bg-info">Начинающий</span>
-                            {% else %}
-                                <span class="badge bg-success">Базовый</span>
-                            {% endif %}
-                            
-                            {% if 26 in known_task_numbers %}
-                                <span class="badge bg-warning">Задание 26</span>
-                            {% endif %}
-                            
-                            {% if 27 in known_task_numbers %}
-                                <span class="badge bg-danger">Задание 27</span>
-                            {% endif %}
-                        </dd>
-                    </dl>
+                 <div class="mt-3">
+                     <p class="mb-1"><strong>Необходимые задания (исходя из цели):</strong></p>
+                     <div class="d-flex flex-wrap gap-1">
+                         {# Ensure required_tasks and known_task_numbers are passed from the view #}
+                         {% for task_num in required_tasks|sort %}
+                            <span class="badge {% if task_num in known_task_numbers %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ task_num }} {% if task_num in known_task_numbers %}<i class="fas fa-check ms-1"></i>{% endif %}
+                            </span>
+                         {% else %}
+                             <span class="text-muted">Нет данных или все изучено</span>
+                         {% endfor %}
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        {# Containers for weeks - Using grid layout from the first template #}
+        <div class="row">
+            {% for week_num in range(1, 5) %}
+            <div class="col-12 mb-4"> {# Full width column for each week section #}
+                <div class="card week-section h-100 shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-calendar-week me-2"></i> Неделя {{ week_num }}
+                        </h5>
+                        {# Counter from the first template #}
+                        <div>
+                            <span class="badge bg-primary rounded-pill week-counter" id="week-{{ week_num }}-counter">0</span>
+                            <span class="badge bg-secondary rounded-pill ms-1" id="week-{{ week_num }}-hours">0 ч</span>
+                        </div>
+                    </div>
+                    {# The container for the cards - ID from the first template #}
+                    <div class="card-body week-container" id="week-{{ week_num }}-container" data-week-num="{{ week_num }}">
+                        {# Placeholder added/removed by JS #}
+                        <div class="webinar-placeholder">Перетащите вебинары сюда</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+
+        {# Available webinars - Structure from the first template #}
+        <div class="card mt-4 mb-4 shadow-sm">
+             <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
+                <h5 class="mb-0 me-3">Доступные вебинары (<span id="available-counter">0</span>)</h5>
+                 {# Filter/Search for available webinars #}
+                 <input type="text" id="availableWebinarSearchInput" class="form-control form-control-sm" style="max-width: 300px;" placeholder="Поиск среди доступных...">
+            </div>
+            
+            {# Добавляем панель фильтров #}
+            <div class="card-body py-2 border-bottom">
+                <div class="row">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="availableWebinarSearchInput" class="form-control border-start-0" placeholder="Поиск среди доступных...">
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="filter-buttons">
+                            <button type="button" class="filter-btn active" data-filter="all">Все</button>
+                            <button type="button" class="filter-btn" data-filter="beginners">Python с нуля</button>
+                            <button type="button" class="filter-btn" data-filter="advanced">Хард прога</button>
+                            <button type="button" class="filter-btn" data-filter="expert">Задание 27</button>
+                            <button type="button" class="filter-btn" data-filter="task26">Задание 26</button>
+                            <button type="button" class="filter-btn" data-filter="mocks">Пробники</button>
+                            <button type="button" class="filter-btn" data-filter="practice">Нарешка</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <!-- Известные задания -->
-            <div class="card shadow mt-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Обязательные задания</h5>
+            {# Расширенные фильтры #}
+            <div class="card border-0 mb-0">
+                <div class="card-header bg-white">
+                    <a href="#advancedFilters" data-bs-toggle="collapse" class="text-decoration-none text-dark d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-filter me-2"></i> Расширенная фильтрация</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </a>
                 </div>
-                <div class="card-body">
-                    <p class="text-muted mb-3">Задания, которые нужно изучить для целевого балла {{ student.target_score or 80 }}:</p>
-                    <div class="row">
-                        {% set target_score = student.target_score or 80 %}
-                        
-                        {# Определяем диапазон заданий в зависимости от целевого балла #}
-                        {% if target_score <= 70 %}
-                            {% set required_tasks = range(1, 24) %}  {# 1-23 задания #}
-                        {% elif target_score > 70 and target_score <= 85 %}
-                            {% set required_tasks = range(1, 26) %}  {# 1-25 задания #}
-                        {% elif target_score > 85 and target_score <= 95 %}
-                            {% set required_tasks = range(1, 27) %}  {# 1-26 задания #}
-                        {% else %}
-                            {% set required_tasks = range(1, 28) %}  {# 1-27 задания #}
-                        {% endif %}
-                        
-                        {% for i in required_tasks %}
-                            <div class="col-3 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="task_{{ i }}" 
-                                        {% if i in known_task_numbers %}checked{% endif %} disabled>
-                                    <label class="form-check-label" for="task_{{ i }}">
-                                        {% if i in known_task_numbers %}
-                                            <span class="text-success">№{{ i }}</span>
-                                        {% else %}
-                                            <span>№{{ i }}</span>
-                                        {% endif %}
-                                    </label>
+                <div id="advancedFilters" class="collapse">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {# Фильтр по типу решения #}
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fas fa-code me-1"></i> Тип решения</label>
+                                <div class="filter-buttons solution-filter w-100">
+                                    <button type="button" class="filter-btn solution-filter active" data-filter="all">Все</button>
+                                    <button type="button" class="filter-btn solution-filter" data-filter="programming">Программирование</button>
+                                    <button type="button" class="filter-btn solution-filter" data-filter="manual">Ручное решение</button>
+                                    <button type="button" class="filter-btn solution-filter" data-filter="excel">Электронные таблицы</button>
                                 </div>
                             </div>
-                        {% endfor %}
+                            
+                            {# Фильтр по категории #}
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="fas fa-tags me-1"></i> Категория</label>
+                                <div class="filter-buttons w-100">
+                                    <button type="button" class="filter-btn category-filter active" data-filter="all">Все</button>
+                                    <button type="button" class="filter-btn category-filter" data-filter="cat1">Обязательный</button>
+                                    <button type="button" class="filter-btn category-filter" data-filter="cat2">Повторение</button>
+                                    <button type="button" class="filter-btn category-filter" data-filter="cat3">Не обязательный</button>
+                                    <button type="button" class="filter-btn category-filter" data-filter="cat4">Для продвинутых</button>
+                                </div>
+                            </div>
+                            
+                            {# Фильтр по номерам заданий #}
+                            <div class="col-md-6">
+                                <label for="taskFilterSelect" class="form-label"><i class="fas fa-hashtag me-1"></i> Номер задания</label>
+                                <select class="form-select" id="taskFilterSelect">
+                                    <option value="all" selected>Все задания</option>
+                                    {% for i in range(1, 28) %}
+                                        <option value="task-{{ i }}">№{{ i }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            {# Сброс фильтров #}
+                            <div class="col-12">
+                                <button type="button" class="btn btn-outline-danger" id="resetAllFilters">
+                                    <i class="fas fa-undo me-2"></i> Сбросить все фильтры
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Дополнительные задания -->
-            <div class="card shadow mt-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Дополнительные задания</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-3">Задания, которые не входят в минимум для целевого балла, но могут быть полезны:</p>
-                    
-                    <div class="row">
-                        {% set all_tasks = range(1, 28) %}
-                        {% set other_tasks_found = false %}
-                        
-                        {% for i in all_tasks %}
-                            {% if i not in required_tasks %}
-                                {% set other_tasks_found = true %}
-                                <div class="col-3 mb-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="other_task_{{ i }}" 
-                                            {% if i in known_task_numbers %}checked{% endif %} disabled>
-                                        <label class="form-check-label" for="other_task_{{ i }}">
-                                            {% if i in known_task_numbers %}
-                                                <span class="text-success">№{{ i }}</span>
-                                            {% else %}
-                                                <span>№{{ i }}</span>
-                                            {% endif %}
-                                        </label>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% if not other_tasks_found %}
-                            <p>Все задания включены в основной план подготовки.</p>
-                        {% endif %}
-                    </div>
+
+            <div class="card-body available-webinars-container">
+                 {# Container for the cards - using default row/cols #}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-3" id="available-webinars-inner-container">
+                     {# Placeholder added/removed by JS #}
+                     <div class="webinar-placeholder">Нет доступных вебинаров</div>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-9">
-            <form method="post" id="create-plan-form" action="{{ url_for('plans.create_study_plan', student_id=student.id) }}">
-                {# Используем переданную переменную #}
-                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}"/> 
-                
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-4">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i> Сохранить план обучения
-                    </button>
-                </div>
-                
-                {# Добавляем блок настройки квот СЮДА #}
-                <!-- 
-                <div class="card shadow mb-4">
-                    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0"><i class="fas fa-sliders-h me-2"></i>Настройка квот Т26/Т27</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted small">Укажите желаемое количество вебинаров. Итоговый план будет сформирован после сохранения с учетом этих квот и бюджета часов.</p>
-                        <div class="row g-3 align-items-center">
-                            <div class="col-auto">
-                                <label for="quota_t26" class="col-form-label">Желаемое кол-во вебинаров по <strong>№26</strong>:</label>
-                            </div>
-                            <div class="col-auto">
-                                <input type="number" id="quota_t26" name="quota_t26" class="form-control form-control-sm" value="{{ request.args.get('quota_t26', 0) }}" min="0" style="width: 80px;">
-                            </div>
-                            <div class="col-auto">
-                                <label for="quota_t27" class="col-form-label">Желаемое кол-во вебинаров по <strong>№27</strong>:</label>
-                            </div>
-                            <div class="col-auto">
-                                <input type="number" id="quota_t27" name="quota_t27" class="form-control form-control-sm" value="{{ request.args.get('quota_t27', 0) }}" min="0" style="width: 80px;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                -->
-                
-                <div class="card shadow mb-4">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Рекомендуемые вебинары</h5>
-                        <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#recommendedWebinarsCollapse" aria-expanded="true">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                    <div class="card-body collapse show" id="recommendedWebinarsCollapse">
-                        {% if weekly_hours_summary %}
-                        <div class="card bg-light mb-4 border">
-                            <div class="card-body p-3">
-                                <h6 class="card-title mb-2"><i class="far fa-clock me-2"></i>Примерная нагрузка по неделям:</h6>
-                                <div class="d-flex justify-content-around text-center">
-                                    {% for week, hours in weekly_hours_summary.items()|sort %}
-                                    <div class="px-2">
-                                        <div class="fw-bold">Неделя {{ week }}</div>
-                                        <div class="badge {% if hours > student.hours_per_week|default(9) %}bg-danger{% elif hours > student.hours_per_week|default(9) * 0.8 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                            ~{{ hours|round(1) }} ч.
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                <small class="text-muted d-block mt-2">*Нагрузка может незначительно отличаться, если вы вручную измените состав вебинаров.</small>
-                            </div>
-                        </div>
-                        {% endif %}
 
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i> Система подобрала {{ suitable_webinars|length }} вебинаров на ближайшие 4 недели на основе целевого балла и текущего уровня ученика (с учетом квот по умолчанию).
-                        </div>
-                        <div class="recommended-webinars">
-                            {% for week_num in range(1, 5) %}
-                            <div class="week-container mb-4 border rounded p-3" data-week="{{ week_num }}">
-                                <h5 class="week-title border-bottom pb-2 mb-3">Неделя {{ week_num }}</h5>
-                                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 week-content">
-                                    {# Создаем список вебинаров ТОЛЬКО для этой недели #}
-                                    {% set webinars_for_this_week = [] %}
-                                    {% for webinar in suitable_webinars %}
-                                        {% if webinar_weeks.get(webinar.id) == week_num %}
-                                            {% set _ = webinars_for_this_week.append(webinar) %}
-                                        {% endif %}
-                                    {% endfor %}
-
-                                    {# Проверяем, пуст ли список для этой недели #}
-                                    {% if webinars_for_this_week %}
-                                        {# Если не пуст, отображаем вебинары из этого списка #}
-                                        {% for webinar in webinars_for_this_week %}
-                                            <div class="col webinar-item">
-                                                <div class="card webinar-card h-100 shadow-sm {% if webinar.id in watched_webinar_ids %}border-secondary bg-light opacity-75{% elif webinar.id in (request.form.getlist('webinar_ids') if request.method == 'POST' else []) %}border-primary{% endif %}" 
-                                                     data-webinar-id="{{ webinar.id }}"
-                                                     data-week="{{ webinar_weeks.get(webinar.id, 1) }}"> 
-                                                    <div class="webinar-cover">
-                                                        {% if webinar.cover_url %}
-                                                            <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}" style="object-fit: cover; height: 100%; width: 100%; border-radius: calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;">
-                                                        {% else %}
-                                                            <div class="d-flex align-items-center justify-content-center h-100 w-100" style="background-color: #e9ecef;">
-                                                                <i class="fas fa-photo-video fa-3x text-muted"></i>
-                                                            </div>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="card-body d-flex flex-column">
-                                                        <div class="d-flex align-items-start mb-2">
-                                                            <div class="form-check pt-1 me-2 flex-shrink-0">
-                                                                <input type="checkbox" class="form-check-input webinar-checkbox" name="webinar_ids" value="{{ webinar.id }}" id="webinar-check-{{ webinar.id }}" checked>
-                                                                <input type="hidden" name="week_numbers_{{ webinar.id }}" value="{{ webinar_weeks.get(webinar.id, 1) }}">
-                                                            </div>
-                                                            <div class="flex-grow-1">
-                                                                <label for="webinar-check-{{ webinar.id }}" class="fw-bold webinar-title mb-1" style="cursor: pointer;">
-                                                                    {{ webinar.title }}
-                                                                </label>
-                                                                <p class="card-text small text-muted mb-2 d-flex align-items-center">
-                                                                    <i class="far fa-calendar-alt me-1"></i> {{ webinar.date|moscow_time if webinar.date else 'Не указана' }}
-                                                                    <a href="{{ webinar.url }}" target="_blank" class="ms-auto link-secondary" title="Открыть в Школково" onclick="event.stopPropagation();">
-                                                                        <i class="fas fa-external-link-alt fa-sm"></i>
-                                                                    </a>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        {# --- Начало блока тегов --- #}
-                                                        <div class="mt-auto pt-2">
-                                                            {# Теги для задач #}
-                                                            <div class="mb-2">
-                                                                {% for task in webinar.task_numbers|sort(attribute='number') %}
-                                                                    <span class="badge bg-secondary me-1 mb-1">№{{ task.number }}</span>
-                                                                {% else %}
-                                                                    <span class="badge bg-light text-dark border me-1 mb-1">Без задач</span>
-                                                                {% endfor %}
-                                                            </div>
-
-                                                            {# Теги категории, типа решения и ТИПА КУРСА (измененная логика) #}
-                                                            <div class="mb-2">
-                                                                {# Категория (Обяз/Повтор/Необяз/Продв) #}
-                                                                {% if webinar.category == 1 %}<span class="badge bg-success me-1 mb-1"><i class="fas fa-star me-1"></i>Обязательный</span>{% endif %}
-                                                                {% if webinar.category == 2 %}<span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-redo me-1"></i>Повторение</span>{% endif %}
-                                                                {% if webinar.category == 3 %}<span class="badge bg-info text-dark me-1 mb-1"><i class="fas fa-leaf me-1"></i>Не обязательный</span>{% endif %}
-                                                                {% if webinar.category == 4 %}<span class="badge bg-danger me-1 mb-1"><i class="fas fa-fire me-1"></i>Для продвинутых</span>{% endif %}
-
-                                                                {# Тип решения #}
-                                                                {% if webinar.is_programming %}<span class="badge bg-primary me-1 mb-1"><i class="fas fa-code me-1"></i>Код</span>{% endif %}
-                                                                {% if webinar.is_manual %}<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-pencil-alt me-1"></i>Руки</span>{% endif %}
-                                                                {% if webinar.is_excel %}<span class="badge bg-success me-1 mb-1"><i class="fas fa-file-excel me-1"></i>Excel</span>{% endif %}
-                                                                
-                                                                {# --- ИЗМЕНЕННАЯ ЛОГИКА ТЕГА ТИПА КУРСА --- #}
-                                                                {% set webinar_task_nums = webinar.task_numbers|map(attribute='number')|list %}
-                                                                {% if webinar.for_beginners %}
-                                                                    <span class="badge bg-info text-dark me-1 mb-1"><i class="fas fa-baby me-1"></i>Python с нуля</span>
-                                                                {% elif 27 in webinar_task_nums %}
-                                                                    <span class="badge bg-purple me-1 mb-1"><i class="fas fa-crown me-1"></i>Задание 27</span>
-                                                                {% elif 26 in webinar_task_nums %}
-                                                                    <span class="badge bg-orange text-dark me-1 mb-1"><i class="fas fa-brain me-1"></i>Задание 26</span>
-                                                                {% elif not webinar.for_mocks and not webinar.for_practice and not webinar.for_minisnap %}
-                                                                    {# Показываем 'Основной курс' только если это не пробник/практика/минищелчок и не 26/27/beginners #}
-                                                                    <span class="badge bg-success me-1 mb-1"><i class="fas fa-graduation-cap me-1"></i>Основной курс</span>
-                                                                {% endif %}
-                                                                {# --- КОНЕЦ ИЗМЕНЕНИЙ --- #}
-                                                                
-                                                                {# Доп. типы (пробник, нарешка, щелчок) #}
-                                                                {% if webinar.for_mocks %}<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-file-alt me-1"></i>Разбор пробника</span>{% endif %}
-                                                                {% if webinar.for_practice %}<span class="badge bg-primary me-1 mb-1"><i class="fas fa-dumbbell me-1"></i>Нарешка</span>{% endif %}
-                                                                {% if webinar.for_minisnap %}<span class="badge bg-dark me-1 mb-1"><i class="fas fa-bolt me-1"></i>Мини-щелчок</span>{% endif %}
-                                                            </div>
-                                                        </div>
-                                                        {# --- Конец блока тегов --- #}
-
-                                                        <div class="d-flex justify-content-between align-items-center border-top pt-2">
-                                                            <span class="small text-muted">Длит: ~{{ get_webinar_hours(webinar) }} ч.</span>
-                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-webinar-btn" title="Убрать из рекомендованных">
-                                                                <i class="fas fa-times"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    {% else %}
-                                        {# Если список пуст, показываем сообщение #}
-                                        <div class="col-12">
-                                            <p class="text-muted fst-italic">На этой неделе рекомендуемых вебинаров нет.</p>
-                                        </div>
-                                    {% endif %}
-                                </div> {# End row for week content #}
-                            </div> {# End week-container #}
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card shadow mb-4">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Все вебинары</h5>
-                        <button type="submit" class="btn btn-sm btn-light">
-                            <i class="fas fa-save me-1"></i> Сохранить план
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i> В этом разделе вы можете выбрать дополнительные вебинары, которые не были автоматически рекомендованы системой или уже просмотрены учеником.
-                        </div>
-                        
-                        <div class="mb-3 webinar-filters">
-                            <input type="text" id="webinarSearchInput" class="form-control mb-2" placeholder="Поиск вебинаров...">
-                            <div class="btn-group filter-buttons">
-                                <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="all">Все</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_beginners">Python с нуля</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_basic">Основной курс</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_advanced">Хард прога</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_expert">Задание 27</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_mocks">Разбор пробников</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_practice">Нарешка</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_minisnap">Мини-щелчок</button>
-                            </div>
-                        </div>
-
-                        <!-- РАСШИРЕННЫЕ ФИЛЬТРЫ (Начало) -->
-                        <div class="card mb-4 bg-light border">
-                            <div class="card-header py-2">
-                                <a href="#additionalAdvancedFilters" data-bs-toggle="collapse" class="text-decoration-none text-dark fw-bold">
-                                    <i class="fas fa-filter me-2"></i> Дополнительные фильтры
-                                    <i class="fas fa-chevron-down float-end mt-1"></i>
-                                </a>
-                            </div>
-                            <div id="additionalAdvancedFilters" class="collapse">
-                                <div class="card-body pb-2">
-                                    <div class="row g-3">
-                                        <!-- Фильтр по дате -->
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-1"><i class="fas fa-calendar-alt me-1"></i> По дате</label>
-                                            <div class="btn-group w-100" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary date-filter active" data-filter="all">Все</button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary date-filter" data-filter="new">Новые сначала</button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary date-filter" data-filter="old">Старые сначала</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Фильтр по типу решения -->
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-1"><i class="fas fa-code me-1"></i> Тип решения</label>
-                                            <div class="btn-group w-100" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary solution-filter active" data-filter="all">Все</button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary solution-filter" data-filter="is_programming">Программирование</button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary solution-filter" data-filter="is_manual">Ручное решение</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Фильтр по категории -->
-                                        <div class="col-md-6">
-                                            <label class="form-label small mb-1"><i class="fas fa-tags me-1"></i> Категория</label>
-                                            <div class="d-flex flex-wrap gap-1">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary category-filter active" data-filter="all">Все</button>
-                                                <button type="button" class="btn btn-sm btn-outline-success category-filter" data-filter="category-1">Обязательный</button>
-                                                <button type="button" class="btn btn-sm btn-outline-info category-filter" data-filter="category-2">Повторение</button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary category-filter" data-filter="category-3">Необязательный</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Фильтр по номерам заданий -->
-                                        <div class="col-md-6">
-                                            <label for="taskFilterSelect" class="form-label small mb-1"><i class="fas fa-hashtag me-1"></i> Номер задания</label>
-                                            <select class="form-select form-select-sm" id="taskFilterSelect">
-                                                <option value="all" selected>Все задания</option>
-                                                {% for i in range(1, 28) %}
-                                                    <option value="task-{{ i }}">№{{ i }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        
-                                        <!-- Сброс фильтров -->
-                                        <div class="col-12 mt-3">
-                                            <button type="button" class="btn btn-sm btn-danger" id="resetAllFilters">
-                                                <i class="fas fa-undo me-2"></i> Сбросить все фильтры
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- РАСШИРЕННЫЕ ФИЛЬТРЫ (Конец) -->
-                        
-                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 all-webinars">
-                            {% for webinar in other_webinars %}
-                                <div class="col webinar-item 
-                                        {% if webinar.for_beginners %}for_beginners{% endif %}
-                                        {% if webinar.for_basic %}for_basic{% endif %}
-                                        {% if webinar.for_advanced %}for_advanced{% endif %}
-                                        {% if webinar.for_expert %}for_expert{% endif %}
-                                        {% if webinar.for_mocks %}for_mocks{% endif %}
-                                        {% if webinar.for_practice %}for_practice{% endif %}
-                                        {% if webinar.for_minisnap %}for_minisnap{% endif %}
-                                        {% if webinar.is_programming %} is_programming{% endif %}
-                                        {% if webinar.is_manual %} is_manual{% endif %}
-                                        {% if webinar.category %} category-{{ webinar.category }}{% endif %}
-                                        {% for task in webinar.task_numbers %} task-{{ task.number }}{% endfor %}
-                                        {% if webinar.date %} date-{{ webinar.date.strftime('%Y-%m-%d') }}{% endif %}
-                                    " data-id="{{ webinar.id }}">
-                                        <div class="card webinar-card h-100" data-id="{{ webinar.id }}">
-                                            <div class="webinar-cover">
-                                                {% if webinar.cover_url %}
-                                                    <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
-                                                {% else %}
-                                                    <div class="text-center text-muted">
-                                                        <i class="fas fa-video fa-3x"></i>
-                                                    </div>
-                                                {% endif %}
-                                                <div class="position-absolute top-0 end-0 m-2">
-                                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-light rounded-circle" title="Открыть вебинар">
-                                                        <i class="fas fa-external-link-alt"></i>
-                                                    </a>
-                                                    <button type="button" class="btn btn-sm btn-light rounded-circle copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку">
-                                                        <i class="fas fa-copy"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="card-body">
-                                                <h6 class="card-title webinar-title">{{ webinar.title }}</h6>
-                                                <div class="task-badge-container mb-2">
-                                                    {% for task in webinar.task_numbers %}
-                                                        <span class="badge bg-secondary me-1 mb-1">№{{ task.number }}</span>
-                                                    {% endfor %}
-                                                    
-                                                    {% if webinar.category == 1 %}
-                                                        <span class="badge bg-success me-1 mb-1">Обязательный</span>
-                                                    {% elif webinar.category == 2 %}
-                                                        <span class="badge bg-info me-1 mb-1">Повторение</span>
-                                                    {% elif webinar.category == 3 %}
-                                                        <span class="badge bg-secondary me-1 mb-1">Необязательный</span>
-                                                    {% endif %}
-                                                    
-                                                    {% if webinar.is_programming and webinar.is_manual %}
-                                                        <span class="badge bg-primary me-1 mb-1">Программирование</span>
-                                                        <span class="badge bg-warning text-dark me-1 mb-1">Ручное решение</span>
-                                                    {% elif webinar.is_programming %}
-                                                        <span class="badge bg-primary me-1 mb-1">Программирование</span>
-                                                    {% elif webinar.is_manual %}
-                                                        <span class="badge bg-warning text-dark me-1 mb-1">Ручное решение</span>
-                                                    {% endif %}
-                                                </div>
-                                                <div class="mt-2 small text-muted">
-                                                    <div>Дата: {{ webinar.date|moscow_time }}</div>
-                                                    <div>ID: {{ webinar.url[-5:] if webinar.url|length >= 5 else webinar.url }}</div>
-                                                </div>
-                                            </div>
-                                            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                                                <select class="form-select form-select-sm week-select" name="week_numbers_{{ webinar.id }}" style="width: 120px;">
-                                                    {% for week in range(1, 5) %}
-                                                        <option value="{{ week }}">Неделя {{ week }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-4">
-                    <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-secondary me-md-2">Отмена</a>
-                    <button type="submit" class="btn btn-primary">Сохранить план обучения</button>
-                </div>
-            </form>
+        {# Save/Cancel Buttons #}
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-4">
+            <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-secondary me-md-2">Отмена</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i> Сохранить план
+            </button>
         </div>
-    </div>
-</div>
+
+        {# Hidden container for all webinar cards (for JS) - Structure from the first template #}
+        <div id="all-webinars-data" style="display: none;">
+             {# Generate all cards HERE, including recommended and others #}
+            {% set initial_planned_ids = suitable_webinars|map(attribute='id')|list if suitable_webinars else [] %}
+            {% set watched_webinar_ids_set = watched_webinar_ids|map('int')|list %} {# Convert to list of ints #}
+
+
+            {# First, recommended ones #}
+            {% if suitable_webinars %}
+                {% for webinar in suitable_webinars %}
+                    {% set week_num = webinar_weeks.get(webinar.id, 1) %}
+                    {{ render_webinar_card(webinar, known_task_numbers, watched_webinar_ids_set, is_checked=True, selected_week=week_num) }}
+                {% endfor %}
+            {% endif %}
+
+            {# Then, the rest (not watched and not in recommendations) #}
+            {% if webinars %}
+                 {% for webinar in webinars %}
+                    {# Check if webinar.id is not in watched_ids (converted to int) AND not in initial_planned_ids #}
+                    {% if webinar.id|int not in watched_webinar_ids_set and webinar.id not in initial_planned_ids %}
+                         {{ render_webinar_card(webinar, known_task_numbers, watched_webinar_ids_set, is_checked=False, selected_week=1) }}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
+
+    </form> {# End of form #}
+</div> {# End of container #}
+
+{# --- Add webinar data as JSON for easier JS access (from the first template) --- #}
+<script id="webinar-initial-data" type="application/json">
+{
+    "suitableWebinars": [
+        {% if suitable_webinars %}
+        {% for webinar in suitable_webinars -%}
+        {
+            "id": {{ webinar.id }},
+            {# Simplified priority data based on JS logic #}
+            "category": {{ webinar.category if webinar.category is not none else 'null' }},
+            "date": "{{ webinar.date.strftime('%Y-%m-%d') if webinar.date else 'null' }}"
+        }{% if not loop.last %},{% endif %}
+        {%- endfor %}
+        {% endif %}
+    ],
+    "webinarWeeks": {{ webinar_weeks | tojson | safe if webinar_weeks else '{}' }}
+}
+</script>
+
 {% endblock %}
+
 
 {% block scripts %}
 {{ super() }}
+{# Include SortableJS #}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Обработчик ошибок загрузки изображений
-        document.querySelectorAll('.webinar-cover img').forEach(function(img) {
-            img.onerror = function() {
-                this.src = "{{ url_for('static', filename='images/sorry.png') }}";
-                this.classList.add('fallback-img');
-            };
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    // --- DOM Element References ---
+    const allWebinarsContainer = document.getElementById('all-webinars-data'); // Hidden source
+    const availableContainer = document.getElementById('available-webinars-inner-container'); // Target for available cards
+    const availableCounter = document.getElementById('available-counter');
+    const availableSearchInput = document.getElementById('availableWebinarSearchInput');
+    const recalculateBtn = document.getElementById('recalculate-recommendations');
+    const weekContainers = {}; // Object to hold week container elements {1: el, 2: el, ...}
+    const weekCounters = {};   // Object to hold week counter span elements {1: el, 2: el, ...}
+    const placeholders = new Map(); // Map to store placeholder elements
+    const sortableInstances = []; // <<<--- ДОБАВЛЕНО: Массив для хранения экземпляров SortableJS
 
-        // Текущее состояние фильтров
-        const activeFilters = {
-            courseCategory: 'all',
-            date: 'all',
-            solution: 'all',
-            category: 'all',
-            tasks: []
-        };
+    // --- Initialization ---
+    // Populate weekContainers and weekCounters
+    for (let i = 1; i <= 4; i++) {
+        weekContainers[i] = document.getElementById(`week-${i}-container`);
+        weekCounters[i] = document.getElementById(`week-${i}-counter`);
+        // Remove initial static placeholders if they exist
+        const staticPlaceholder = weekContainers[i]?.querySelector('.webinar-placeholder');
+        if (staticPlaceholder) staticPlaceholder.remove();
+    }
+     // Remove initial static placeholder for available container
+     const staticAvailablePlaceholder = availableContainer?.querySelector('.webinar-placeholder');
+     if (staticAvailablePlaceholder) staticAvailablePlaceholder.remove();
+
+    // --- Helper Functions ---
+
+    // Get or create a placeholder element for a container
+    function getPlaceholder(container, message) {
+        if (!container) return null;
+        if (!placeholders.has(container)) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'webinar-placeholder';
+            placeholder.textContent = message;
+            placeholders.set(container, placeholder);
+        }
+        const ph = placeholders.get(container);
+        ph.textContent = message; // Update text
+        return ph;
+    }
+
+    // Update all counters and manage placeholders visibility
+    function updateCountersAndPlaceholders() {
+        // Update Available Counter and Placeholder
+        let availableCount = availableContainer?.querySelectorAll('.webinar-item:not(.sortable-ghost)').length || 0;
+        if (availableCounter) availableCounter.textContent = availableCount;
+
+        const availPhMessage = availableSearchInput?.value ? `Нет вебинаров по запросу "${availableSearchInput.value}"` : 'Нет доступных вебинаров';
+        const availPlaceholder = getPlaceholder(availableContainer, availPhMessage);
+
+        if (availPlaceholder && availableContainer) {
+            if (availableCount === 0) {
+                 if (!availableContainer.contains(availPlaceholder)) {
+                    availableContainer.appendChild(availPlaceholder);
+                    // Add classes to center placeholder in row layout
+                    availableContainer.classList.add('justify-content-center', 'align-items-center', 'w-100', 'd-flex');
+                 }
+            } else {
+                if (availableContainer.contains(availPlaceholder)) {
+                    availableContainer.removeChild(availPlaceholder);
+                     // Remove centering classes
+                    availableContainer.classList.remove('justify-content-center', 'align-items-center', 'w-100', 'd-flex');
+                }
+            }
+        }
+
+        // Update Week Counters and Placeholders
+        let totalInPlan = 0;
         
-        // Элементы DOM
-        const filterInput = document.getElementById('webinarSearchInput');
-        const cardsContainer = document.querySelector('.all-webinars');
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        const dateFilterButtons = document.querySelectorAll('.date-filter');
-        const solutionFilterButtons = document.querySelectorAll('.solution-filter');
-        const categoryFilterButtons = document.querySelectorAll('.category-filter');
-        const taskFilterSelect = document.getElementById('taskFilterSelect');
-        const resetButton = document.getElementById('resetAllFilters');
-
-        // Фильтрация по тексту
-        if (filterInput) {
-            filterInput.addEventListener('keyup', function() {
-                applyFilters();
-            });
+        // Функция для расчета часов вебинара
+        function getWebinarHours(webinarItem) {
+            const webinarElement = webinarItem.querySelector('.webinar-card');
+            if (!webinarElement) return 3.0; // дефолтное значение
+            
+            // Проверяем на метки, указывающие тип вебинара
+            const hasPythonBadge = webinarElement.querySelector('.webinar-type-beginners');
+            const hasT26Badge = webinarElement.querySelector('.webinar-type-task26');
+            const hasT27Badge = webinarElement.querySelector('.webinar-type-expert');
+            
+            if (hasPythonBadge) return 2.5; // Python для начинающих
+            if (hasT26Badge || hasT27Badge) return 4.0; // Вебинары для T26/T27
+            return 3.0; // Стандартный вебинар
         }
         
-        // Фильтрация по основным кнопкам курса
-        filterButtons.forEach(function(button) {
+        for (let i = 1; i <= 4; i++) {
+            const weekContainer = weekContainers[i];
+            if (weekContainer) {
+                 const weekItems = weekContainer.querySelectorAll('.webinar-item:not(.sortable-ghost)');
+                 let weekCount = weekItems.length;
+                 if (weekCounters[i]) weekCounters[i].textContent = weekCount;
+                 totalInPlan += weekCount;
+                 
+                 // Расчет часов для каждой недели
+                 let weekHours = 0;
+                 weekItems.forEach(item => {
+                     weekHours += getWebinarHours(item);
+                 });
+                 
+                 // Обновляем счетчик часов
+                 const weekHoursElement = document.getElementById(`week-${i}-hours`);
+                 if (weekHoursElement) {
+                     weekHoursElement.textContent = `${weekHours.toFixed(1)} ч`;
+                 }
+
+                 const weekPlaceholder = getPlaceholder(weekContainer, 'Перетащите вебинары сюда');
+                 if (weekPlaceholder) {
+                     if (weekCount === 0) {
+                        if (!weekContainer.contains(weekPlaceholder)) {
+                            weekContainer.appendChild(weekPlaceholder);
+                         }
+                     } else {
+                        if (weekContainer.contains(weekPlaceholder)) {
+                            weekContainer.removeChild(weekPlaceholder);
+                        }
+                     }
+                 }
+            }
+        }
+        // console.log(`[Counters Updated] Available: ${availableCount}, In Plan: ${totalInPlan}`);
+    }
+
+    // Update the visual state and form inputs of a webinar card based on its container
+    function updateCardState(webinarItem, targetContainer) {
+        if (!webinarItem) return;
+        // console.log(`[updateCardState] Updating state for item ${webinarItem?.dataset.webinarId} in container`, targetContainer);
+        const checkbox = webinarItem.querySelector('.webinar-checkbox');
+        const weekSelect = webinarItem.querySelector('.week-select');
+        const card = webinarItem.querySelector('.webinar-card');
+        const hiddenInput = webinarItem.querySelector('.webinar-hidden-input'); // Get hidden input
+
+        if (!checkbox || !weekSelect || !card || !hiddenInput) {
+            console.warn('[updateCardState] Missing elements (checkbox, weekSelect, card, or hiddenInput) for webinar:', webinarItem.dataset.webinarId);
+            return;
+        }
+
+        let targetWeek = null;
+        // Check if the target is a week container
+        if (targetContainer && targetContainer.classList.contains('week-container')) {
+             targetWeek = parseInt(targetContainer.dataset.weekNum, 10);
+        }
+
+        if (targetWeek !== null) { // Moved TO a week container
+            checkbox.checked = true;
+            weekSelect.disabled = false;
+            weekSelect.value = targetWeek; // Set select value to the target week
+            card.classList.add('selected-webinar');
+            hiddenInput.disabled = false; // Enable hidden input
+        } else { // Moved TO available container (or any other non-week container)
+            checkbox.checked = false;
+            weekSelect.disabled = true;
+            // Keep the last selected week in the dropdown, just disable it
+            card.classList.remove('selected-webinar');
+            hiddenInput.disabled = true; // Disable hidden input
+        }
+         // console.log(`[updateCardState] Completed for ${webinarItem?.dataset.webinarId}. Checked: ${checkbox.checked}, Week: ${weekSelect.value}, Select Disabled: ${weekSelect.disabled}`);
+    }
+
+    // Setup event listeners for a single webinar card
+    function setupCardEventListeners(webinarItem) {
+        const webinarId = webinarItem.dataset.webinarId;
+        // console.log(`Setting up listeners for webinar: ${webinarId}`);
+        const checkbox = webinarItem.querySelector('.webinar-checkbox');
+        const weekSelect = webinarItem.querySelector('.week-select');
+        const card = webinarItem.querySelector('.webinar-card');
+        const copyBtn = webinarItem.querySelector('.copy-link-btn');
+
+        // --- Checkbox Change Event ---
+        checkbox?.addEventListener('change', function() {
+            const isChecked = this.checked;
+            // console.log(`[Checkbox Change] Webinar ${webinarId} changed to ${isChecked}`);
+            const currentContainer = webinarItem.parentElement;
+            const targetWeek = parseInt(weekSelect?.value || '1', 10); // Default to week 1 if select is somehow invalid
+
+            if (isChecked) {
+                // Move to the selected week's container IF it's not already there
+                const targetContainer = weekContainers[targetWeek];
+                if (targetContainer && currentContainer !== targetContainer) {
+                    // console.log(`[Checkbox Change] Moving item ${webinarId} to Week ${targetWeek}`);
+                    targetContainer.appendChild(webinarItem);
+                    // Update state AFTER moving, using the new container
+                    updateCardState(webinarItem, targetContainer);
+                } else {
+                    // Already in the correct week or target not found, just update state
+                    updateCardState(webinarItem, currentContainer); // Update state based on current container
+                }
+            } else {
+                // Move to the available container IF it's not already there
+                if (availableContainer && currentContainer !== availableContainer) {
+                    // console.log(`[Checkbox Change] Moving item ${webinarId} to Available`);
+                    availableContainer.appendChild(webinarItem);
+                     // Update state AFTER moving
+                    updateCardState(webinarItem, availableContainer);
+                } else {
+                     // Already in available or container not found, just update state
+                    updateCardState(webinarItem, currentContainer);
+                }
+            }
+            updateCountersAndPlaceholders(); // Update counts/placeholders after potential move
+        });
+
+        // --- Week Select Change Event ---
+        weekSelect?.addEventListener('change', function() {
+            const targetWeek = parseInt(this.value, 10);
+            const currentContainer = webinarItem.parentElement;
+            const targetContainer = weekContainers[targetWeek];
+            // console.log(`[Week Select Change] Webinar ${webinarId} target week: ${targetWeek}`);
+
+            // Move only if the checkbox is checked AND it's not already in the target container
+            if (checkbox?.checked && targetContainer && currentContainer !== targetContainer) {
+                 // console.log(`[Week Select Change] Moving item ${webinarId} from`, currentContainer, `to Week ${targetWeek}`);
+                targetContainer.appendChild(webinarItem);
+                 // State update happens via checkbox change/sortable, ensure card state is correct
+                 updateCardState(webinarItem, targetContainer); // Ensure select value is reflected
+                 updateCountersAndPlaceholders();
+            } else {
+                // console.log(`[Week Select Change] No move needed for ${webinarId}. Checked: ${checkbox?.checked}, Target Found: ${!!targetContainer}, Already There: ${currentContainer === targetContainer}`);
+            }
+        });
+
+        // --- Card Click Event (Toggle Checkbox) ---
+        card?.addEventListener('click', function(e) {
+            // Ignore clicks on interactive elements within the card
+            if (e.target.closest('.webinar-action-button') || e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+                return;
+            }
+            if (checkbox) {
+                 // console.log(`[Card Click] Toggling checkbox for ${webinarId}`);
+                 checkbox.checked = !checkbox.checked;
+                 // Manually trigger the change event to run the move/update logic
+                 checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+
+         // --- Copy Link Button Event ---
+        copyBtn?.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent card click toggle
+            const url = this.getAttribute('data-url');
+            if (!url) return;
+            navigator.clipboard.writeText(url).then(() => {
+                // Visual feedback
+                const originalIcon = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check text-success"></i>';
+                setTimeout(() => { this.innerHTML = originalIcon; }, 1500);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                alert('Не удалось скопировать ссылку.');
+            });
+        });
+    }
+
+    // --- SortableJS Initialization ---
+    const sortableOptions = {
+        group: 'shared-webinars', // Allows items to be moved between lists in this group
+        animation: 150,           // Animation speed
+        filter: '.webinar-placeholder', // Ignore placeholders when dragging
+        preventOnFilter: true,     // Prevent dragging placeholders
+        ghostClass: 'sortable-ghost', // Class for the drop placeholder
+        chosenClass: 'sortable-chosen', // Class for the chosen item
+        dragClass: 'sortable-drag',     // Class for the item being dragged
+        onAdd: function (evt) {
+            // Called when an item is moved INTO a different list
+            const item = evt.item; // The dragged element
+            const toContainer = evt.to; // The list the item was dropped into
+            // console.log(`[SortableJS onAdd] Item ${item?.dataset.webinarId} added to`, toContainer);
+            // Update the card's state (checkbox, select, style) based on the new container
+            updateCardState(item, toContainer);
+            // Update counters and placeholders
+            updateCountersAndPlaceholders();
+        },
+        onEnd: function(evt) {
+            // Called when dragging ends (including reordering within the same list)
+            // console.log('[SortableJS onEnd]', evt);
+            // Ensure counters are updated after any drop operation
+             const item = evt.item;
+             const finalContainer = item.parentElement;
+             // If item was moved within the same week container, ensure select reflects the week
+             if (finalContainer.classList.contains('week-container')) {
+                 const weekNum = parseInt(finalContainer.dataset.weekNum, 10);
+                 const weekSelect = item.querySelector('.week-select');
+                 if (weekSelect && parseInt(weekSelect.value, 10) !== weekNum) {
+                     weekSelect.value = weekNum;
+                     // Trigger change event if needed, though onAdd should handle state
+                 }
+             }
+             updateCardState(item, finalContainer); // Ensure state is correct
+            updateCountersAndPlaceholders();
+        }
+    };
+
+    // Initialize SortableJS on the Available Webinars container
+    if (availableContainer) {
+        const sortableAvailable = new Sortable(availableContainer, sortableOptions);
+        sortableInstances.push(sortableAvailable); // <<<--- ДОБАВЛЕНО: Сохраняем экземпляр
+    } else {
+        console.error("Available webinars container (#available-webinars-inner-container) not found.");
+    }
+
+    // Initialize SortableJS on each Week container
+    for (let i = 1; i <= 4; i++) {
+        const container = weekContainers[i];
+        if (container) {
+            const sortableWeek = new Sortable(container, sortableOptions);
+            sortableInstances.push(sortableWeek); // <<<--- ДОБАВЛЕНО: Сохраняем экземпляр
+        } else {
+            console.error(`Week container #week-${i}-container not found.`);
+        }
+    }
+
+    // --- Initial Data Loading and Distribution ---
+    const initialDataElement = document.getElementById('webinar-initial-data');
+    const initialData = initialDataElement ? JSON.parse(initialDataElement.textContent) : { suitableWebinars: [], webinarWeeks: {} };
+
+    // Helper function for priority (mirroring Python logic - used for initial sorting)
+    function getJSCreationPriority(webinarData) {
+        if (!webinarData) return 5;
+        const category = webinarData.category;
+        if (category === 1) return 0; // Обязательный
+        if (category === 2) return 1; // Повторение
+        if (category === 4) return 2; // Продвинутый (ПОЛЬЗОВАТЕЛЬСКИЙ ПОРЯДОК)
+        if (category === 3) return 3; // Не обязательный (ПОЛЬЗОВАТЕЛЬСКИЙ ПОРЯДОК)
+        return 4; // Остальные/Без категории
+    }
+
+    // --- Function to Distribute Cards ---
+    function distributeInitialCards() {
+         console.log("--- [distributeInitialCards START] ---"); // Log start
+        const allWebinarItems = Array.from(allWebinarsContainer?.querySelectorAll('.webinar-item') || []);
+        console.log(`[distributeInitialCards] Found ${allWebinarItems.length} items in #all-webinars-data.`); // Log found items
+
+        if (!allWebinarItems.length) {
+            console.warn("[distributeInitialCards] No webinar items found in #all-webinars-data");
+            updateCountersAndPlaceholders(); // Ensure placeholders are shown if no data
+            return;
+        }
+
+        const itemMap = new Map(); // Map webinarId -> webinarItem element
+        allWebinarItems.forEach(item => {
+            const webinarId = item.dataset.webinarId;
+            if (webinarId) {
+                itemMap.set(parseInt(webinarId, 10), item);
+                item.remove(); // Detach from hidden container initially
+            }
+        });
+
+        // Group initially planned webinars by week
+        const suitableWebinarsById = new Map((initialData.suitableWebinars || []).map(w => [w.id, w]));
+        const suitableByWeek = { 1: [], 2: [], 3: [], 4: [] };
+        const initiallyPlannedIds = new Set(); // Keep track of IDs placed in weeks
+
+        for (const webinarIdStr in initialData.webinarWeeks) {
+            const webinarId = parseInt(webinarIdStr, 10);
+            const weekNum = initialData.webinarWeeks[webinarIdStr];
+            const webinarData = suitableWebinarsById.get(webinarId); // Get extra data if needed (e.g., for sorting)
+            console.log(`[distributeInitialCards] Processing initial week assignment for ID: ${webinarId}, Week: ${weekNum}`); // Log processing week assignment
+
+            if (webinarData && weekNum >= 1 && weekNum <= 4) {
+                 const item = itemMap.get(webinarId);
+                 if (item && weekContainers[weekNum]) {
+                     console.log(` -> Found item for ${webinarId}, adding to week ${weekNum}`); // Log item found
+                     suitableByWeek[weekNum].push({ item: item, data: webinarData }); // Store item and data
+                     initiallyPlannedIds.add(webinarId);
+                 } else {
+                     console.warn(` -> Item or container not found for initially planned webinar ${webinarId} in week ${weekNum}. Item found: ${!!item}, Container exists: ${!!weekContainers[weekNum]}`); // Log item/container not found
+                 }
+            }
+        }
+
+        // Sort and append webinars within each week
+        for (let weekNum = 1; weekNum <= 4; weekNum++) {
+            // Sort based on priority and date (similar to Python sort key)
+            suitableByWeek[weekNum].sort((a, b) => {
+                const priorityA = getJSCreationPriority(a.data);
+                const priorityB = getJSCreationPriority(b.data);
+                if (priorityA !== priorityB) return priorityA - priorityB;
+
+                const dateA = a.data.date && a.data.date !== 'null' ? new Date(a.data.date) : new Date(9999, 0, 1);
+                const dateB = b.data.date && b.data.date !== 'null' ? new Date(b.data.date) : new Date(9999, 0, 1);
+                 if (isNaN(dateA.getTime())) return 1;
+                 if (isNaN(dateB.getTime())) return -1;
+                return dateA - dateB;
+            });
+
+            // Append sorted items to the week container
+            suitableByWeek[weekNum].forEach(webinarInfo => {
+                const item = webinarInfo.item;
+                if (weekContainers[weekNum]) {
+                    weekContainers[weekNum].appendChild(item);
+                    // Set initial state for items placed in weeks
+                    updateCardState(item, weekContainers[weekNum]);
+                    setupCardEventListeners(item); // Setup listeners AFTER placing
+                }
+            });
+        }
+
+        // Place remaining items (not initially planned) into the available container
+        itemMap.forEach((item, webinarId) => {
+            if (!initiallyPlannedIds.has(webinarId)) {
+                if (availableContainer) {
+                    // console.log(`[distributeInitialCards] Adding remaining item ID: ${webinarId} to available.`); // Optional log for remaining items
+                    availableContainer.appendChild(item);
+                    // Set initial state for items placed in available
+                    updateCardState(item, availableContainer);
+                    setupCardEventListeners(item); // Setup listeners AFTER placing
+                } else {
+                    // console.warn(`Available container not found, cannot place webinar ${webinarId}`);
+                }
+            }
+        });
+
+         // console.log("--- Finished Initial Distribution ---");
+        updateCountersAndPlaceholders(); // Final update after all distribution
+    }
+
+    // --- Event Listeners Setup ---
+
+    // Search among available webinars
+    if (availableSearchInput && availableContainer) {
+        availableSearchInput.addEventListener('input', function() { // Use 'input' for better responsiveness
+            const searchTerm = this.value.toLowerCase().trim();
+            const availableItems = availableContainer.querySelectorAll('.webinar-item');
+            let visibleCount = 0;
+
+            availableItems.forEach(item => {
+                const title = item.getAttribute('data-title') || '';
+                const tasks = item.getAttribute('data-tasks') || '';
+                 // Also search general text content for flexibility
+                const textContent = item.textContent.toLowerCase();
+
+                // Basic visibility check
+                const isVisible = title.includes(searchTerm) ||
+                                  tasks.split(',').some(task => task.trim() === searchTerm) || // Match exact task number
+                                  textContent.includes(searchTerm);
+
+                item.style.display = isVisible ? '' : 'none';
+                if (isVisible) visibleCount++;
+            });
+             // Update placeholders based on search results (pass visible count)
+            updateCountersAndPlaceholders(); // This already handles the placeholder text logic
+        });
+    }
+
+    // Recalculate Recommendations Button
+    if (recalculateBtn) {
+        recalculateBtn.addEventListener('click', async () => {
+            const quotaT26Input = document.getElementById('quota_t26');
+            const quotaT27Input = document.getElementById('quota_t27');
+            const quotaT26 = quotaT26Input ? quotaT26Input.value || 0 : 0;
+            const quotaT27 = quotaT27Input ? quotaT27Input.value || 0 : 0;
+            const studentIdForUrl = "{{ student.id }}"; // Get student ID from template
+            const url = `/plan/api/recommendations/${studentIdForUrl}?quota_t26=${quotaT26}&quota_t27=${quotaT27}`;
+
+            // console.log("Recalculating recommendations with URL:", url);
+            recalculateBtn.disabled = true;
+            recalculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Пересчет...';
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    let errorMsg = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || `Ошибка сервера: ${response.statusText}`;
+                    } catch (e) { /* Ignore if response body is not JSON */ }
+                    throw new Error(errorMsg);
+                }
+                const data = await response.json();
+                 // console.log("Received recommendations:", data);
+
+                 // --- [Recalculate] Process START ---
+                 console.log("--- [Recalculate] Start UI Update ---");
+
+                 // 1. Get New Data from API
+                 const newRecommendations = data.recommendations || [];
+                 const newWebinarWeeks = {};
+                 const newRecommendedIds = new Set();
+                 newRecommendations.forEach(rec => {
+                    if (rec.id && rec.week_number) {
+                        newWebinarWeeks[rec.id] = rec.week_number;
+                        newRecommendedIds.add(rec.id);
+                    }
+                 });
+                 console.log(`[Recalculate] Received ${newRecommendations.length} new recommendations. IDs:`, Array.from(newRecommendedIds));
+                 console.log("[Recalculate] New week assignments:", newWebinarWeeks);
+
+                 // 2. Gather ALL existing card elements FIRST (before moving)
+                 const allDomItemsMap = new Map();
+                 const itemsInWeeksToGather = document.querySelectorAll('.week-container .webinar-item');
+                 const itemsInAvailableToGather = document.querySelectorAll('#available-webinars-inner-container .webinar-item');
+                 const itemsInHiddenToGather = allWebinarsContainer.querySelectorAll('.webinar-item'); // Should be empty after first load, but capture just in case
+                 
+                 itemsInWeeksToGather.forEach(item => {
+                     const webinarId = parseInt(item.dataset.webinarId, 10);
+                     if (webinarId && !allDomItemsMap.has(webinarId)) { allDomItemsMap.set(webinarId, item); }
+                 });
+                 itemsInAvailableToGather.forEach(item => {
+                     const webinarId = parseInt(item.dataset.webinarId, 10);
+                     if (webinarId && !allDomItemsMap.has(webinarId)) { allDomItemsMap.set(webinarId, item); }
+                 });
+                 itemsInHiddenToGather.forEach(item => { // Add any remaining from hidden
+                     const webinarId = parseInt(item.dataset.webinarId, 10);
+                     if (webinarId && !allDomItemsMap.has(webinarId)) { allDomItemsMap.set(webinarId, item); }
+                 });
+                 console.log(`[Recalculate] Gathered ${allDomItemsMap.size} card elements from DOM before moving.`);
+
+                 // 3. Move items from visible containers back to hidden container (ensures clean slate)
+                 const itemsInWeeks = document.querySelectorAll('.week-container .webinar-item');
+                 const itemsInAvailable = document.querySelectorAll('#available-webinars-inner-container .webinar-item');
+                 itemsInWeeks.forEach(item => allWebinarsContainer.appendChild(item));
+                 itemsInAvailable.forEach(item => allWebinarsContainer.appendChild(item));
+                 console.log(`[Recalculate] Moved ${itemsInWeeks.length} from weeks, ${itemsInAvailable.length} from available back to hidden container.`);
+
+                 // 4. Clear visible containers
+                 if(availableContainer) availableContainer.innerHTML = '';
+                 for(let i = 1; i <= 4; i++) {
+                     if(weekContainers[i]) weekContainers[i].innerHTML = '';
+                 }
+                 console.log("[Recalculate] Cleared visible containers.");
+
+                 // <<<--- ДОБАВЛЕНО: Отключаем SortableJS перед распределением ---
+                 console.log("[Recalculate] Disabling SortableJS instances...");
+                 sortableInstances.forEach(instance => instance.option("disabled", true));
+
+                 // 5. Distribute items based on NEW recommendations (using the gathered map)
+                 allDomItemsMap.forEach((itemElement, webinarId) => {
+                    const isRecommended = newRecommendedIds.has(webinarId);
+                    console.log(`[Recalculate Distribute] Processing ID: ${webinarId}, IsRecommended: ${isRecommended}`); // Log item being processed
+
+                    if (isRecommended) {
+                        // This item IS recommended
+                        const targetWeek = newWebinarWeeks[webinarId];
+                        const targetContainer = weekContainers[targetWeek];
+                        console.log(`  -> Recommended. Target Week: ${targetWeek}, Target Container Found: ${!!targetContainer}`); // Log recommendation details
+
+                        if (targetContainer) {
+                            updateCardState(itemElement, targetContainer); // Update state FIRST
+                            console.log(`  -> Calling appendChild for ID ${webinarId} to Week ${targetWeek}`); // Log append
+                            targetContainer.appendChild(itemElement);     // Then move
+                        } else {
+                            console.warn(`  -> Week container ${targetWeek} not found for recommended ID: ${webinarId}. Placing in available.`);
+                            updateCardState(itemElement, availableContainer); // Reset state
+                            if (availableContainer) {
+                                console.log(`  -> Calling appendChild for ID ${webinarId} to Available (container fallback)`); // Log append fallback
+                                availableContainer.appendChild(itemElement);
+                            }
+                        }
+                    } else {
+                        // This item is NOT recommended
+                         console.log(`  -> Not Recommended. Placing in Available.`); // Log non-recommendation
+                        updateCardState(itemElement, availableContainer); // Reset state
+                        if (availableContainer) {
+                             console.log(`  -> Calling appendChild for ID ${webinarId} to Available`); // Log append available
+                            availableContainer.appendChild(itemElement);
+                        }
+                    }
+                 });
+                 console.log("[Recalculate] Finished distributing items based on new recommendations.");
+
+                 // <<<--- ДОБАВЛЕНО: Включаем SortableJS обратно ---
+                 console.log("[Recalculate] Re-enabling SortableJS instances...");
+                 sortableInstances.forEach(instance => instance.option("disabled", false));
+
+                 // 6. Update counters and placeholders
+                 updateCountersAndPlaceholders();
+                 console.log("--- [Recalculate] End UI Update ---");
+
+                 // --- NO LONGER NEEDED: Update initialData and call distributeInitialCards() ---
+                 /*
+                 // Update initialData - suitableWebinars needs { id, category, date }
+                 initialData.suitableWebinars = newRecommendations.map(rec => ({
+                     id: rec.id,
+                     category: rec.category,
+                     date: rec.date // JS Date can parse ISO format
+                 }));
+                 initialData.webinarWeeks = newWebinarWeeks;
+                 console.log("--- [Recalculate] Updated initialData: ---", JSON.parse(JSON.stringify(initialData))); // Log updated initialData
+
+                 // --- Re-distribute cards based on new data ---
+                 distributeInitialCards(); // Call the distribution function again
+                 */
+
+            } catch (error) {
+                console.error('Error recalculating recommendations:', error);
+                alert(`Не удалось получить новые рекомендации: ${error.message}`);
+                 // Restore UI to previous state might be complex, maybe just leave as is or prompt user?
+                 // For now, just re-enable the button.
+            } finally {
+                recalculateBtn.disabled = false;
+                recalculateBtn.innerHTML = '<i class="fas fa-redo me-1"></i> Пересчитать рекомендации';
+                 // console.log("Recalculation process finished.");
+            }
+        });
+    }
+
+    // --- Form Submission ---
+    const form = document.getElementById('create-plan-form');
+    form?.addEventListener('submit', function(e) {
+        // Optional: Add validation or data processing before submission if needed
+         // console.log("Form submitted");
+         // Re-enable any disabled hidden inputs just before submit
+         form.querySelectorAll('.webinar-hidden-input:disabled').forEach(input => {
+             input.disabled = false;
+         });
+    });
+
+
+    // --- Initial Setup ---
+    distributeInitialCards(); // Distribute cards on page load
+
+    // --- Код для фильтрации ---
+    // Объект для хранения активных фильтров
+    const activeFilters = {
+        mainType: 'all',
+        solution: 'all',
+        category: 'all',
+        task: 'all'
+    };
+
+    // Функция для обновления видимости вебинаров на основе фильтров
+    function applyFilters() {
+        const searchTerm = (availableSearchInput?.value || '').toLowerCase().trim();
+        const availableItems = availableContainer.querySelectorAll('.webinar-item');
+        let visibleCount = 0;
+
+        availableItems.forEach(item => {
+            const webinarCard = item.querySelector('.webinar-card');
+            if (!webinarCard) return;
+
+            // Проверка по текстовому поиску
+            const title = item.getAttribute('data-title') || '';
+            const tasks = item.getAttribute('data-tasks') || '';
+            const textContent = item.textContent.toLowerCase();
+            const matchesSearch = !searchTerm || 
+                               title.includes(searchTerm) ||
+                               tasks.split(',').some(task => task.trim() === searchTerm) || 
+                               textContent.includes(searchTerm);
+            
+            if (!matchesSearch) {
+                item.style.display = 'none';
+                return;
+            }
+            
+            // Фильтр по основному типу вебинара
+            const beginnersBadge = webinarCard.querySelector('.webinar-type-beginners');
+            const advancedBadge = webinarCard.querySelector('.webinar-type-advanced');
+            const expertBadge = webinarCard.querySelector('.webinar-type-expert');
+            const task26Badge = webinarCard.querySelector('.webinar-type-task26');
+            const mocksBadge = webinarCard.querySelector('.webinar-format-mocks');
+            const practiceBadge = webinarCard.querySelector('.webinar-format-practice');
+            
+            const matchesMainType = activeFilters.mainType === 'all' ||
+                            (activeFilters.mainType === 'beginners' && beginnersBadge) ||
+                            (activeFilters.mainType === 'advanced' && advancedBadge) ||
+                            (activeFilters.mainType === 'expert' && expertBadge) ||
+                            (activeFilters.mainType === 'task26' && task26Badge) ||
+                            (activeFilters.mainType === 'mocks' && mocksBadge) ||
+                            (activeFilters.mainType === 'practice' && practiceBadge);
+            
+            if (!matchesMainType) {
+                item.style.display = 'none';
+                return;
+            }
+            
+            // Фильтр по типу решения
+            const programmingBadge = webinarCard.querySelector('.webinar-solution-programming');
+            const manualBadge = webinarCard.querySelector('.webinar-solution-manual');
+            const excelBadge = webinarCard.querySelector('.webinar-solution-excel');
+            
+            const matchesSolution = activeFilters.solution === 'all' ||
+                                (activeFilters.solution === 'programming' && programmingBadge) ||
+                                (activeFilters.solution === 'manual' && manualBadge) ||
+                                (activeFilters.solution === 'excel' && excelBadge);
+            
+            if (!matchesSolution) {
+                item.style.display = 'none';
+                return;
+            }
+            
+            // Фильтр по категории
+            const cat1Badge = webinarCard.querySelector('.webinar-cat-1');
+            const cat2Badge = webinarCard.querySelector('.webinar-cat-2');
+            const cat3Badge = webinarCard.querySelector('.webinar-cat-3');
+            const cat4Badge = webinarCard.querySelector('.webinar-cat-4');
+            
+            const matchesCategory = activeFilters.category === 'all' ||
+                                (activeFilters.category === 'cat1' && cat1Badge) ||
+                                (activeFilters.category === 'cat2' && cat2Badge) ||
+                                (activeFilters.category === 'cat3' && cat3Badge) ||
+                                (activeFilters.category === 'cat4' && cat4Badge);
+            
+            if (!matchesCategory) {
+                item.style.display = 'none';
+                return;
+            }
+            
+            // Фильтр по заданию
+            const taskNums = tasks.split(',').map(t => parseInt(t.trim(), 10));
+            const matchesTask = activeFilters.task === 'all' || 
+                            (activeFilters.task.startsWith('task-') && 
+                             activeFilters.task !== 'task-all' && 
+                             taskNums.includes(parseInt(activeFilters.task.replace('task-', ''), 10)));
+            
+            if (!matchesTask) {
+                item.style.display = 'none';
+                return;
+            }
+            
+            // Прошли все фильтры - показываем вебинар
+            item.style.display = '';
+            visibleCount++;
+        });
+        
+        // Обновление счетчика и плейсхолдера
+        if (availableCounter) availableCounter.textContent = visibleCount;
+        updateCountersAndPlaceholders();
+    }
+
+    // Инициализация обработчиков событий для фильтров
+    function initFilters() {
+        // Основные кнопки фильтров
+        document.querySelectorAll('.filter-btn:not(.solution-filter):not(.category-filter)').forEach(function(button) {
             button.addEventListener('click', function() {
                 const filter = this.getAttribute('data-filter');
-                filterButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
-                filterButtons.forEach(btn => btn.classList.add('btn-outline-primary'));
+                const filterButtons = document.querySelectorAll('.filter-btn:not(.solution-filter):not(.category-filter)');
+                
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.classList.add('btn-outline-primary');
+                });
+                
+                this.classList.add('active');
                 this.classList.remove('btn-outline-primary');
-                this.classList.add('active', 'btn-primary');
-                activeFilters.courseCategory = filter;
+                
+                activeFilters.mainType = filter;
                 applyFilters();
             });
         });
         
-        // Фильтрация по дате
-        dateFilterButtons.forEach(function(button) {
+        // Фильтры по типу решения
+        document.querySelectorAll('.filter-btn.solution-filter').forEach(function(button) {
             button.addEventListener('click', function() {
                 const filter = this.getAttribute('data-filter');
-                dateFilterButtons.forEach(btn => btn.classList.remove('active'));
+                const filterButtons = document.querySelectorAll('.filter-btn.solution-filter');
+                
+                filterButtons.forEach(btn => btn.classList.remove('active'));
                 this.classList.add('active');
-                activeFilters.date = filter;
-                applyFilters();
-            });
-        });
-        
-        // Фильтрация по типу решения
-        solutionFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                solutionFilterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
+                
                 activeFilters.solution = filter;
                 applyFilters();
             });
         });
         
-        // Фильтрация по категории
-        categoryFilterButtons.forEach(function(button) {
+        // Фильтры по категории
+        document.querySelectorAll('.filter-btn.category-filter').forEach(function(button) {
             button.addEventListener('click', function() {
                 const filter = this.getAttribute('data-filter');
-                categoryFilterButtons.forEach(btn => btn.classList.remove('active'));
+                const filterButtons = document.querySelectorAll('.filter-btn.category-filter');
+                
+                filterButtons.forEach(btn => btn.classList.remove('active'));
                 this.classList.add('active');
+                
                 activeFilters.category = filter;
                 applyFilters();
             });
         });
         
-        // Фильтрация по номерам заданий
+        // Фильтр по номерам заданий (через SELECT)
+        const taskFilterSelect = document.getElementById('taskFilterSelect');
         if (taskFilterSelect) {
             taskFilterSelect.addEventListener('change', function() {
-                const filter = this.value;
-                if (filter === 'all') {
-                    activeFilters.tasks = [];
-                } else {
-                    activeFilters.tasks = [filter];
-                }
+                activeFilters.task = this.value;
                 applyFilters();
             });
         }
         
         // Кнопка сброса всех фильтров
+        const resetButton = document.getElementById('resetAllFilters');
         if (resetButton) {
             resetButton.addEventListener('click', function() {
-                activeFilters.courseCategory = 'all';
-                activeFilters.date = 'all';
+                // Сбрасываем все фильтры
+                activeFilters.mainType = 'all';
                 activeFilters.solution = 'all';
                 activeFilters.category = 'all';
-                activeFilters.tasks = [];
-
-                if (filterInput) {
-                    filterInput.value = '';
+                activeFilters.task = 'all';
+                
+                // Сбрасываем поле поиска
+                if (availableSearchInput) {
+                    availableSearchInput.value = '';
                 }
-
-                filterButtons.forEach(btn => {
-                    btn.classList.remove('active', 'btn-primary');
-                    btn.classList.add('btn-outline-primary');
-                    if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active', 'btn-primary');
-                        btn.classList.remove('btn-outline-primary');
-                    }
-                });
-
-                dateFilterButtons.forEach(btn => {
+                
+                // Обновляем кнопки основного фильтра
+                document.querySelectorAll('.filter-btn:not(.solution-filter):not(.category-filter)').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('data-filter') === 'all') {
                         btn.classList.add('active');
                     }
                 });
-
-                solutionFilterButtons.forEach(btn => {
+                
+                // Обновляем кнопки фильтра решений
+                document.querySelectorAll('.filter-btn.solution-filter').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('data-filter') === 'all') {
                         btn.classList.add('active');
                     }
                 });
-
-                categoryFilterButtons.forEach(btn => {
+                
+                // Обновляем кнопки фильтра категорий
+                document.querySelectorAll('.filter-btn.category-filter').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('data-filter') === 'all') {
                         btn.classList.add('active');
                     }
                 });
-
+                
+                // Сбрасываем селект заданий
                 if (taskFilterSelect) {
                     taskFilterSelect.value = 'all';
                 }
-
+                
+                // Применяем фильтры
                 applyFilters();
             });
         }
         
-        // Функция применения всех фильтров
-        function applyFilters() {
-            if (!cardsContainer) return;
-
-            // Важно: хранить оригинальные карточки для правильной работы последовательной фильтрации
-            if (!window.originalWebinarCards) {
-                window.originalWebinarCards = Array.from(document.querySelectorAll('.all-webinars .webinar-item'));
-            }
-            
-            // Клонируем оригинальные карточки для фильтрации
-            const allCards = window.originalWebinarCards.map(card => card.cloneNode(true));
-            const searchText = filterInput ? filterInput.value.toLowerCase() : '';
-
-            // ФИЛЬТРАЦИЯ
-            const filteredCards = [];
-            
-            allCards.forEach(card => {
-                let shouldShow = true;
-                const cardText = card.textContent.toLowerCase();
-                const cardClasses = Array.from(card.classList);
-                
-                // 1. Текстовый поиск
-                if (searchText && !cardText.includes(searchText)) {
-                    shouldShow = false;
-                }
-
-                // 2. Категория курса
-                if (shouldShow && activeFilters.courseCategory !== 'all') {
-                    if (!cardClasses.some(cls => cls.includes(activeFilters.courseCategory))) {
-                        shouldShow = false;
-                    }
-                }
-
-                // 3. Тип решения
-                if (shouldShow && activeFilters.solution !== 'all') {
-                    if (!cardClasses.some(cls => cls.includes(activeFilters.solution))) {
-                        shouldShow = false;
-                    }
-                }
-
-                // 4. Категория обязательности
-                if (shouldShow && activeFilters.category !== 'all') {
-                    if (!cardClasses.some(cls => cls.includes(activeFilters.category))) {
-                        shouldShow = false;
-                    }
-                }
-
-                // 5. Задания
-                if (shouldShow && activeFilters.tasks.length > 0) {
-                    const cardTaskClasses = cardClasses
-                        .filter(cls => cls.includes('task-'))
-                        .map(cls => cls.trim());
-                    
-                    let hasAnyTask = false;
-                    for (const task of activeFilters.tasks) {
-                        if (cardTaskClasses.some(cls => cls === task)) {
-                            hasAnyTask = true;
-                            break;
-                        }
-                    }
-                    if (!hasAnyTask) {
-                        shouldShow = false;
-                    }
-                }
-
-                if (shouldShow) {
-                    filteredCards.push(card);
-                }
-            });
-
-            // Сортировка по дате, если активен соответствующий фильтр
-            if (activeFilters.date === 'new' || activeFilters.date === 'old') {
-                filteredCards.sort((a, b) => {
-                    // Извлекаем даты из текстового содержимого карточек
-                    const aDateText = a.querySelector('.small.text-muted')?.textContent || '';
-                    const bDateText = b.querySelector('.small.text-muted')?.textContent || '';
-                    
-                    // Используем регулярное выражение для извлечения даты
-                    const aDateMatch = aDateText.match(/Дата: (.*?)(?:\n|$)/);
-                    const bDateMatch = bDateText.match(/Дата: (.*?)(?:\n|$)/);
-                    
-                    // Если не удалось найти дату, вернуть карточку в конец списка
-                    if (!aDateMatch) return 1;
-                    if (!bDateMatch) return -1;
-                    
-                    // Преобразуем строки дат в объекты Date
-                    const aDate = new Date(aDateMatch[1]);
-                    const bDate = new Date(bDateMatch[1]);
-                    
-                    // Сортировка по убыванию (новые сначала) или возрастанию (старые сначала)
-                    return activeFilters.date === 'new' ? bDate - aDate : aDate - bDate;
-                });
-            }
-
-            // Очищаем контейнер
-            while (cardsContainer.firstChild) {
-                cardsContainer.removeChild(cardsContainer.firstChild);
-            }
-            
-            // Добавляем отфильтрованные карточки в контейнер
-            if (filteredCards.length > 0) {
-                filteredCards.forEach(card => {
-                    // Восстанавливаем все обработчики событий для клонированных карточек
-                    const originalCard = window.originalWebinarCards.find(
-                        original => original.getAttribute('data-id') === card.getAttribute('data-id')
-                    );
-                    if (originalCard) {
-                        cardsContainer.appendChild(originalCard);
-                        originalCard.style.display = '';
-                    }
-                });
-            } else {
-                // Показываем сообщение, если нет результатов
-                const noResultsMessage = document.createElement('div');
-                noResultsMessage.className = 'col-12 text-center my-5 no-results-message';
-                noResultsMessage.innerHTML = `
-                    <div class="alert alert-info">
-                        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет результатов" class="img-fluid mb-3" style="max-height: 150px;">
-                        <h5 class="mt-2"><i class="fas fa-info-circle me-2"></i> Нет вебинаров</h5>
-                        <p>Попробуйте изменить фильтры или поисковый запрос.</p>
-                        <button class="btn btn-sm btn-outline-primary ms-3" id="resetFiltersBtn">Сбросить фильтры</button>
-                    </div>
-                `;
-                cardsContainer.appendChild(noResultsMessage);
-                document.getElementById('resetFiltersBtn').addEventListener('click', function() {
-                    if (resetButton) resetButton.click();
-                });
-            }
+        // Подключаем фильтрацию к полю поиска
+        if (availableSearchInput) {
+            availableSearchInput.addEventListener('input', applyFilters);
         }
-
-        // Обработка чекбоксов и селектов
-        const webinarCheckboxes = document.querySelectorAll('.webinar-checkbox');
-        webinarCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener('change', function() {
-                const card = this.closest('.webinar-card');
-                const weekSelect = card.querySelector('.week-select');
-                
-                if (this.checked) {
-                    card.classList.add('selected-webinar');
-                    weekSelect.disabled = false;
-                } else {
-                    card.classList.remove('selected-webinar');
-                    weekSelect.disabled = true;
-                }
-            });
-        });
-        
-        // Клик по карточке вебинара для выбора
-        const webinarCards = document.querySelectorAll('.webinar-card');
-        webinarCards.forEach(function(card) {
-            card.addEventListener('click', function(e) {
-                // Не реагируем на клики по селекту и чекбоксу
-                if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || 
-                    e.target.tagName === 'OPTION' || e.target.closest('select') || 
-                    e.target.closest('.form-check')) {
-                    return;
-                }
-                
-                const checkbox = this.querySelector('.webinar-checkbox');
-                checkbox.checked = !checkbox.checked;
-                
-                // Вызываем событие change вручную
-                const event = new Event('change', { bubbles: true });
-                checkbox.dispatchEvent(event);
-            });
-        });
-
-        // Добавляем обработчик для копирования ссылок
-        document.querySelectorAll('.copy-link-btn').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const url = this.getAttribute('data-url');
-                navigator.clipboard.writeText(url)
-                    .then(() => {
-                        // Визуальное подтверждение копирования
-                        const originalIcon = this.innerHTML;
-                        this.innerHTML = '<i class="fas fa-check"></i>';
-                        setTimeout(() => {
-                            this.innerHTML = originalIcon;
-                        }, 1500);
-                    })
-                    .catch(err => {
-                        console.error('Не удалось скопировать текст: ', err);
-                    });
-            });
-        });
-    });
+    }
+    
+    // Инициализация фильтров при загрузке страницы
+    initFilters();
+    // --- Конец кода для фильтрации ---
+});
 </script>
 {% endblock %} 

@@ -6,10 +6,11 @@ from datetime import datetime
 db = SQLAlchemy()
 
 # Константы для ролей
-ROLE_EDUCATIONAL_CURATOR = 'educational_curator'
-ROLE_ORGANIZATIONAL_CURATOR = 'organizational_curator'
-ROLE_ADMIN = 'admin'
-ROLE_SUPER_ADMIN = 'super_admin'
+ROLE_EDUCATIONAL_CURATOR = "educational_curator"
+ROLE_ORGANIZATIONAL_CURATOR = "organizational_curator"
+ROLE_ADMIN = "admin"
+ROLE_SUPER_ADMIN = "super_admin"
+
 
 # Модель для вебинаров
 class Webinar(db.Model):
@@ -24,7 +25,9 @@ class Webinar(db.Model):
     is_manual = db.Column(db.Boolean, default=False)  # Решение руками
     is_excel = db.Column(db.Boolean, default=False)  # Решение в Excel
     homework_number = db.Column(db.Integer)
-    category = db.Column(db.Integer)  # 1: Обязательный, 2: Повторение, 3: Не обязательный, 4: Для продвинутых
+    category = db.Column(
+        db.Integer
+    )  # 1: Обязательный, 2: Повторение, 3: Не обязательный, 4: Для продвинутых
     for_beginners = db.Column(db.Boolean, default=False)  # Курс Python с нуля
     for_basic = db.Column(db.Boolean, default=False)  # Основной курс
     for_advanced = db.Column(db.Boolean, default=False)  # Хард прога
@@ -33,7 +36,7 @@ class Webinar(db.Model):
     for_practice = db.Column(db.Boolean, default=False)  # Нарешка
     for_minisnap = db.Column(db.Boolean, default=False)  # Мини-щелчок
     created_by_id = db.Column(
-        db.Integer, db.ForeignKey("user.id"), nullable=False
+        db.Integer, db.ForeignKey("users.id"), nullable=False
     )  # ID создателя
     created_by = db.relationship("User")
     comments = db.relationship(
@@ -58,7 +61,7 @@ class WebinarTask(db.Model):
     webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by_id = db.Column(
-        db.Integer, db.ForeignKey("user.id"), nullable=False
+        db.Integer, db.ForeignKey("users.id"), nullable=False
     )  # ID пользователя, добавившего задачу
 
     created_by = db.relationship("User")
@@ -96,7 +99,6 @@ class Student(db.Model):
         back_populates="student",
         cascade="all, delete-orphan",
     )
-    last_plan_id = db.Column(db.Integer, db.ForeignKey("study_plan.id"), nullable=True)
     plans = db.relationship(
         "StudyPlan", back_populates="student", foreign_keys="StudyPlan.student_id"
     )
@@ -125,7 +127,7 @@ class StudyPlan(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by_id = db.Column(
-        db.Integer, db.ForeignKey("user.id"), nullable=False
+        db.Integer, db.ForeignKey("users.id"), nullable=False
     )  # ID создателя
 
     student = db.relationship(
@@ -157,7 +159,7 @@ class WatchedWebinar(db.Model):
     webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
     watched_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by_id = db.Column(
-        db.Integer, db.ForeignKey("user.id"), nullable=False
+        db.Integer, db.ForeignKey("users.id"), nullable=False
     )  # ID пользователя, который отметил
 
     student = db.relationship("Student", back_populates="watched_webinars")
@@ -176,9 +178,11 @@ class KnownTaskNumber(db.Model):
 
 # Модель для пользователей (кураторов, администраторов)
 class User(UserMixin, db.Model):
+    __tablename__ = 'users'  # Явно задаем имя таблицы для PostgreSQL
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(256))  # Увеличиваем длину поля для хранения хэшей
     # Обновляем поле role
     role = db.Column(db.String(50), nullable=False, default=ROLE_ORGANIZATIONAL_CURATOR)
     first_name = db.Column(db.String(100))
@@ -223,6 +227,6 @@ class WebinarComment(db.Model):
     text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     user = db.relationship("User")
