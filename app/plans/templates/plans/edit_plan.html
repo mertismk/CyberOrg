@@ -280,7 +280,6 @@
                                 <button type="button" class="btn btn-outline-primary filter-btn active" data-filter="all">Все</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_beginners">Python с нуля</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_basic">Основной курс</button>
-                                <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_advanced">Хард прога</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_expert">Задание 27</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_mocks">Пробники</button>
                                 <button type="button" class="btn btn-outline-primary filter-btn" data-filter="for_practice">Нарешка</button>
@@ -757,6 +756,13 @@
                     }
                 }
             });
+            
+            // Инициализируем состояние селекта при загрузке
+            const card = checkbox.closest('.webinar-card');
+            const weekSelect = card.querySelector('.week-select');
+            if (weekSelect && !checkbox.checked) {
+                weekSelect.disabled = true;
+            }
         });
         
         // Клик по карточке вебинара для выбора
@@ -792,6 +798,12 @@
                     weekSelect.disabled = false;
                 }
                 card.classList.add('selected-webinar');
+            } else {
+                const card = checkbox.closest('.webinar-card');
+                const weekSelect = card.querySelector('.week-select');
+                if (weekSelect) {
+                    weekSelect.disabled = true;
+                }
             }
         });
     });

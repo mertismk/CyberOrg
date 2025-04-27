@@ -6,6 +6,11 @@
 <div class="d-flex justify-content-between align-items-center mb-5">
     <h1 class="display-4 mb-0" style="font-weight: 600; letter-spacing: -0.5px; color: #1d1d1f;">Вебинары</h1>
     <div class="d-flex align-items-center gap-3">
+        {% if current_user.is_super_admin %}
+            <a href="{{ url_for('webinars.download_all_covers') }}" class="btn btn-outline-primary px-3 py-2" style="border-radius: 20px; font-weight: 500;">
+                <i class="fas fa-download me-2"></i> Скачать обложки
+            </a>
+        {% endif %}
         <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-accent px-4 py-2" style="border-radius: 20px; background-color: #0071e3; border: none; font-weight: 500;">
             <i class="fas fa-file-import me-2"></i> Импортировать вебинары
         </a>
@@ -27,7 +32,7 @@
                     <button type="button" class="filter-btn active" data-filter="all" style="flex: 0 0 auto;">Все</button>
                     <button type="button" class="filter-btn" data-filter="for_beginners" style="flex: 0 0 auto; background-color: #5ac8fa; color: white; border-color: #5ac8fa;">Python с нуля</button>
                     <button type="button" class="filter-btn" data-filter="for_basic" style="flex: 0 0 auto; background-color: #34c759; color: white; border-color: #34c759;">Основной курс</button>
-                    <button type="button" class="filter-btn" data-filter="for_advanced" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Хард прога</button>
+                    <button type="button" class="filter-btn" data-filter="for_advanced" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Задание 26</button>
                     <button type="button" class="filter-btn" data-filter="for_expert" style="flex: 0 0 auto; background-color: #af52de; color: white; border-color: #af52de;">Задание 27</button>
                     <button type="button" class="filter-btn" data-filter="for_mocks" style="flex: 0 0 auto; background-color: #6c757d; color: white; border-color: #6c757d;">Разбор пробников</button>
                     <button type="button" class="filter-btn" data-filter="for_practice" style="flex: 0 0 auto; background-color: #0071e3; color: white; border-color: #0071e3;">Нарешка</button>
@@ -183,7 +188,7 @@
                                         <span class="badge bg-success me-1 mb-1"><i class="fas fa-graduation-cap"></i> Основной курс</span>
                                     {% endif %}
                                     {% if webinar.for_advanced %}
-                                        <span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-brain"></i> Хард прога</span>
+                                        <span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-brain"></i> Задание 26</span>
                                     {% endif %}
                                     {% if webinar.for_expert %}
                                         <span class="badge bg-accent me-1 mb-1"><i class="fas fa-crown"></i> Задание 27</span>
@@ -221,14 +226,14 @@
                                 </div>
                                 
                                 <div class="collapse mt-2" id="collapseComments{{ webinar.id }}" aria-labelledby="headingComments{{ webinar.id }}" data-bs-parent="#webinarAccordion{{ webinar.id }}">
-                                    <div class="card card-body bg-light border-0">
+                                    <div class="card card-body bg-light border-0 rounded-3 shadow-sm">
                                         <!-- Форма добавления комментария -->
-                                        <div class="mt-3">
-                                            <h6><i class="fas fa-comments me-1"></i> Комментарии:</h6>
+                                        <div class="mb-4">
+                                            <h6 class="fw-bold mb-3"><i class="fas fa-comments me-1 text-primary"></i> Комментарии:</h6>
                                             <form action="{{ url_for('webinars.add_webinar_comment', webinar_id=webinar.id) }}" method="post" class="mb-3">
                                                 <div class="input-group">
-                                                    <input type="text" name="comment_text" class="form-control form-control-sm" placeholder="Добавить комментарий..." required>
-                                                    <button class="btn btn-primary" type="submit">
+                                                    <input type="text" name="comment_text" class="form-control comment-input" placeholder="Добавить комментарий..." required>
+                                                    <button class="btn btn-primary comment-submit" type="submit">
                                                         <i class="fas fa-paper-plane"></i>
                                                     </button>
                                                 </div>
@@ -237,31 +242,43 @@
                                         
                                         <!-- Список комментариев -->
                                         {% if webinar.comments %}
-                                            {% for comment in webinar.comments|sort(attribute='created_at', reverse=true) %}
-                                                <div class="d-flex mb-2">
-                                                    <div class="flex-grow-1">
-                                                        <div class="d-flex justify-content-between align-items-center">
-                                                            <small class="text-muted">
-                                                                <strong>{{ comment.user.full_name }}</strong>
-                                                                • {{ comment.created_at|moscow_time }}
-                                                            </small>
-                                                            {% if current_user.id == comment.user_id or current_user.is_admin %}
-                                                                <form action="{{ url_for('webinars.delete_webinar_comment', comment_id=comment.id) }}" method="post" class="d-inline">
-                                                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0" 
-                                                                            onclick="return confirm('Удалить комментарий?')"
-                                                                            title="Удалить комментарий"
-                                                                    >
-                                                                        <i class="fas fa-times"></i>
-                                                                    </button>
-                                                                </form>
-                                                            {% endif %}
+                                            <div class="comments-container">
+                                                {% for comment in webinar.comments|sort(attribute='created_at', reverse=true) %}
+                                                    <div class="comment-bubble {% if current_user.id == comment.user_id %}comment-bubble-right{% else %}comment-bubble-left{% endif %} mb-3">
+                                                        <div class="d-flex align-items-start">
+                                                            <div class="comment-avatar me-2 {% if current_user.id == comment.user_id %}comment-avatar-self{% else %}comment-avatar-other{% endif %}">
+                                                                <span>{{ comment.user.first_name[0] if comment.user else '?' }}{{ comment.user.last_name[0] if comment.user else '' }}</span>
+                                                            </div>
+                                                            <div class="flex-grow-1">
+                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                    <div class="comment-author">
+                                                                        <strong class="comment-name">{{ comment.user.full_name }}</strong>
+                                                                        <div class="comment-date-badge">{{ comment.created_at|moscow_time }}</div>
+                                                                    </div>
+                                                                    {% if current_user.id == comment.user_id or current_user.is_admin %}
+                                                                        <form action="{{ url_for('webinars.delete_webinar_comment', comment_id=comment.id) }}" method="post" class="d-inline">
+                                                                            <button type="submit" class="btn btn-link btn-sm delete-comment-btn" 
+                                                                                    onclick="return confirm('Удалить комментарий?')"
+                                                                                    title="Удалить комментарий"
+                                                                            >
+                                                                                <i class="fas fa-trash-alt"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <div class="comment-text">{{ comment.text }}</div>
+                                                            </div>
                                                         </div>
-                                                        <div>{{ comment.text }}</div>
                                                     </div>
-                                                </div>
-                                            {% endfor %}
+                                                {% endfor %}
+                                            </div>
                                         {% else %}
-                                            <small class="text-muted">Нет комментариев</small>
+                                            <div class="text-center py-4 empty-comments">
+                                                <div class="empty-comments-icon mb-3">
+                                                    <i class="far fa-comment-dots"></i>
+                                                </div>
+                                                <p class="empty-comments-text">Нет комментариев. Будьте первым!</p>
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -843,6 +860,179 @@
         .filter-btn {
             font-size: 0.8rem;
             padding: 5px 10px;
+        }
+    }
+
+    /* --- Стили для комментариев --- */
+    .comment-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #fff;
+        text-transform: uppercase;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .comment-avatar-self {
+        background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+    }
+    
+    .comment-avatar-other {
+        background: linear-gradient(45deg, #6c757d, #adb5bd);
+    }
+    
+    .comment-bubble {
+        padding: 15px;
+        border-radius: 18px;
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        position: relative;
+    }
+    
+    .comment-bubble:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    
+    .comment-bubble-left {
+        background-color: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        margin-left: 10px;
+    }
+    
+    .comment-bubble-right {
+        background: linear-gradient(to right, #e7f5ff, #f0f8ff);
+        border-left: 4px solid #0dcaf0;
+        margin-right: 10px;
+    }
+    
+    .comment-author {
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .comment-name {
+        font-size: 0.95rem;
+        color: #343a40;
+        margin-right: 8px;
+    }
+    
+    .comment-date-badge {
+        font-size: 0.75rem;
+        color: #6c757d;
+        background-color: rgba(108, 117, 125, 0.1);
+        padding: 2px 8px;
+        border-radius: 12px;
+        display: inline-block;
+    }
+    
+    .comment-text {
+        color: #343a40;
+        white-space: pre-line;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-top: 5px;
+    }
+    
+    .comments-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 8px;
+        padding-left: 2px;
+        margin: 0 -5px;
+    }
+    
+    .comments-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .comments-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .comments-container::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+    
+    .comments-container::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    .empty-comments {
+        padding: 30px 0;
+    }
+    
+    .empty-comments-icon {
+        font-size: 2.5rem;
+        color: #dee2e6;
+        margin-bottom: 10px;
+        animation: pulse 2s infinite;
+    }
+    
+    .empty-comments-text {
+        color: #6c757d;
+        font-size: 1rem;
+        margin-bottom: 0;
+    }
+    
+    .comment-input {
+        border-radius: 20px 0 0 20px;
+        padding-left: 15px;
+        border-color: #dee2e6;
+        transition: all 0.3s ease;
+    }
+    
+    .comment-input:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    }
+    
+    .comment-submit {
+        border-radius: 0 20px 20px 0;
+        padding: 0.375rem 1rem;
+        background-color: #0d6efd;
+        transition: all 0.3s ease;
+    }
+    
+    .comment-submit:hover {
+        background-color: #0b5ed7;
+        transform: translateX(2px);
+    }
+    
+    .delete-comment-btn {
+        opacity: 0.6;
+        color: #dc3545;
+        transition: all 0.2s ease;
+        padding: 0;
+    }
+    
+    .delete-comment-btn:hover {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 0.7;
+        }
+        50% {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 0.7;
         }
     }
 </style>

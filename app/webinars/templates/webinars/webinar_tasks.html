@@ -7,80 +7,389 @@
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('webinars.webinars_list') }}">Вебинары</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('webinars.webinars_list') }}" class="text-decoration-none">Вебинары</a></li>
             <li class="breadcrumb-item active" aria-current="page">Задачи: {{ webinar.title }}</li>
         </ol>
     </nav>
 
-    <h1 class="mb-4"><i class="fas fa-tasks me-2"></i> Задачи к вебинару</h1>
-    <h5 class="text-muted mb-4">{{ webinar.title }}</h5>
-
-    {# Форма добавления новой задачи #}
-    <div class="card mb-4">
-        <div class="card-header">
-            Добавить новую задачу
+    <div class="d-flex align-items-center mb-4">
+        <div class="me-3 rounded-circle task-icon-container d-flex align-items-center justify-content-center">
+            <i class="fas fa-tasks text-white"></i>
         </div>
-        <div class="card-body">
-            <form action="{{ url_for('webinars.add_webinar_task', webinar_id=webinar.id) }}" method="post">
-                {{ form.csrf_token }}
-                <div class="mb-3">
-                    {{ render_field(form.text, class="form-control", placeholder="Введите текст задачи...") }}
-                </div>
-                <button class="btn btn-success" type="submit">
-                    <i class="fas fa-plus me-1"></i> Добавить задачу
-                </button>
-            </form>
+        <div>
+            <h1 class="fs-3 fw-bold mb-0">Задачи к вебинару</h1>
+            <p class="text-muted mb-0">{{ webinar.title }}</p>
         </div>
     </div>
 
-    {# Список существующих задач #}
-    <h3 class="mb-3">Список задач ({{ tasks|length }})</h3>
-    {% if tasks %}
-        {% for task in tasks %}
-            <div class="card mb-3 shadow-sm">
-                <div class="card-body pb-2">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="card-title mb-0">Задача {{ loop.index }}</h5>
-                        <div>
-                            {% if current_user.is_authenticated and (current_user.id == task.created_by_id or current_user.is_admin) %}
-                                <a href="{{ url_for('.edit_webinar_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Редактировать задачу">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ url_for('.delete_webinar_task', task_id=task.id) }}" method="post" class="d-inline" onsubmit="return confirm('Вы уверены, что хотите удалить эту задачу?')">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}"/>
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить задачу">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="webinar-task-text">{{ task.text }}</div>
+    <div class="row">
+        <div class="col-lg-4 order-lg-2 mb-4">
+            {# Форма добавления новой задачи #}
+            <div class="card shadow border-0 rounded-4 position-sticky add-task-card" style="top: 2rem;">
+                <div class="card-header gradient-primary text-white py-3 rounded-top-4">
+                    <h5 class="card-title mb-0"><i class="fas fa-plus-circle me-2"></i> Добавить новую задачу</h5>
                 </div>
-                <div class="card-footer bg-light border-top-0 pt-1 pb-1">
-                    <small class="text-muted">
-                        <i class="fas fa-user fa-xs me-1"></i> {{ task.created_by.full_name if task.created_by else 'Неизвестно' }}
-                        <span class="mx-1">•</span>
-                        <i class="fas fa-clock fa-xs me-1"></i> {{ task.created_at|moscow_time }}
-                    </small>
+                <div class="card-body p-4">
+                    <form action="{{ url_for('webinars.add_webinar_task', webinar_id=webinar.id) }}" method="post">
+                        {{ form.csrf_token }}
+                        <div class="mb-3">
+                            {{ render_field(form.text, class="form-control custom-textarea", placeholder="Введите текст задачи...") }}
+                        </div>
+                        <button class="btn btn-primary w-100 py-2 add-task-btn" type="submit">
+                            <i class="fas fa-plus me-2"></i> Добавить задачу
+                        </button>
+                    </form>
                 </div>
             </div>
-        {% endfor %}
-    {% else %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i> Задач к этому вебинару пока нет.
         </div>
-    {% endif %}
-
+        
+        <div class="col-lg-8 order-lg-1">
+            {# Список существующих задач #}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fs-4 fw-bold"><i class="fas fa-list-ul me-2 gradient-text"></i> Список задач</h3>
+                <span class="badge task-counter rounded-pill px-3 py-2">{{ tasks|length }} задач</span>
+            </div>
+            
+            {% if tasks %}
+                <div class="task-timeline">
+                    {% for task in tasks %}
+                        <div class="card task-card mb-4 border-0 shadow rounded-4 overflow-hidden transform-hover">
+                            <div class="card-header d-flex justify-content-between align-items-center bg-light py-3 border-bottom-0">
+                                <div class="d-flex align-items-center">
+                                    <span class="task-number">{{ loop.index }}</span>
+                                    <h5 class="card-title mb-0 ms-3">Задача {{ loop.index }}</h5>
+                                </div>
+                                <div class="task-actions">
+                                    {% if current_user.is_authenticated and (current_user.id == task.created_by_id or current_user.is_admin) %}
+                                        <a href="{{ url_for('.edit_webinar_task', task_id=task.id) }}" class="btn btn-sm task-edit-btn me-1" title="Редактировать задачу">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form action="{{ url_for('.delete_webinar_task', task_id=task.id) }}" method="post" class="d-inline" onsubmit="return confirm('Вы уверены, что хотите удалить эту задачу?')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}"/>
+                                            <button type="submit" class="btn btn-sm task-delete-btn" title="Удалить задачу">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-body pt-0 p-4">
+                                <div class="webinar-task-text mt-3 pb-3">{{ task.text }}</div>
+                            </div>
+                            <div class="card-footer task-footer px-4 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="task-avatar me-2">
+                                        <span>{{ task.created_by.first_name[0] if task.created_by else '?' }}{{ task.created_by.last_name[0] if task.created_by else '' }}</span>
+                                    </div>
+                                    <div>
+                                        <div class="task-author">
+                                            <strong>{{ task.created_by.full_name if task.created_by else 'Неизвестно' }}</strong>
+                                        </div>
+                                        <div class="task-time">
+                                            <i class="fas fa-clock fa-xs me-1"></i> {{ task.created_at|moscow_time }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-empty rounded-4 shadow p-5 text-center">
+                    <div class="empty-icon mb-3">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h5 class="alert-heading mb-2">Задачи еще не добавлены</h5>
+                    <p class="mb-0">Добавьте первую задачу для этого вебинара, используя форму справа.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block styles %}
 <style>
-    /* Стили для текста задачи (сохранение переносов) */
+    /* Основной дизайн */
+    body {
+        background-color: #f8f9fa;
+    }
+    
+    .breadcrumb-item a {
+        color: #0071e3;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    
+    .breadcrumb-item a:hover {
+        color: #005bba;
+    }
+    
+    /* Стили для иконки страницы */
+    .task-icon-container {
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+        transition: all 0.3s ease;
+        font-size: 1.5rem;
+    }
+    
+    .task-icon-container:hover {
+        transform: rotate(10deg) scale(1.05);
+    }
+    
+    /* Градиентный текст */
+    .gradient-text {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: #0071e3;
+    }
+    
+    /* Счетчик задач */
+    .task-counter {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        color: white;
+        font-weight: 500;
+        font-size: 0.95rem;
+        box-shadow: 0 3px 8px rgba(0, 113, 227, 0.25);
+    }
+    
+    /* Стиль для текста задачи */
     .webinar-task-text {
         white-space: pre-line;
         word-wrap: break-word;
+        font-size: 1.05rem;
+        line-height: 1.7;
+        color: #343a40;
+        padding: 10px 15px;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        border-left: 4px solid #0071e3;
+    }
+    
+    /* Стиль для textarea - улучшенный дизайн */
+    .custom-textarea {
+        min-height: 180px;
+        resize: vertical;
+        border-radius: 12px;
+        border-color: #dee2e6;
+        padding: 12px 15px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) inset;
+    }
+    
+    .custom-textarea:focus {
+        border-color: #0071e3;
+        box-shadow: 0 0 0 0.25rem rgba(0, 113, 227, 0.25);
+    }
+    
+    /* Кнопка добавления задачи */
+    .add-task-btn {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        border: none;
+        border-radius: 30px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 113, 227, 0.25);
+    }
+    
+    .add-task-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(0, 113, 227, 0.35);
+    }
+    
+    .add-task-btn:active {
+        transform: translateY(1px);
+    }
+    
+    /* Карточка для добавления задачи */
+    .add-task-card {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
+        transition: all 0.3s ease;
+    }
+    
+    .add-task-card:hover {
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12) !important;
+    }
+    
+    .gradient-primary {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        border: none;
+    }
+    
+    /* Стиль для карточки задачи при наведении */
+    .transform-hover {
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+    
+    .transform-hover:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* Круглый номер задачи */
+    .task-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        color: white;
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 3px 8px rgba(0, 113, 227, 0.25);
+        transition: all 0.3s ease;
+    }
+    
+    .task-card:hover .task-number {
+        transform: scale(1.1) rotate(10deg);
+    }
+    
+    /* Аватар в виде кружка с инициалами */
+    .task-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #6c757d, #adb5bd);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: white;
+        text-transform: uppercase;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .task-card:hover .task-avatar {
+        transform: scale(1.05);
+    }
+    
+    /* Футер задачи */
+    .task-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .task-author {
+        font-size: 0.9rem;
+        color: #343a40;
+    }
+    
+    .task-time {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    /* Кнопки редактирования и удаления */
+    .task-actions {
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+    }
+    
+    .task-card:hover .task-actions {
+        opacity: 1;
+    }
+    
+    .task-edit-btn {
+        background-color: #0071e3;
+        color: white;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .task-edit-btn:hover {
+        background-color: #005bba;
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    .task-delete-btn {
+        background-color: #ff3b30;
+        color: white;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .task-delete-btn:hover {
+        background-color: #dc3545;
+        color: white;
+        transform: translateY(-2px);
+    }
+    
+    /* Стилизация временной линии */
+    .task-timeline {
+        position: relative;
+        padding-left: 15px;
+    }
+    
+    .task-timeline::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 18px;
+        width: 3px;
+        background: linear-gradient(to bottom, #0071e3, rgba(0, 113, 227, 0.2));
+        border-radius: 3px;
+        z-index: 0;
+    }
+    
+    .task-timeline .task-card {
+        position: relative;
+        z-index: 1;
+        margin-left: 20px;
+    }
+    
+    /* Пустое состояние */
+    .alert-empty {
+        background-color: white;
+        border: none;
+    }
+    
+    .empty-icon {
+        font-size: 3rem;
+        color: #dee2e6;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 0.7;
+        }
+        50% {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 0.7;
+        }
+    }
+    
+    /* Медиа-запросы для адаптивности */
+    @media (max-width: 992px) {
+        .task-timeline::before {
+            display: none;
+        }
+        
+        .task-timeline .task-card {
+            margin-left: 0;
+        }
+        
+        .task-timeline {
+            padding-left: 0;
+        }
     }
 </style>
 {% endblock %} 

@@ -23,6 +23,11 @@
                     <i class="fas fa-copy"></i>
                 </button>
             </div>
+            
+            {# Показываем продолжительность вебинара #}
+            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill bg-light text-dark">
+                <small><i class="far fa-clock me-1"></i>{{ get_webinar_hours(webinar)|round(1) }} ч</small>
+            </div>
         </div>
         <div class="card-body">
             <h6 class="card-title webinar-title">{{ webinar.title }}</h6>
@@ -49,6 +54,8 @@
                         <span class="badge bg-orange text-dark webinar-type-task26"><i class="fas fa-brain me-1"></i>№26</span>
                     {% elif webinar.for_advanced %}
                         <span class="badge bg-warning text-dark webinar-type-advanced"><i class="fas fa-fire me-1"></i>Хард</span>
+                    {% elif webinar.for_basic %}
+                        <span class="badge bg-primary text-white webinar-type-basic"><i class="fas fa-book me-1"></i>Основной</span>
                     {% endif %}
                     
                     {# Категория #}
@@ -88,8 +95,8 @@
             </div>
         </div>
         <div class="card-footer bg-transparent border-top pt-2 d-flex justify-content-between align-items-center"> {# Added border-top and padding #}
-            {# Week select from the first template #}
-            <select class="form-select form-select-sm week-select webinar-action-button" name="week_numbers_{{ webinar.id }}" style="width: 120px;" {% if not is_checked %}disabled{% endif %}>
+            {# Week select from the first template - ИЗМЕНЕНО: убрано disabled #}
+            <select class="form-select form-select-sm week-select webinar-action-button" name="week_numbers_{{ webinar.id }}" style="width: 120px;">
                 {% for week in range(1, 5) %}
                 <option value="{{ week }}" {% if selected_week == week %}selected{% endif %}>Неделя {{ week }}</option>
                 {% endfor %}
@@ -421,11 +428,13 @@
                         <div class="filter-buttons">
                             <button type="button" class="filter-btn active" data-filter="all">Все</button>
                             <button type="button" class="filter-btn" data-filter="beginners">Python с нуля</button>
+                            <button type="button" class="filter-btn" data-filter="basic">Основной курс</button>
                             <button type="button" class="filter-btn" data-filter="advanced">Хард прога</button>
                             <button type="button" class="filter-btn" data-filter="expert">Задание 27</button>
                             <button type="button" class="filter-btn" data-filter="task26">Задание 26</button>
                             <button type="button" class="filter-btn" data-filter="mocks">Пробники</button>
                             <button type="button" class="filter-btn" data-filter="practice">Нарешка</button>
+                            <button type="button" class="filter-btn" data-filter="minisnap">Мини-щелчок</button>
                         </div>
                     </div>
                 </div>
@@ -635,7 +644,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const webinarElement = webinarItem.querySelector('.webinar-card');
             if (!webinarElement) return 3.0; // дефолтное значение
             
-            // Проверяем на метки, указывающие тип вебинара
+            // Получаем значение продолжительности из data-атрибута, если оно есть
+            const hoursDisplay = webinarElement.querySelector('.position-absolute small');
+            if (hoursDisplay) {
+                const hoursText = hoursDisplay.textContent.trim();
+                const hoursMatch = hoursText.match(/(\d+(\.\d+)?) ч/);
+                if (hoursMatch && hoursMatch[1]) {
+                    return parseFloat(hoursMatch[1]);
+                }
+            }
+            
+            // Запасной вариант - проверяем на метки, указывающие тип вебинара
             const hasPythonBadge = webinarElement.querySelector('.webinar-type-beginners');
             const hasT26Badge = webinarElement.querySelector('.webinar-type-task26');
             const hasT27Badge = webinarElement.querySelector('.webinar-type-expert');
@@ -704,14 +723,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (targetWeek !== null) { // Moved TO a week container
             checkbox.checked = true;
-            weekSelect.disabled = false;
             weekSelect.value = targetWeek; // Set select value to the target week
             card.classList.add('selected-webinar');
             hiddenInput.disabled = false; // Enable hidden input
         } else { // Moved TO available container (or any other non-week container)
             checkbox.checked = false;
-            weekSelect.disabled = true;
-            // Keep the last selected week in the dropdown, just disable it
             card.classList.remove('selected-webinar');
             hiddenInput.disabled = true; // Disable hidden input
         }
@@ -732,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isChecked = this.checked;
             // console.log(`[Checkbox Change] Webinar ${webinarId} changed to ${isChecked}`);
             const currentContainer = webinarItem.parentElement;
-            const targetWeek = parseInt(weekSelect?.value || '1', 10); // Default to week 1 if select is somehow invalid
+            const targetWeek = parseInt(weekSelect?.value || '1', 10); // Используем текущее значение селекта
 
             if (isChecked) {
                 // Move to the selected week's container IF it's not already there
@@ -768,6 +784,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetContainer = weekContainers[targetWeek];
             // console.log(`[Week Select Change] Webinar ${webinarId} target week: ${targetWeek}`);
 
+            // ИЗМЕНЕНО: Перемещаем вебинар, только если чекбокс отмечен
             // Move only if the checkbox is checked AND it's not already in the target container
             if (checkbox?.checked && targetContainer && currentContainer !== targetContainer) {
                  // console.log(`[Week Select Change] Moving item ${webinarId} from`, currentContainer, `to Week ${targetWeek}`);
@@ -972,6 +989,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
          // console.log("--- Finished Initial Distribution ---");
         updateCountersAndPlaceholders(); // Final update after all distribution
+        
+        // Дополнительно - проверка и актуализация всех чекбоксов и селектов после распределения
+        const allWebinarsInWeeks = document.querySelectorAll('.week-container .webinar-item');
+        const allWebinarsInAvailable = document.querySelectorAll('#available-webinars-inner-container .webinar-item');
+        
+        // Для вебинаров в неделях - активируем селект и отмечаем чекбокс
+        allWebinarsInWeeks.forEach(item => {
+            const checkbox = item.querySelector('.webinar-checkbox');
+            const weekSelect = item.querySelector('.week-select');
+            const card = item.querySelector('.webinar-card');
+            const hiddenInput = item.querySelector('.webinar-hidden-input');
+            
+            if (checkbox) checkbox.checked = true;
+            if (card) card.classList.add('selected-webinar');
+            if (hiddenInput) hiddenInput.disabled = false;
+        });
+        
+        // Для доступных вебинаров - деактивируем селект и снимаем отметку с чекбокса
+        allWebinarsInAvailable.forEach(item => {
+            const checkbox = item.querySelector('.webinar-checkbox');
+            const weekSelect = item.querySelector('.week-select');
+            const card = item.querySelector('.webinar-card');
+            const hiddenInput = item.querySelector('.webinar-hidden-input');
+            
+            if (checkbox) checkbox.checked = false;
+            if (card) card.classList.remove('selected-webinar');
+            if (hiddenInput) hiddenInput.disabled = true;
+        });
     }
 
     // --- Event Listeners Setup ---
@@ -1204,19 +1249,23 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Фильтр по основному типу вебинара
             const beginnersBadge = webinarCard.querySelector('.webinar-type-beginners');
+            const basicBadge = webinarCard.querySelector('.webinar-type-basic');
             const advancedBadge = webinarCard.querySelector('.webinar-type-advanced');
             const expertBadge = webinarCard.querySelector('.webinar-type-expert');
             const task26Badge = webinarCard.querySelector('.webinar-type-task26');
             const mocksBadge = webinarCard.querySelector('.webinar-format-mocks');
             const practiceBadge = webinarCard.querySelector('.webinar-format-practice');
+            const minisnapBadge = webinarCard.querySelector('.webinar-format-minisnap');
             
             const matchesMainType = activeFilters.mainType === 'all' ||
                             (activeFilters.mainType === 'beginners' && beginnersBadge) ||
+                            (activeFilters.mainType === 'basic' && basicBadge) ||
                             (activeFilters.mainType === 'advanced' && advancedBadge) ||
                             (activeFilters.mainType === 'expert' && expertBadge) ||
                             (activeFilters.mainType === 'task26' && task26Badge) ||
                             (activeFilters.mainType === 'mocks' && mocksBadge) ||
-                            (activeFilters.mainType === 'practice' && practiceBadge);
+                            (activeFilters.mainType === 'practice' && practiceBadge) ||
+                            (activeFilters.mainType === 'minisnap' && minisnapBadge);
             
             if (!matchesMainType) {
                 item.style.display = 'none';

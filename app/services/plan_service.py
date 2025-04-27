@@ -11,6 +11,10 @@ T26_T27_APPROX_HOURS = 4.0
 
 def get_webinar_hours(webinar: Webinar) -> float:
     """Определяет "стоимость" вебинара в часах."""
+    # Особые случаи для конкретных вебинаров
+    if webinar.id in [17, 33]:
+        return 0.3
+
     if webinar.for_beginners:
         return 2.5
     elif (

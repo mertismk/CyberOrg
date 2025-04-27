@@ -517,6 +517,8 @@ def view_study_plan(plan_id):
         week_dates=week_dates,
         # Передаем список НЕИЗВЕСТНЫХ базовых заданий
         basic_tasks_to_study=basic_tasks_to_study,
+        # Передаем функцию расчета часов для вебинаров
+        get_webinar_hours=get_webinar_hours,
     )
 
 

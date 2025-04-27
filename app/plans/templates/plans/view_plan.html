@@ -148,6 +148,11 @@
                                                 <small><i class="fas fa-star me-1"></i>Необязательный</small>
                                             </div>
                                         {% endif %}
+                                        
+                                        <!-- Отображаем продолжительность вебинара в часах вверху карточки -->
+                                        <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded-pill bg-light text-dark">
+                                            <small><i class="far fa-clock me-1"></i>{{ get_webinar_hours(webinar)|round(1) }} ч</small>
+                                        </div>
                                     </div>
                                     <div class="card-body d-flex flex-column position-relative">
                                         <h6 class="card-title fw-bold mb-3 mt-2">{{ webinar.title }}</h6>

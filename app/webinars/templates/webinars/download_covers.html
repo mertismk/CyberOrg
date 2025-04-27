@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Скачивание обложек вебинаров{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-header gradient-primary text-white py-3 rounded-top-4">
+                    <h4 class="mb-0"><i class="fas fa-download me-2"></i> Скачивание обложек вебинаров</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info mb-4 rounded-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle fa-2x me-3 text-primary"></i>
+                            <div>
+                                <h5 class="alert-heading mb-1">Информация о скачивании</h5>
+                                <p class="mb-0">
+                                    Эта операция позволит скачать все обложки вебинаров с внешних серверов
+                                    и сохранить их локально. Это повысит скорость загрузки страниц и устранит зависимость
+                                    от внешних ресурсов.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-4">
+                        <div class="py-3">
+                            <div class="display-1 gradient-text">
+                                <i class="fas fa-images"></i>
+                            </div>
+                            <h2 class="mt-2">{{ count }} обложек для скачивания</h2>
+                            <p class="text-muted">На сервере будет создана папка static/uploads/covers для хранения изображений</p>
+                        </div>
+                        
+                        {% if count > 0 %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Скачивание большого количества изображений может занять некоторое время.
+                                Пожалуйста, не закрывайте страницу до завершения процесса.
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-secondary px-4">
+                            <i class="fas fa-chevron-left me-2"></i> Вернуться к списку
+                        </a>
+                        
+                        {% if count > 0 %}
+                            <form method="post">
+                                <button type="submit" class="btn btn-primary px-4 download-btn">
+                                    <i class="fas fa-download me-2"></i> Начать скачивание
+                                </button>
+                            </form>
+                        {% else %}
+                            <button class="btn btn-primary px-4" disabled>
+                                <i class="fas fa-check me-2"></i> Все обложки уже скачаны
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .gradient-primary {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        border: none;
+    }
+    
+    .gradient-text {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: #0071e3;
+    }
+    
+    .download-btn {
+        background: linear-gradient(45deg, #0071e3, #00a2ff);
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 113, 227, 0.25);
+    }
+    
+    .download-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(0, 113, 227, 0.35);
+    }
+</style>
+{% endblock %} 
