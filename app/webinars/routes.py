@@ -121,6 +121,7 @@ def _get_filtered_webinars_query(
             Webinar.title.ilike(term_ilike),
             Webinar.url.ilike(term_ilike),  # Возможно, стоит искать только ID?
             Webinar.tasks.any(WebinarTask.text.ilike(term_ilike)),
+            Webinar.comments.any(WebinarComment.text.ilike(term_ilike)),
         )
         # Дополнительно ищем по номеру задания, если query - число
         if query.isdigit():
