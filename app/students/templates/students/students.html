@@ -17,9 +17,21 @@
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
                 <input type="search" class="form-control border-start-0" name="q" placeholder="Поиск по имени, фамилии, ID..." value="{{ request.args.get('q', '') }}">
+                
+                <select name="sort" class="form-select border-start-0 border-end-0" style="max-width: 180px;">
+                    <option value="date_desc" {% if request.args.get('sort') == 'date_desc' %}selected{% endif %}>По дате ↓</option>
+                    <option value="date_asc" {% if request.args.get('sort') == 'date_asc' %}selected{% endif %}>По дате ↑</option>
+                    <option value="name_asc" {% if request.args.get('sort') == 'name_asc' %}selected{% endif %}>По имени А-Я</option>
+                    <option value="name_desc" {% if request.args.get('sort') == 'name_desc' %}selected{% endif %}>По имени Я-А</option>
+                    <option value="target_desc" {% if request.args.get('sort') == 'target_desc' %}selected{% endif %}>По баллу ↓</option>
+                    <option value="target_asc" {% if request.args.get('sort') == 'target_asc' %}selected{% endif %}>По баллу ↑</option>
+                    <option value="hours_desc" {% if request.args.get('sort') == 'hours_desc' %}selected{% endif %}>По часам ↓</option>
+                    <option value="hours_asc" {% if request.args.get('sort') == 'hours_asc' %}selected{% endif %}>По часам ↑</option>
+                </select>
+                
                 <button class="btn btn-primary" type="submit">Найти</button>
-                {% if request.args.get('q') %}
-                    <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-secondary" title="Сбросить поиск">
+                {% if request.args.get('q') or request.args.get('sort') %}
+                    <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-secondary" title="Сбросить фильтры">
                         <i class="fas fa-times"></i>
                     </a>
                 {% endif %}
@@ -58,9 +70,13 @@
                                 <small class="text-muted">Целевой балл:</small>
                                 <strong class="ms-1">{{ student.target_score or '-' }}</strong>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-2">
                                 <small class="text-muted">Часов в неделю:</small>
                                 <strong class="ms-1">{{ student.hours_per_week or '-' }}</strong>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Добавлен:</small>
+                                <strong class="ms-1">{{ student.created_at|moscow_time|default('-', true) }}</strong>
                             </div>
 
                             <div class="mb-3">
@@ -113,6 +129,7 @@
                                 <th class="py-3">Цель</th>
                                 <th class="py-3">Часы</th>
                                 <th class="py-3">Уровень</th>
+                                <th class="py-3">Добавлен</th>
                                 <th class="py-3 text-end pe-4">Действия</th>
                             </tr>
                         </thead>
@@ -142,6 +159,7 @@
                                             <span class="badge bg-accent me-1 mb-1" title="Знает Задание 27"><i class="fas fa-gem me-1"></i>27</span>
                                         {% endif %}
                                     </td>
+                                    <td class="py-3"><small>{{ student.created_at|moscow_time|default('-', true) }}</small></td>
                                     <td class="py-3 text-end pe-4">
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-sm btn-primary" title="Просмотр">
@@ -228,6 +246,11 @@
     background-color: var(--primary-color);
     border-color: var(--primary-color);
     color: white;
+}
+/* Стили для сортировки */
+.form-select {
+    background-position: right 0.5rem center;
+    padding-right: 2rem;
 }
 </style>
 {% endblock %}
