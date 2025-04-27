@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение удаления ученика{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> Подтверждение удаления ученика</h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                         <i class="fas fa-user-slash fa-4x text-danger mb-3"></i>
+                         <h5>Вы уверены, что хотите удалить ученика?</h5>
+                         <p class="lead"><strong>{{ student.first_name }} {{ student.last_name }}</strong></p>
+                         <p class="text-muted">(ID: {{ student.platform_id }})</p>
+                    </div>
+
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-circle me-1"></i> <strong>Внимание!</strong> Это действие необратимо. Будут удалены все данные ученика, включая планы обучения и информацию о просмотренных вебинарах.
+                    </div>
+
+                    <form action="{{ url_for('students.student_delete', student_id=student.id) }}" method="post" class="mt-4">
+                        <div class="d-grid gap-2 d-md-flex justify-content-center">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i> Да, удалить ученика
+                            </button>
+                            <a href="{{ url_for('students.students_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i> Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

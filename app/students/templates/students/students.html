@@ -19,7 +19,7 @@
                 <input type="search" class="form-control border-start-0" name="q" placeholder="Поиск по имени, фамилии, ID..." value="{{ request.args.get('q', '') }}">
                 
                 <select name="sort" class="form-select border-start-0 border-end-0" style="max-width: 180px;">
-                    <option value="date_desc" {% if request.args.get('sort') == 'date_desc' %}selected{% endif %}>По дате ↓</option>
+                    <option value="date_desc" {% if request.args.get('sort') == 'date_desc' or not request.args.get('sort') %}selected{% endif %}>По дате ↓</option>
                     <option value="date_asc" {% if request.args.get('sort') == 'date_asc' %}selected{% endif %}>По дате ↑</option>
                     <option value="name_asc" {% if request.args.get('sort') == 'name_asc' %}selected{% endif %}>По имени А-Я</option>
                     <option value="name_desc" {% if request.args.get('sort') == 'name_desc' %}selected{% endif %}>По имени Я-А</option>
@@ -63,23 +63,30 @@
                                     {{ student.first_name }} {{ student.last_name }}
                                 </a>
                              </h5>
-                             <span class="badge bg-light text-dark border">ID: {{ student.platform_id }}</span>
+                             <span class="badge bg-secondary">
+                                <i class="fas fa-id-badge me-1"></i>{{ student.platform_id }}
+                             </span>
                         </div>
                         <div class="card-body">
-                            <div class="mb-2">
-                                <small class="text-muted">Целевой балл:</small>
-                                <strong class="ms-1">{{ student.target_score or '-' }}</strong>
-                            </div>
-                            <div class="mb-2">
-                                <small class="text-muted">Часов в неделю:</small>
-                                <strong class="ms-1">{{ student.hours_per_week or '-' }}</strong>
+                            <div class="d-flex justify-content-between mb-2">
+                                <div>
+                                    <small class="text-muted">Целевой балл:</small>
+                                    <strong class="ms-1 badge rounded-pill bg-{{ 'success' if student.target_score and student.target_score >= 90 else 'primary' }}">{{ student.target_score or '-' }}</strong>
+                                </div>
+                                <div>
+                                    <small class="text-muted">Часов в неделю:</small>
+                                    <strong class="ms-1 badge rounded-pill bg-{{ 'warning text-dark' if student.hours_per_week and student.hours_per_week >= 15 else 'info text-dark' }}">{{ student.hours_per_week or '-' }} ч.</strong>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <small class="text-muted">Добавлен:</small>
-                                <strong class="ms-1">{{ student.created_at|moscow_time|default('-', true) }}</strong>
+                                <div class="d-flex align-items-center mt-1">
+                                    <i class="far fa-calendar-alt me-2 text-muted"></i>
+                                    <strong class="small">{% if student is defined and student.registration_date is defined %}{{ student.registration_date|moscow_time }}{% else %}-{% endif %}</strong>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-3 d-flex flex-wrap">
                                  {% if student.is_beginner %}
                                     <span class="badge bg-info me-1 mb-1"><i class="fas fa-baby me-1"></i>Начинающий</span>
                                 {% else %}
@@ -107,6 +114,9 @@
                                 <a href="{{ url_for('plans.select_tasks', student_id=student.id) }}" class="btn btn-sm btn-accent" title="Создать план">
                                     <i class="fas fa-calendar-plus"></i>
                                 </a>
+                                <a href="{{ url_for('students.confirm_student_delete', student_id=student.id) }}" class="btn btn-sm btn-danger" title="Удалить">
+                                    <i class="fas fa-trash"></i>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -118,32 +128,72 @@
 
     {# Блок для вида таблицы (изначально скрыт) #}
     <div id="table-view" style="display: none;">
-        <div class="card">
+        <div class="card shadow-sm">
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
-                        <thead>
+                        <thead class="bg-light">
                             <tr>
                                 <th class="px-4 py-3">ID</th>
-                                <th class="py-3">Имя Фамилия</th>
-                                <th class="py-3">Цель</th>
-                                <th class="py-3">Часы</th>
+                                <th class="py-3">
+                                    <div class="d-flex align-items-center">
+                                        <span>Имя Фамилия</span>
+                                        {% if request.args.get('sort') in ['name_asc', 'name_desc'] %}
+                                            <i class="fas fa-sort-{{ 'up' if request.args.get('sort') == 'name_asc' else 'down' }} ms-2 text-primary"></i>
+                                        {% endif %}
+                                    </div>
+                                </th>
+                                <th class="py-3">
+                                    <div class="d-flex align-items-center">
+                                        <span>Цель</span>
+                                        {% if request.args.get('sort') in ['target_asc', 'target_desc'] %}
+                                            <i class="fas fa-sort-{{ 'up' if request.args.get('sort') == 'target_asc' else 'down' }} ms-2 text-primary"></i>
+                                        {% endif %}
+                                    </div>
+                                </th>
+                                <th class="py-3">
+                                    <div class="d-flex align-items-center">
+                                        <span>Часы</span>
+                                        {% if request.args.get('sort') in ['hours_asc', 'hours_desc'] %}
+                                            <i class="fas fa-sort-{{ 'up' if request.args.get('sort') == 'hours_asc' else 'down' }} ms-2 text-primary"></i>
+                                        {% endif %}
+                                    </div>
+                                </th>
                                 <th class="py-3">Уровень</th>
-                                <th class="py-3">Добавлен</th>
+                                <th class="py-3">
+                                    <div class="d-flex align-items-center">
+                                        <span>Добавлен</span>
+                                        {% if request.args.get('sort') in ['date_asc', 'date_desc'] %}
+                                            <i class="fas fa-sort-{{ 'up' if request.args.get('sort') == 'date_asc' else 'down' }} ms-2 text-primary"></i>
+                                        {% endif %}
+                                    </div>
+                                </th>
                                 <th class="py-3 text-end pe-4">Действия</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for student in students %}
-                                <tr>
-                                    <td class="px-4 py-3">{{ student.platform_id }}</td>
+                                <tr class="{% if loop.index % 2 == 0 %}bg-light-hover{% else %}bg-white-hover{% endif %}">
+                                    <td class="px-4 py-3">
+                                        <span class="badge bg-secondary">
+                                            {{ student.platform_id }}
+                                        </span>
+                                    </td>
                                     <td class="py-3">
                                         <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="text-decoration-none fw-bold">
                                             {{ student.first_name }} {{ student.last_name }}
                                         </a>
                                     </td>
-                                    <td class="py-3">{{ student.target_score or '-' }}</td>
-                                    <td class="py-3">{{ student.hours_per_week or '-' }}</td>
+                                    <td class="py-3">
+                                        <span class="badge rounded-pill bg-{{ 'success' if student.target_score and student.target_score >= 90 else 'primary' }}">
+                                            {{ student.target_score or '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3">
+                                        <span class="badge rounded-pill bg-{{ 'warning text-dark' if student.hours_per_week and student.hours_per_week >= 15 else 'info text-dark' }}">
+                                            {{ student.hours_per_week or '-' }} ч.
+                                        </span>
+                                    </td>
                                     <td class="py-3">
                                         {% if student.is_beginner %}
                                             <span class="badge bg-info me-1 mb-1"><i class="fas fa-baby me-1"></i>Начинающий</span>
@@ -159,7 +209,16 @@
                                             <span class="badge bg-accent me-1 mb-1" title="Знает Задание 27"><i class="fas fa-gem me-1"></i>27</span>
                                         {% endif %}
                                     </td>
-                                    <td class="py-3"><small>{{ student.created_at|moscow_time|default('-', true) }}</small></td>
+                                    <td class="py-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="far fa-calendar-alt me-2 text-muted"></i>
+                                            <small>{% if student is defined and student.registration_date is defined %}
+                                                {{ student.registration_date|moscow_time }}
+                                            {% else %}
+                                                -
+                                            {% endif %}</small>
+                                        </div>
+                                    </td>
                                     <td class="py-3 text-end pe-4">
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-sm btn-primary" title="Просмотр">
@@ -170,6 +229,9 @@
                                             </a>
                                             <a href="{{ url_for('plans.select_tasks', student_id=student.id) }}" class="btn btn-sm btn-accent" title="Создать план">
                                                 <i class="fas fa-calendar-plus"></i>
+                                            </a>
+                                            <a href="{{ url_for('students.confirm_student_delete', student_id=student.id) }}" class="btn btn-sm btn-danger" title="Удалить">
+                                                <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
                                     </td>
@@ -251,6 +313,34 @@
 .form-select {
     background-position: right 0.5rem center;
     padding-right: 2rem;
+}
+/* Стили для строк таблицы */
+.bg-light-hover:hover {
+    background-color: rgba(114, 9, 183, 0.03) !important;
+}
+.bg-white-hover:hover {
+    background-color: rgba(114, 9, 183, 0.03) !important;
+}
+/* Анимация для иконок сортировки */
+thead i.fas {
+    transition: transform 0.2s ease-in-out;
+}
+thead th:hover i.fas {
+    transform: scale(1.2);
+}
+/* Стили для поля поиска */
+.input-group .form-control:focus,
+.input-group .form-select:focus {
+    box-shadow: none;
+    border-color: var(--primary-color);
+}
+.input-group .btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.input-group .btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 </style>
 {% endblock %}

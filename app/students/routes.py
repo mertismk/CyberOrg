@@ -25,6 +25,9 @@ def students_list():
     # Получаем поисковый запрос
     query = request.args.get('q', '').strip()
     
+    # Получаем параметр сортировки
+    sort_param = request.args.get('sort', 'date_desc')
+    
     # Базовый запрос к ученикам
     students_query = Student.query
 
@@ -38,8 +41,34 @@ def students_list():
                 Student.platform_id.ilike(search_term)
             )
         )
+    
+    # Применяем сортировку в зависимости от параметра
+    if sort_param == 'date_desc':
+        students_query = students_query.order_by(Student.registration_date.desc().nullslast())
+    elif sort_param == 'date_asc':
+        students_query = students_query.order_by(Student.registration_date.asc().nullsfirst())
+    elif sort_param == 'name_desc':
+        students_query = students_query.order_by(Student.last_name.desc(), Student.first_name.desc())
+    elif sort_param == 'target_desc':
+        students_query = students_query.order_by(Student.target_score.desc().nullslast())
+    elif sort_param == 'target_asc':
+        students_query = students_query.order_by(Student.target_score.nullsfirst())
+    elif sort_param == 'hours_desc':
+        students_query = students_query.order_by(Student.hours_per_week.desc().nullslast())
+    elif sort_param == 'hours_asc':
+        students_query = students_query.order_by(Student.hours_per_week.nullsfirst())
+    else:  # По умолчанию 'name_asc'
+        students_query = students_query.order_by(Student.last_name, Student.first_name)
         
-    students = students_query.order_by(Student.last_name, Student.first_name).all()
+    # Получаем отсортированный список студентов
+    students = students_query.all()
+    
+    # Для диагностики выводим в логи даты регистрации (если они есть)
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Сортировка: {sort_param}")
+    for s in students[:10]:  # Первые 10 для краткости
+        logger.info(f"Student: {s.first_name} {s.last_name}, Registration: {s.registration_date}")
 
     # Шаблон students/templates/students/students.html
     return render_template("students/students.html", students=students)
@@ -287,6 +316,36 @@ def student_new():
     return render_template(
         "students/student_form.html", title="Добавление ученика", form=form
     )
+
+
+@bp.route("/<int:student_id>/delete", methods=["POST"])
+@login_required
+def student_delete(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    student = Student.query.get_or_404(student_id)
+    
+    try:
+        # Удаляем студента
+        db.session.delete(student)
+        db.session.commit()
+        flash(f"Ученик {student.first_name} {student.last_name} успешно удален.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Ошибка при удалении ученика: {str(e)}", "danger")
+    
+    return redirect(url_for("students.students_list"))
+
+
+@bp.route("/<int:student_id>/confirm_delete", methods=["GET"])
+@login_required
+def confirm_student_delete(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    student = Student.query.get_or_404(student_id)
+    return render_template("students/confirm_delete.html", student=student)
 
 
 @bp.route("/<int:student_id>/edit", methods=["GET", "POST"])
