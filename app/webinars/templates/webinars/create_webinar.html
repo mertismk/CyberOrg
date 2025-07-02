@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% from "_form_macros.html" import render_field, render_checkbox_field %}
 
-{% block title %}Редактировать вебинар - {{ webinar.title }}{% endblock %}
+{% block title %}Создать новый вебинар{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('webinars.webinars_list') }}">Вебинары</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Редактировать: {{ webinar.title }}</li>
+            <li class="breadcrumb-item active" aria-current="page">Создать новый вебинар</li>
         </ol>
     </nav>
 
@@ -16,10 +16,10 @@
         <div class="col-lg-9 col-xl-8">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h2 class="mb-0 h4"><i class="fas fa-edit me-2"></i>Редактировать вебинар</h2>
+                    <h2 class="mb-0 h4"><i class="fas fa-plus-circle me-2"></i>Создать новый вебинар</h2>
                 </div>
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" novalidate>
+                    <form method="POST" action="{{ url_for('webinars.create_webinar') }}" novalidate>
                         {{ form.hidden_tag() }} {# CSRF Token #}
 
                         <h5 class="mb-3 border-bottom pb-2"><i class="fas fa-info-circle me-2 text-primary"></i>Основная информация</h5>
@@ -59,55 +59,57 @@
                                 {{ render_checkbox_field(form.is_excel) }}
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Тип курса</label>
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            {{ form.for_beginners(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_beginners.id }}">{{ form.for_beginners.label.text }}</label>
+                            <div class="col-md-6">
+                                <label class="form-label fw-medium">Тип курса</label>
+                                <div class="form-group mb-4">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                {{ form.for_beginners(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_beginners.id }}">{{ form.for_beginners.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            {{ form.for_basic(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_basic.id }}">{{ form.for_basic.label.text }}</label>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                {{ form.for_basic(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_basic.id }}">{{ form.for_basic.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            {{ form.for_advanced(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_advanced.id }}">{{ form.for_advanced.label.text }}</label>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                {{ form.for_advanced(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_advanced.id }}">{{ form.for_advanced.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            {{ form.for_expert(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_expert.id }}">{{ form.for_expert.label.text }}</label>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                {{ form.for_expert(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_expert.id }}">{{ form.for_expert.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            {{ form.for_mocks(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_mocks.id }}">{{ form.for_mocks.label.text }}</label>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                {{ form.for_mocks(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_mocks.id }}">{{ form.for_mocks.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            {{ form.for_practice(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_practice.id }}">{{ form.for_practice.label.text }}</label>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                {{ form.for_practice(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_practice.id }}">{{ form.for_practice.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4 minisnap-option">
-                                        <div class="form-check">
-                                            {{ form.for_minisnap(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_minisnap.id }}">{{ form.for_minisnap.label.text }}</label>
+                                        <div class="col-md-4 minisnap-option">
+                                            <div class="form-check">
+                                                {{ form.for_minisnap(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_minisnap.id }}">{{ form.for_minisnap.label.text }}</label>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-4 summer-option">
-                                        <div class="form-check">
-                                            {{ form.for_summer(class="form-check-input") }}
-                                            <label class="form-check-label" for="{{ form.for_summer.id }}">{{ form.for_summer.label.text }}</label>
+                                        <div class="col-md-4 summer-option">
+                                            <div class="form-check">
+                                                {{ form.for_summer(class="form-check-input") }}
+                                                <label class="form-check-label" for="{{ form.for_summer.id }}">{{ form.for_summer.label.text }}</label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -118,7 +120,7 @@
 
                         <div class="d-flex justify-content-end gap-2">
                             <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-secondary">Отмена</a>
-                            {{ form.submit(class='btn btn-primary px-4') }} {# Кнопка сохранения чуть шире #}
+                            {{ form.submit(class='btn btn-primary px-4') }}
                         </div>
                     </form>
                 </div>
@@ -126,7 +128,7 @@
         </div>
     </div>
 </div>
-{% endblock content %}
+{% endblock %}
 
 {% block scripts %}
 {{ super() }}
@@ -155,17 +157,4 @@
         $('#academic_year').change(updateCourseTypeOptions);
     });
 </script>
-{% endblock scripts %}
-
-{# Макрос для чекбоксов, если его нет в _form_macros.html #}
-{# {% macro render_checkbox_field(field) %}
-<div class="form-check mb-2">
-    {{ field(class='form-check-input', **kwargs)|safe }}
-    {{ field.label(class='form-check-label') }}
-    {% if field.errors %}
-        <div class="invalid-feedback d-block">
-            {{ field.errors|join(', ') }}
-        </div>
-    {% endif %}
-</div>
-{% endmacro %} #} 
+{% endblock %} 

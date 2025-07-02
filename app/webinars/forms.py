@@ -1,7 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, SelectField, DateField, BooleanField, TextAreaField
+from wtforms import StringField, SubmitField, SelectField, DateField, BooleanField, TextAreaField, IntegerField
 from wtforms.validators import DataRequired, Optional, URL, ValidationError
 import re
+from datetime import datetime
 
 # Обновленные Choices for categories
 CATEGORY_CHOICES = [
@@ -11,6 +12,10 @@ CATEGORY_CHOICES = [
     ('3', 'Не обязательный'), 
     ('4', 'Для продвинутых') # Добавлена категория 4
 ]
+
+# Choices для учебного года
+current_year = datetime.now().year
+ACADEMIC_YEAR_CHOICES = [(year, str(year)) for year in range(2025, current_year + 2)]
 
 def validate_task_numbers(form, field):
     if field.data:
@@ -28,6 +33,7 @@ class WebinarForm(FlaskForm):
     url = StringField('Ссылка на вебинар', validators=[DataRequired(), URL(message='Некорректный URL вебинара')])
     date = DateField('Дата вебинара (ГГГГ-ММ-ДД)', format='%Y-%m-%d', validators=[Optional()])
     task_numbers = StringField('Номера заданий (через запятую)', validators=[Optional(), validate_task_numbers])
+    academic_year = SelectField('Учебный год', choices=ACADEMIC_YEAR_CHOICES, coerce=int, default=2026)
 
     # Чекбоксы для типа решения (без изменений)
     is_programming = BooleanField('Программное решение')
@@ -45,6 +51,7 @@ class WebinarForm(FlaskForm):
     for_mocks = BooleanField('Разбор пробников') 
     for_practice = BooleanField('Нарешка') 
     for_minisnap = BooleanField('Мини-щелчок') 
+    for_summer = BooleanField('Летний курс')
     # --- Конец замены --- 
 
     cover_url = StringField('Ссылка на обложку', validators=[Optional(), URL(message='Некорректный URL обложки')])

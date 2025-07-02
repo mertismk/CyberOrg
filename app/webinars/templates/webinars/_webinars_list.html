@@ -1,106 +1,246 @@
 {% if webinars %}
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="webinar-cards-container">
         {% for webinar in webinars %}
-        {# Определяем URL обложки заранее #}
-        {% set cover_image_url = url_for('static', filename='images/webinar_placeholder.jpg') %}
-        {% if webinar.id|webinar_cover_exists %}
-            {% set cover_image_url = url_for('static', filename='covers/' + webinar.id|string + '.png') %}
-        {% elif webinar.cover_url %}
-            {% set cover_image_url = webinar.cover_url %}
-        {% endif %}
-
-        <div class="col webinar-card-wrapper">
-            <div class="card h-100 webinar-card" data-webinar-id="{{ webinar.id }}">
-                <img src="{{ cover_image_url }}" class="card-img-top" alt="{{ webinar.title }}">
+        <div class="col webinar-item 
+            {% if webinar.for_beginners %}for_beginners{% endif %}
+            {% if webinar.for_basic %}for_basic{% endif %}
+            {% if webinar.for_advanced %}for_advanced{% endif %}
+            {% if webinar.for_expert %}for_expert{% endif %}
+            {% if webinar.for_mocks %}for_mocks{% endif %}
+            {% if webinar.for_practice %}for_practice{% endif %}
+            {% if webinar.for_minisnap %}for_minisnap{% endif %}
+            {% if webinar.for_summer %}for_summer{% endif %}
+            {% if webinar.is_programming %} is_programming{% endif %}
+            {% if webinar.is_manual %} is_manual{% endif %}
+            {% if webinar.is_excel %} is_excel{% endif %}
+            {% if webinar.category %} category-{{ webinar.category }}{% endif %}
+            {% for task in webinar.task_numbers %} task-{{ task.number }}{% endfor %}
+            {% if webinar.date %} date-{{ webinar.date.strftime('%Y-%m-%d') }}{% endif %}
+        " data-id="{{ webinar.id }}">
+            <div class="card h-100 webinar-card shadow-sm border-0" style="border-radius: 16px; overflow: hidden; transition: all 0.3s ease;">
+                <!-- Обложка вебинара с градиентным оверлеем -->
+                <div class="webinar-cover position-relative" style="height: 140px; overflow: hidden;">
+                    {% if webinar.cover_url %}
+                        <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}" style="object-fit: cover; height: 100%; width: 100%;">
+                    {% else %}
+                        <div class="fallback-img d-flex align-items-center justify-content-center h-100" style="background: linear-gradient(135deg, #8A2BE2, #FF1493);">
+                            <i class="fas fa-video fa-2x text-white opacity-75"></i>
+                        </div>
+                    {% endif %}
+                    <!-- Градиентный оверлей для лучшей читаемости -->
+                    <div class="position-absolute bottom-0 start-0 w-100 p-2" style="background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 75%, transparent 100%); height: 80px; display: flex; align-items: flex-end;">
+                        <h6 class="card-title text-white mb-0" style="font-weight: 600; line-height: 1.3; max-height: 2.6em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">{{ webinar.title }}</h6>
+                    </div>
+                    
+                    <!-- Бейдж категории (если есть) -->
+                    {% if webinar.category %}
+                        <div class="position-absolute top-0 end-0 m-2">
+                            {% if webinar.category == 1 %}
+                                <span class="badge rounded-pill bg-success" style="font-size: 0.7rem;"><i class="fas fa-key"></i> Обязательный</span>
+                            {% elif webinar.category == 2 %}
+                                <span class="badge rounded-pill bg-warning text-dark" style="font-size: 0.7rem;"><i class="fas fa-redo"></i> Повторение</span>
+                            {% elif webinar.category == 3 %}
+                                <span class="badge rounded-pill bg-danger" style="font-size: 0.7rem;"><i class="fas fa-pencil-alt"></i> Необязательный</span>
+                            {% elif webinar.category == 4 %}
+                                <span class="badge rounded-pill bg-pink text-dark" style="font-size: 0.7rem;"><i class="fas fa-rocket"></i> Для продвинутых</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
                 
-                {% if webinar.id in watched_webinar_ids %}
-                    <span class="badge bg-success watched-badge"><i class="fas fa-check-circle me-1"></i> Просмотрено</span>
-                {% endif %}
-
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title">{{ webinar.title }}</h5>
-
-                    {# Номера заданий #}
+                <div class="card-body p-3">
+                    <!-- Мета-информация -->
+                    <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 0.75rem;">
+                        <span class="text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i> {{ webinar.date|moscow_time if webinar.date else 'Не указано' }}
+                        </span>
+                        <span class="text-muted">
+                            <i class="fas fa-hashtag"></i> {{ webinar.url[-5:] if webinar.url|length >= 5 else webinar.url }}
+                        </span>
+                    </div>
+                    
+                    <!-- Номера заданий в виде компактных бейджей -->
                     {% if webinar.task_numbers %}
-                    <div class="task-numbers mt-auto mb-2">
-                        {% for task in webinar.task_numbers|sort(attribute='number') %}
-                            <span class="badge task-badge">№{{ task.number }}</span>
+                    <div class="task-badge-container mb-2" style="line-height: 1.2;">
+                        {% for task in webinar.task_numbers %}
+                            <span class="badge rounded-pill bg-secondary me-1 mb-1" style="font-size: 0.7rem;">№{{ task.number }}</span>
                         {% endfor %}
                     </div>
                     {% endif %}
-
-                    {# Категории курса #}
-                    <div class="course-categories mb-3">
-                        {% if webinar.for_beginners %}<span class="badge category-badge-beginner">Python с нуля</span>{% endif %}
-                        {% if webinar.for_basic %}<span class="badge category-badge-basic">Основной курс</span>{% endif %}
-                        {% if webinar.for_advanced %}<span class="badge category-badge-advanced">Задание 26</span>{% endif %}
-                        {% if webinar.for_expert %}<span class="badge category-badge-expert">Задание 27</span>{% endif %}
-                        {% if webinar.for_mocks %}<span class="badge category-badge-mocks">Разбор пробников</span>{% endif %}
-                        {% if webinar.for_practice %}<span class="badge category-badge-practice">Нарешка</span>{% endif %}
-                        {% if webinar.for_minisnap %}<span class="badge category-badge-minisnap">Мини-щелчок</span>{% endif %}
+                    
+                    <!-- Типы курсов в виде компактных чипов -->
+                    <div class="course-types mb-2" style="line-height: 1.2;">
+                        {% if webinar.for_beginners %}
+                            <span class="badge bg-info me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-baby me-1"></i> Python с нуля
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_basic %}
+                            <span class="badge bg-success me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-graduation-cap me-1"></i> Основной курс
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_advanced %}
+                            <span class="badge bg-warning text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-brain me-1"></i> Задание 26
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_expert %}
+                            <span class="badge bg-accent me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-crown me-1"></i> Задание 27
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_mocks %}
+                            <span class="badge bg-secondary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-file-alt me-1"></i> Разбор пробников
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_practice %}
+                            <span class="badge bg-primary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-dumbbell me-1"></i> Нарешка
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_minisnap %}
+                            <span class="badge bg-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-bolt me-1"></i> Мини-щелчок
+                            </span>
+                        {% endif %}
+                        {% if webinar.for_summer %}
+                            <span class="badge bg-pink me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-sun me-1"></i> Летний курс
+                            </span>
+                        {% endif %}
                     </div>
                     
-                    <ul class="list-group list-group-flush mb-3">
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <span class="text-muted"><i class="fas fa-calendar-alt me-2"></i> Дата</span>
-                            <strong>{{ webinar.date|moscow_time if webinar.date else 'Не указана' }}</strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                            <span class="text-muted"><i class="fas fa-layer-group me-2"></i> Категория</span>
-                            {% if webinar.category == 1 %}<span class="badge bg-danger">Обязательный</span>
-                            {% elif webinar.category == 2 %}<span class="badge bg-info">Повторение</span>
-                            {% elif webinar.category == 3 %}<span class="badge bg-secondary">Не обязательный</span>
-                            {% elif webinar.category == 4 %}<span class="badge bg-primary">Для продвинутых</span>
-                            {% else %}<span class="badge bg-light text-dark">Не указана</span>
-                            {% endif %}
-                        </li>
-                    </ul>
-
-                    <div class="d-grid gap-2">
-                        <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary"><i class="fab fa-youtube me-2"></i> Смотреть</a>
-                        <a href="{{ url_for('webinars.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-outline-secondary"><i class="fas fa-tasks me-2"></i>Задачи ({{ webinar.tasks|length }})</a>
-                         {% if current_user.is_admin %}
-                         <div class="btn-group">
-                            <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-secondary w-100"><i class="fas fa-edit"></i> Ред.</a>
-                             <button type="button" class="btn btn-sm btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteWebinarModal-{{ webinar.id }}"><i class="fas fa-trash"></i> Удал.</button>
-                         </div>
+                    <!-- Тип решения в виде компактных иконок с подписями -->
+                    <div class="solution-types mb-2" style="line-height: 1.2;">
+                        {% if webinar.is_programming %}
+                            <span class="badge bg-primary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-code me-1"></i> Программирование
+                            </span>
+                        {% endif %}
+                        {% if webinar.is_manual %}
+                            <span class="badge bg-warning text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-hand-paper me-1"></i> Ручное решение
+                            </span>
+                        {% endif %}
+                        {% if webinar.is_excel %}
+                            <span class="badge bg-success me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                <i class="fas fa-file-excel me-1"></i> Электронные таблицы
+                            </span>
                         {% endif %}
                     </div>
                 </div>
-            </div>
-        </div>
+                
+                <div class="card-footer bg-white border-0 p-3">
+                    <!-- Основная кнопка -->
+                    <div class="d-grid gap-2 mb-2">
+                        <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-primary" style="border-radius: 8px; font-weight: 500; box-shadow: 0 2px 5px rgba(138, 43, 226, 0.2);">
+                            <i class="fas fa-external-link-alt me-1"></i> Перейти к вебинару
+                        </a>
+                    </div>
+                    
+                    <!-- Дополнительные действия -->
+                    <div class="d-flex justify-content-between align-items-center gap-1">
+                        <a href="{{ url_for('.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-success flex-grow-1" style="border-radius: 6px; font-size: 0.75rem;">
+                            <i class="fas fa-tasks me-1"></i> Задачи ({{ webinar.tasks|length }})
+                        </a>
+                        <button class="btn btn-sm btn-outline-info flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComments{{ webinar.id }}" aria-expanded="false" aria-controls="collapseComments{{ webinar.id }}" style="border-radius: 6px; font-size: 0.75rem;">
+                            <i class="fas fa-comments me-1"></i> Комментарии ({{ webinar.comments|length }})
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку" style="border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0;">
+                            <i class="fas fa-link"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Раскрывающийся блок комментариев -->
+                    <div class="collapse mt-2" id="collapseComments{{ webinar.id }}">
+                        <div class="card card-body bg-light border-0 rounded-2 shadow-sm p-2" style="font-size: 0.85rem;">
+                            <!-- Форма добавления комментария -->
+                            <div class="mb-2">
+                                <h6 class="fw-bold mb-1" style="font-size: 0.85rem;"><i class="fas fa-comments me-1 text-primary"></i> Комментарии:</h6>
+                                <form action="{{ url_for('webinars.add_webinar_comment', webinar_id=webinar.id) }}" method="post" class="mb-2">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="comment_text" class="form-control comment-input" placeholder="Добавить комментарий..." required style="border-radius: 6px 0 0 6px; font-size: 0.8rem;">
+                                        <button class="btn btn-primary comment-submit" type="submit" style="border-radius: 0 6px 6px 0;">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Список комментариев -->
+                            {% if webinar.comments %}
+                                <div class="comments-container">
+                                    {% for comment in webinar.comments|sort(attribute='created_at', reverse=true) %}
+                                        <div class="comment-bubble mb-1 p-2 rounded-2 {% if current_user.id == comment.user_id %}bg-light{% else %}bg-white{% endif %}" style="border: 1px solid #eee; font-size: 0.8rem;">
+                                            <div class="d-flex align-items-start">
+                                                <div class="comment-avatar me-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; background-color: {% if current_user.id == comment.user_id %}#8A2BE2{% else %}#6c757d{% endif %}; color: white; font-weight: bold; font-size: 10px;">
+                                                    {{ comment.user.first_name[0] if comment.user else '?' }}{{ comment.user.last_name[0] if comment.user else '' }}
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div class="comment-author">
+                                                            <strong class="comment-name" style="font-size: 0.8rem;">{{ comment.user.full_name }}</strong>
+                                                            <small class="text-muted ms-1" style="font-size: 0.7rem;">{{ comment.created_at|moscow_time }}</small>
+                                                        </div>
+                                                        {% if current_user.id == comment.user_id or current_user.is_admin %}
+                                                            <form action="{{ url_for('webinars.delete_webinar_comment', comment_id=comment.id) }}" method="post" class="d-inline">
+                                                                <button type="submit" class="btn btn-link btn-sm p-0 text-danger" 
+                                                                        onclick="return confirm('Удалить комментарий?')"
+                                                                        title="Удалить комментарий"
+                                                                        style="font-size: 0.7rem;"
+                                                                >
+                                                                    <i class="fas fa-trash-alt"></i>
+                                                                </button>
+                                                            </form>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="comment-text mt-1" style="font-size: 0.8rem;">{{ comment.text }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center py-2 empty-comments">
+                                    <div class="empty-comments-icon mb-1 text-muted">
+                                        <i class="far fa-comment-dots"></i>
+                                    </div>
+                                    <p class="empty-comments-text text-muted mb-0" style="font-size: 0.75rem;">Нет комментариев. Будьте первым!</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-        {# Модальное окно для удаления #}
-        {% if current_user.is_admin %}
-        <div class="modal fade" id="deleteWebinarModal-{{ webinar.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ webinar.id }}" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="deleteModalLabel-{{ webinar.id }}">Подтвердить удаление</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        Вы уверены, что хотите удалить вебинар <strong>"{{ webinar.title }}"</strong>? Это действие нельзя будет отменить.
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                        <form action="{{ url_for('webinars.delete_webinar', webinar_id=webinar.id) }}" method="post">
-                             <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
-                            <button type="submit" class="btn btn-danger">Удалить</button>
+                    {# Кнопки редактирования/удаления для админов #}
+                    {% if current_user.is_admin %}
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-end gap-1">
+                        <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-warning" title="Редактировать" style="border-radius: 6px; font-size: 0.75rem;">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="{{ url_for('webinars.delete_webinar', webinar_id=webinar.id) }}" method="POST" onsubmit="return confirm('Вы уверены, что хотите удалить этот вебинар? Это действие необратимо.');" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить" style="border-radius: 6px; font-size: 0.75rem;">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </form>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
-        {% endif %}
         {% endfor %}
     </div>
 {% else %}
-    <div class="col-12">
-        <div class="text-center py-5">
-            <i class="fas fa-search-minus fa-4x text-muted mb-3"></i>
-            <h4>Вебинары не найдены</h4>
-            <p class="text-muted">Попробуйте изменить критерии поиска или сбросить фильтры.</p>
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Ничего не найдено" class="img-fluid mb-3" style="max-height: 150px;">
+                <h4>Вебинары не найдены</h4>
+                <p class="text-muted">Попробуйте изменить критерии поиска или сбросить фильтры.</p>
+            </div>
         </div>
     </div>
 {% endif %} 

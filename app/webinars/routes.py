@@ -30,18 +30,67 @@ morph = pymorphy3.MorphAnalyzer()
 @bp.route("/")  # Базовый URL /webinars
 @login_required
 def webinars_list():
-    query = request.args.get("q", "").strip()
-    webinars = _get_filtered_webinars_query(query)
+    # Получаем год из параметров запроса или используем значение по умолчанию
+    selected_year = request.args.get("year", "2026")
+    try:
+        selected_year = int(selected_year)
+    except (ValueError, TypeError):
+        selected_year = 2026  # Значение по умолчанию при ошибке
 
-    watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.all()}
-    task_form = WebinarTaskForm()
+    # Получаем параметры фильтрации
+    search_query = request.args.get("q", "").strip()
+    course_category = request.args.get("course_category", "all")
+    date_filter = request.args.get("date_filter", "all")
+    solution = request.args.get("solution", "all")
+    category = request.args.get("category", "all")
+    task_num_str = request.args.get("task_num", "all")
+    
+    # Создаем и выполняем запрос с фильтрацией
+    query = _get_filtered_webinars_query(
+        query=search_query,
+        academic_year=selected_year,
+        course_category=course_category,
+        date_filter=date_filter,
+        solution=solution,
+        category=category,
+        task_num_str=task_num_str,
+    )
+    
+    # Применяем сортировку
+    if date_filter == "new":
+        query = query.order_by(Webinar.date.desc().nullslast(), Webinar.id.desc())
+    elif date_filter == "old":
+        query = query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    else:  # По умолчанию - старые сначала
+        query = query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    
+    # Выполняем запрос
+    webinars = query.all()
+    
+    # Получаем список доступных годов для выбора
+    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
+    available_years = [year[0] for year in available_years]
+    if not available_years or selected_year not in available_years:
+        if not available_years:
+            available_years = [2025, 2026]
+        elif selected_year not in available_years:
+            available_years.append(selected_year)
+            available_years.sort()
+    
+    # Для удобства отладки
+    current_app.logger.debug(f"DEBUG: Found {len(webinars)} webinars after filtering")
 
     return render_template(
         "webinars/webinars.html",
         webinars=webinars,
-        watched_webinar_ids=watched_webinar_ids,
-        task_form=task_form,
-        search_query=query,  # Передаем запрос в шаблон
+        available_years=available_years,
+        current_year=selected_year,
+        course_category=course_category,
+        date_filter=date_filter,
+        solution=solution,
+        category=category,
+        task_num=task_num_str,
+        search_query=search_query,
     )
 
 
@@ -52,6 +101,7 @@ def filter_webinars():
     current_app.logger.debug("--- filter_webinars route START ---")  # <--- Логгирование
     # Извлекаем все параметры из запроса
     query = request.args.get("q", "").strip()
+    academic_year = request.args.get("year", "2026")
     course_category = request.args.get("course_category", "all")
     date_filter = request.args.get(
         "date_filter", "all"
@@ -62,24 +112,48 @@ def filter_webinars():
         "task_num", "all"
     )  # Получаем как строку (e.g., "task-5")
 
+    try:
+        academic_year = int(academic_year)
+    except (ValueError, TypeError):
+        academic_year = 2026  # По умолчанию, если не удалось преобразовать
+
     current_app.logger.debug(
-        f"Received query: '{query}', course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}"
+        f"Received query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}"
     )  # <--- Логгирование
 
-    webinars = _get_filtered_webinars_query(
+    webinars_query = _get_filtered_webinars_query(
         query=query,
+        academic_year=academic_year,
         course_category=course_category,
         date_filter=date_filter,
         solution=solution,
         category=category,
         task_num_str=task_num_str,
     )
+    
+    # Применяем сортировку
+    if date_filter == "new":
+        webinars_query = webinars_query.order_by(Webinar.date.desc().nullslast(), Webinar.id.desc())
+    elif date_filter == "old":
+        webinars_query = webinars_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    else:  # По умолчанию - старые сначала
+        webinars_query = webinars_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    
+    # Выполняем запрос
+    webinars = webinars_query.all()
+    
     current_app.logger.debug(
         f"Webinars found by _get_filtered_webinars_query: {len(webinars) if webinars else 0}"
     )  # <--- Логгирование
 
     watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.all()}
     task_form = WebinarTaskForm()
+    
+    # Получаем список всех доступных учебных годов из базы данных
+    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
+    available_years = [year[0] for year in available_years]
+    if not available_years:
+        available_years = [2025, 2026]  # Если нет данных, показываем по умолчанию
 
     current_app.logger.debug("--- filter_webinars route END ---")  # <--- Логгирование
     # Возвращаем отрендеренный ОСНОВНОЙ шаблон с отфильтрованными данными
@@ -90,12 +164,15 @@ def filter_webinars():
         task_form=task_form,
         search_query=query,
         current_user=current_user,
+        current_year=academic_year,
+        available_years=available_years,
     )
 
 
 # Вспомогательная функция для получения отфильтрованного и ОТСОРТИРОВАННОГО СПИСКА вебинаров
 def _get_filtered_webinars_query(
     query=None,
+    academic_year=2026,
     course_category="all",
     date_filter="all",
     solution="all",
@@ -103,117 +180,98 @@ def _get_filtered_webinars_query(
     task_num_str="all",
 ):
     # Базовый запрос с загрузкой связанных данных
-    base_query = Webinar.query.options(
+    webinar_query = Webinar.query.options(
         joinedload(Webinar.created_by),
         selectinload(Webinar.comments).joinedload(WebinarComment.user),
         selectinload(Webinar.task_numbers),
         selectinload(Webinar.tasks).joinedload(WebinarTask.created_by),
     )
 
-    filters = []  # Список для хранения всех условий фильтрации SQLAlchemy
+    # Применяем фильтр по учебному году
+    webinar_query = webinar_query.filter(Webinar.academic_year == academic_year)
+
+    # Применяем фильтрацию по категории курса
+    if course_category == "for_beginners":
+        webinar_query = webinar_query.filter(Webinar.for_beginners == True)
+    elif course_category == "for_basic":
+        webinar_query = webinar_query.filter(Webinar.for_basic == True)
+    elif course_category == "for_advanced":
+        webinar_query = webinar_query.filter(Webinar.for_advanced == True)
+    elif course_category == "for_expert":
+        webinar_query = webinar_query.filter(Webinar.for_expert == True)
+    elif course_category == "for_mocks":
+        webinar_query = webinar_query.filter(Webinar.for_mocks == True)
+    elif course_category == "for_practice":
+        webinar_query = webinar_query.filter(Webinar.for_practice == True)
+    elif course_category == "for_minisnap":
+        webinar_query = webinar_query.filter(Webinar.for_minisnap == True)
+    elif course_category == "for_summer":
+        webinar_query = webinar_query.filter(Webinar.for_summer == True)
 
     # 1. Фильтр по текстовому запросу (q)
-    if query:
-        term_ilike = f"%{query}%"
-        current_app.logger.debug(f"DEBUG: Applying text search: {term_ilike}")
-        # Ищем в названии, URL, тексте задач
+    if query and query.strip():
+        search_text = query.strip()
+        current_app.logger.debug(f"DEBUG: Applying text search filter: {search_text}")
+        
+        # Создаем условия для поиска по разным полям
         text_search_filter = or_(
-            Webinar.title.ilike(term_ilike),
-            Webinar.url.ilike(term_ilike),  # Возможно, стоит искать только ID?
-            Webinar.tasks.any(WebinarTask.text.ilike(term_ilike)),
-            Webinar.comments.any(WebinarComment.text.ilike(term_ilike)),
+            Webinar.title.ilike(f"%{search_text}%"),
+            Webinar.url.ilike(f"%{search_text}%"),
+            Webinar.tasks.any(WebinarTask.text.ilike(f"%{search_text}%")),
+            Webinar.comments.any(WebinarComment.text.ilike(f"%{search_text}%")),
         )
-        # Дополнительно ищем по номеру задания, если query - число
-        if query.isdigit():
-            task_number_search = Webinar.task_numbers.any(
-                TaskNumber.number == int(query)
-            )
+        
+        # Поиск по номеру задания (если текст поиска является числом)
+        if search_text.isdigit():
+            task_number_search = Webinar.task_numbers.any(TaskNumber.number == int(search_text))
             text_search_filter = or_(text_search_filter, task_number_search)
 
-        filters.append(text_search_filter)
+        webinar_query = webinar_query.filter(text_search_filter)
 
-    # 2. Фильтр по категории курса (course_category)
-    if course_category != "all":
-        current_app.logger.debug(
-            f"DEBUG: Applying course category filter: {course_category}"
-        )
-        # Используем getattr для динамического доступа к полям модели
-        if hasattr(Webinar, course_category):
-            filters.append(getattr(Webinar, course_category) == True)
-        else:
-            current_app.logger.warning(
-                f"DEBUG: Invalid course_category value: {course_category}"
-            )
-
-    # 3. Фильтр по типу решения (solution)
+    # 2. Фильтр по типу решения (solution)
     if solution != "all":
         current_app.logger.debug(f"DEBUG: Applying solution filter: {solution}")
         if hasattr(Webinar, solution):
-            filters.append(getattr(Webinar, solution) == True)
+            webinar_query = webinar_query.filter(getattr(Webinar, solution) == True)
         else:
             current_app.logger.warning(f"DEBUG: Invalid solution value: {solution}")
 
-    # 4. Фильтр по категории важности (category)
+    # 3. Фильтр по категории важности (category)
     if category != "all" and category.startswith("category-"):
         try:
             category_num = int(category.split("-")[-1])
             current_app.logger.debug(f"DEBUG: Applying category filter: {category_num}")
-            filters.append(Webinar.category == category_num)
+            webinar_query = webinar_query.filter(Webinar.category == category_num)
         except (ValueError, IndexError):
             current_app.logger.warning(f"DEBUG: Invalid category value: {category}")
 
-    # 5. Фильтр по номеру задания (task_num)
+    # 4. Фильтр по номеру задания (task_num)
     if task_num_str != "all" and task_num_str.startswith("task-"):
         try:
             task_num = int(task_num_str.split("-")[-1])
             current_app.logger.debug(f"DEBUG: Applying task number filter: {task_num}")
-            filters.append(Webinar.task_numbers.any(TaskNumber.number == task_num))
+            webinar_query = webinar_query.filter(Webinar.task_numbers.any(TaskNumber.number == task_num))
         except (ValueError, IndexError):
-            current_app.logger.warning(
-                f"DEBUG: Invalid task_num_str value: {task_num_str}"
-            )
+            current_app.logger.warning(f"DEBUG: Invalid task_num_str value: {task_num_str}")
 
-    # Применяем все собранные фильтры
-    final_query = base_query
-    if filters:
-        final_query = base_query.filter(and_(*filters))
-        try:
-            # Отладка SQL только если есть фильтры
-            compiled_query = final_query.statement.compile(
-                dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
-            )
-            current_app.logger.debug(f"DEBUG: Compiled SQL Query:\n{compiled_query}\n")
-        except Exception as e:
-            current_app.logger.error(f"DEBUG: Could not compile query: {e}")
-            current_app.logger.debug(f"DEBUG: Query object: {final_query}")
+    # 5. Фильтр по дате (date_filter)
+    if date_filter != "all":
+        today = datetime.now().date()
+        if date_filter == "upcoming":
+            # Ближайшие вебинары (дата >= сегодня)
+            current_app.logger.debug("DEBUG: Applying date filter: upcoming")
+            webinar_query = webinar_query.filter(Webinar.date >= today)
+        elif date_filter == "past":
+            # Прошедшие вебинары (дата < сегодня)
+            current_app.logger.debug("DEBUG: Applying date filter: past")
+            webinar_query = webinar_query.filter(Webinar.date < today)
+        elif date_filter == "new" or date_filter == "old":
+            # Эти фильтры применяются только для сортировки, не для фильтрации
+            current_app.logger.debug(f"DEBUG: Date filter '{date_filter}' is for sorting only")
     else:
-        current_app.logger.debug("DEBUG: No filters applied, fetching all.")
+            current_app.logger.warning(f"DEBUG: Invalid date_filter value: {date_filter}")
 
-    # 6. Сортировка по дате (date_filter)
-    if date_filter == "new":
-        current_app.logger.debug("DEBUG: Sorting by date descending (newest first)")
-        final_query = final_query.order_by(
-            Webinar.date.desc().nullslast(), Webinar.id.desc()
-        )
-    elif date_filter == "old":
-        current_app.logger.debug("DEBUG: Sorting by date ascending (oldest first)")
-        final_query = final_query.order_by(
-            Webinar.date.asc().nullsfirst(), Webinar.id.asc()
-        )
-    else:  # По умолчанию (или date_filter == 'all') - ИЗМЕНЕНО НА СТАРЫЕ СНАЧАЛА
-        current_app.logger.debug(
-            "DEBUG: Default sorting (date asc - oldest first)"
-        )  # ИЗМЕНЕН ЛОГ
-        final_query = final_query.order_by(
-            Webinar.date.asc().nullsfirst(), Webinar.id.asc()
-        )  # ИЗМЕНЕНА СОРТИРОВКА
-
-    # Выполняем запрос
-    filtered_webinars = final_query.all()
-    current_app.logger.debug(
-        f"DEBUG: Query results (filtered_webinars): {filtered_webinars}"
-    )
-    return filtered_webinars
+    return webinar_query
 
 
 @bp.route("/import", methods=["GET", "POST"])
@@ -221,6 +279,14 @@ def _get_filtered_webinars_query(
 def import_webinars():
     if not current_user.is_admin:
         abort(403)  # Доступ запрещен
+
+    # При загрузке страницы отображаем форму с выбором года
+    academic_year = request.args.get("year", "2026")
+    try:
+        academic_year = int(academic_year)
+    except (ValueError, TypeError):
+        academic_year = 2026
+    
     if request.method == "POST":
         if "file" not in request.files:
             flash("Файл не выбран", "danger")
@@ -234,6 +300,13 @@ def import_webinars():
         if not file.filename.endswith((".xlsx", ".xls")):
             flash("Поддерживаются только Excel файлы (.xlsx, .xls)", "danger")
             return redirect(request.url)
+            
+        # Получаем выбранный учебный год из формы
+        selected_year = request.form.get("academic_year", "2026")
+        try:
+            selected_year = int(selected_year)
+        except (ValueError, TypeError):
+            selected_year = 2026
 
         try:
             df = pd.read_excel(file)
@@ -271,48 +344,45 @@ def import_webinars():
                         )
                         continue
 
+                    # Обработка даты
+                    date_value = None
+                    date_str = row.get("дата вебинара", "")
+                    if isinstance(date_str, str) and date_str:
+                        date_formats = ["%d.%m.%Y", "%Y-%m-%d", "%m/%d/%Y"]
+                        for fmt in date_formats:
+                            try:
+                                date_value = datetime.strptime(date_str, fmt).date()
+                                break
+                            except ValueError:
+                                continue
+                    elif isinstance(date_str, pd.Timestamp):
+                        date_value = date_str.date()
+
+                    # Создание вебинара с учебным годом
                     webinar = Webinar(
                         title=str(row["название вебинара"]),
                         url=str(row["ссылка на вебинар"]),
+                        date=date_value,
+                        academic_year=selected_year,  # Устанавливаем выбранный учебный год
                         created_by_id=current_user.id,
                     )
 
-                    if "дата вебинара" in df.columns and not pd.isna(
-                        row["дата вебинара"]
-                    ):
-                        try:
-                            webinar.date = pd.to_datetime(row["дата вебинара"]).date()
-                        except Exception as e:
-                            errors.append(
-                                f"Строка {index + 2}: Неверный формат даты ({e})"
-                            )
+                    # Обработка номеров заданий
+                    task_nums_str = row.get("номера заданий", "")
+                    if task_nums_str:
+                        if isinstance(task_nums_str, (int, float)):
+                            task_nums_str = str(int(task_nums_str))
 
-                    if "номера заданий" in df.columns and not pd.isna(
-                        row["номера заданий"]
-                    ):
-                        task_numbers_str = str(row["номера заданий"])
-                        try:
-                            task_numbers_list = [
-                                int(num.strip())
-                                for num in task_numbers_str.split(",")
-                                if num.strip().isdigit()
-                            ]
-                            for num in task_numbers_list:
-                                task = TaskNumber.query.filter_by(number=num).first()
-                                if not task:
-                                    # Если задание не найдено, можно его создать или выдать ошибку
-                                    # task = TaskNumber(number=num)
-                                    # db.session.add(task)
-                                    errors.append(
-                                        f"Строка {index + 2}: Задание с номером {num} не найдено в базе."
-                                    )
-                                    continue  # Пропускаем добавление этого номера
-                                if task not in webinar.task_numbers:
-                                    webinar.task_numbers.append(task)
-                        except Exception as e:
-                            errors.append(
-                                f"Строка {index + 2}: Ошибка обработки номеров заданий ({e})"
-                            )
+                        task_nums = re.findall(r'\d+', task_nums_str)
+                        for num_str in task_nums:
+                            task_num = int(num_str)
+                            if 1 <= task_num <= 27:
+                                task_number = TaskNumber.query.filter_by(number=task_num).first()
+                                if not task_number:
+                                    task_number = TaskNumber(number=task_num)
+                                    db.session.add(task_number)
+                                    db.session.flush()  # Нужно, чтобы получить id
+                                webinar.task_numbers.append(task_number)
 
                     if "тип решения" in df.columns and not pd.isna(row["тип решения"]):
                         solution_type = str(row["тип решения"]).lower()
@@ -430,14 +500,29 @@ def import_webinars():
                 flash("Нет данных для импорта или все вебинары уже существуют.", "info")
 
             # Используем .webinars_list
-            return redirect(url_for("webinars.webinars_list"))
+            return redirect(url_for("webinars.webinars_list", year=selected_year))
 
         except Exception as e:
-            flash(f"Ошибка при чтении файла: {str(e)}", "danger")
+            db.session.rollback()
+            flash(f"Ошибка при импорте: {str(e)}", "danger")
+            current_app.logger.error(f"Import error: {str(e)}")
             return redirect(request.url)
 
-    # Шаблон webinars/templates/webinars/import_webinars.html
-    return render_template("webinars/import_webinars.html")
+    # При GET-запросе рендерим шаблон с формой
+    # Получаем список доступных годов
+    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
+    available_years = [year[0] for year in available_years]
+    if not available_years:
+        available_years = [2025, 2026]
+    
+    # Добавляем 2026 если его нет в списке
+    if 2026 not in available_years:
+        available_years.append(2026)
+    
+    # Сортируем годы
+    available_years.sort()
+    
+    return render_template("webinars/import_webinars.html", available_years=available_years, current_year=academic_year)
 
 
 @bp.route("/<int:webinar_id>/edit", methods=["GET", "POST"])
@@ -446,99 +531,57 @@ def edit_webinar(webinar_id):
     if not current_user.is_admin:
         abort(403)  # Доступ запрещен
 
-    webinar = Webinar.query.options(selectinload(Webinar.task_numbers)).get_or_404(
-        webinar_id
-    )
-
+    webinar = Webinar.query.get_or_404(webinar_id)
     form = WebinarForm(obj=webinar)
 
-    # --- ВОЗВРАЩАЕМ ФОРМАТИРОВАНИЕ НОМЕРОВ ЗАДАНИЙ ДЛЯ ОТОБРАЖЕНИЯ В ФОРМЕ ---
-    if request.method == "GET" and webinar.task_numbers:
-        form.task_numbers.data = ", ".join(
-            sorted([str(task.number) for task in webinar.task_numbers])
-        )
-    # --- КОНЕЦ ВОЗВРАЩЕНИЯ БЛОКА ---
-
     if form.validate_on_submit():
-        # Обновляем основные поля
-        webinar.title = form.title.data
-        webinar.url = form.url.data
-        webinar.date = form.date.data
-        webinar.cover_url = form.cover_url.data
-
-        # Обновляем тип решения
-        webinar.is_programming = form.is_programming.data
-        webinar.is_manual = form.is_manual.data
-        webinar.is_excel = form.is_excel.data
-
-        # Обновляем категорию
-        try:
-            webinar.category = int(form.category.data) if form.category.data else None
-        except (ValueError, TypeError):
-            webinar.category = None  # Если значение некорректное или пустое
-            flash("Некорректное значение для Категории важности.", "warning")
-
-        # Обновляем категории курса на основе чекбоксов
-        webinar.for_beginners = form.for_beginners.data
-        webinar.for_basic = form.for_basic.data
-        webinar.for_advanced = form.for_advanced.data
-        webinar.for_expert = form.for_expert.data
-        webinar.for_mocks = form.for_mocks.data
-        webinar.for_practice = form.for_practice.data
-        webinar.for_minisnap = form.for_minisnap.data
-
-        # Обновляем номера заданий
-        current_tasks = {task.number for task in webinar.task_numbers}
-        new_task_numbers_str = form.task_numbers.data
-        new_tasks = set()
-        if new_task_numbers_str:
+        # Сохраняем данные из формы, но не task_numbers
+        task_numbers_data = form.task_numbers.data
+        category_data = form.category.data
+        
+        # Удаляем поля, которые требуют специальной обработки
+        delattr(form, 'task_numbers')
+        delattr(form, 'category')
+        
+        # Теперь безопасно заполняем объект
+        form.populate_obj(webinar)
+        
+        # Обработка категории
+        if category_data and category_data.strip():
             try:
-                new_tasks = {
-                    int(num.strip())
-                    for num in new_task_numbers_str.split(",")
-                    if num.strip().isdigit()
-                }
-            except ValueError:
-                flash("Ошибка в формате номеров заданий", "danger")
-                # Можно не продолжать сохранение или обработать иначе
-                return render_template(
-                    "webinars/edit_webinar.html", form=form, webinar=webinar
-                )
-
-        # Задачи для добавления
-        tasks_to_add = new_tasks - current_tasks
-        for num in tasks_to_add:
-            task = TaskNumber.query.filter_by(number=num).first()
-            if task:
-                webinar.task_numbers.append(task)
-            else:
-                flash(
-                    f"Задание с номером {num} не найдено в базе и не было добавлено.",
-                    "warning",
-                )
-
-        # Задачи для удаления
-        tasks_to_remove = current_tasks - new_tasks
-        tasks_objects_to_remove = [
-            task for task in webinar.task_numbers if task.number in tasks_to_remove
-        ]
-        for task in tasks_objects_to_remove:
-            webinar.task_numbers.remove(task)
+                webinar.category = int(category_data)
+            except (ValueError, TypeError):
+                webinar.category = None
+        
+        # Обработка номеров заданий
+        webinar.task_numbers = []  # Очищаем существующие связи
+        
+        if task_numbers_data and task_numbers_data.strip():
+            # Добавим новые номера
+            task_nums = [int(num.strip()) for num in task_numbers_data.split(',') if num.strip()]
+            for num in task_nums:
+                task_number = TaskNumber.query.filter_by(number=num).first()
+                if not task_number:
+                    task_number = TaskNumber(number=num)
+                    db.session.add(task_number)
+                webinar.task_numbers.append(task_number)
 
         try:
             db.session.commit()
-            flash("Вебинар успешно обновлен!", "success")
-            return redirect(url_for("webinars.webinars_list"))
+            flash('Вебинар успешно обновлен!', 'success')
+            return redirect(url_for('webinars.webinars_list', year=webinar.academic_year))
         except Exception as e:
             db.session.rollback()
-            flash(f"Ошибка при сохранении вебинара: {str(e)}", "danger")
-
-    elif request.method == "POST":
-        # Если форма не прошла валидацию при POST-запросе
-        flash("Пожалуйста, исправьте ошибки в форме.", "danger")
-
-    # Для GET-запроса или если валидация не прошла
-    return render_template("webinars/edit_webinar.html", form=form, webinar=webinar)
+            flash(f'Ошибка при обновлении вебинара: {str(e)}', 'danger')
+            return redirect(url_for('webinars.edit_webinar', webinar_id=webinar.id))
+    
+    # Заполняем поле task_numbers для отображения в форме
+    if webinar.task_numbers:
+        form.task_numbers.data = ', '.join([str(task.number) for task in webinar.task_numbers])
+    else:
+        form.task_numbers.data = ''
+    
+    return render_template('webinars/edit_webinar.html', form=form, webinar=webinar)
 
 
 @bp.route("/<int:webinar_id>/delete", methods=["POST"])
@@ -720,3 +763,147 @@ def download_all_covers():
         return redirect(url_for("webinars.webinars_list"))
     
     return render_template("webinars/download_covers.html", count=count)
+
+
+@bp.route("/new", methods=["GET", "POST"])
+@login_required
+def create_webinar():
+    if not current_user.is_admin:
+        abort(403)  # Доступ запрещен
+    
+    form = WebinarForm()
+    
+    # Устанавливаем учебный год по умолчанию (2026)
+    if request.args.get("year"):
+        try:
+            selected_year = int(request.args.get("year"))
+            form.academic_year.data = selected_year
+        except (ValueError, TypeError):
+            form.academic_year.data = 2026
+    
+    if form.validate_on_submit():
+        # Сохраняем данные из формы, но не task_numbers
+        task_numbers_data = form.task_numbers.data
+        
+        new_webinar = Webinar(
+            title=form.title.data,
+            url=form.url.data,
+            date=form.date.data,
+            academic_year=form.academic_year.data,
+            is_programming=form.is_programming.data,
+            is_manual=form.is_manual.data,
+            is_excel=form.is_excel.data,
+            for_beginners=form.for_beginners.data,
+            for_basic=form.for_basic.data,
+            for_advanced=form.for_advanced.data,
+            for_expert=form.for_expert.data,
+            for_mocks=form.for_mocks.data,
+            for_practice=form.for_practice.data,
+            for_minisnap=form.for_minisnap.data,
+            for_summer=form.for_summer.data,
+            cover_url=form.cover_url.data,
+            created_by_id=current_user.id,
+        )
+        
+        # Обработка категории
+        if form.category.data and form.category.data.strip():
+            try:
+                new_webinar.category = int(form.category.data)
+            except (ValueError, TypeError):
+                new_webinar.category = None
+        else:
+            new_webinar.category = None
+        
+        # Обработка номеров заданий
+        if task_numbers_data and task_numbers_data.strip():
+            task_nums = [int(num.strip()) for num in task_numbers_data.split(',') if num.strip()]
+            for num in task_nums:
+                task_number = TaskNumber.query.filter_by(number=num).first()
+                if not task_number:
+                    task_number = TaskNumber(number=num)
+                    db.session.add(task_number)
+                new_webinar.task_numbers.append(task_number)
+        
+        try:
+            db.session.add(new_webinar)
+            db.session.commit()
+            flash('Вебинар успешно создан!', 'success')
+            return redirect(url_for('webinars.webinars_list', year=new_webinar.academic_year))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при создании вебинара: {str(e)}', 'danger')
+    
+    # Получаем список доступных годов для выбора
+    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
+    available_years = [year[0] for year in available_years]
+    if not available_years or 2026 not in available_years:
+        if not available_years:
+            available_years = [2025, 2026]
+        elif 2026 not in available_years:
+            available_years.append(2026)
+            available_years.sort()
+    
+    return render_template('webinars/create_webinar.html', form=form, available_years=available_years)
+
+
+@bp.route("/ajax_search")
+@login_required
+def ajax_search():
+    current_app.logger.debug("--- ajax_search route START ---")
+    # Извлекаем все параметры из запроса
+    query = request.args.get("q", "").strip()
+    academic_year = request.args.get("year", "2026")
+    course_category = request.args.get("course_category", "all")
+    date_filter = request.args.get("date_filter", "all")
+    solution = request.args.get("solution", "all")
+    category = request.args.get("category", "all")
+    task_num_str = request.args.get("task_num", "all")
+
+    try:
+        academic_year = int(academic_year)
+    except (ValueError, TypeError):
+        academic_year = 2026
+
+    current_app.logger.debug(
+        f"AJAX search query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}"
+    )
+
+    # Создаем запрос для фильтрации вебинаров
+    webinars_query = _get_filtered_webinars_query(
+        query=query,
+        academic_year=academic_year,
+        course_category=course_category,
+        date_filter=date_filter,
+        solution=solution,
+        category=category,
+        task_num_str=task_num_str,
+    )
+    
+    # Применяем сортировку
+    if date_filter == "new":
+        webinars_query = webinars_query.order_by(Webinar.date.desc().nullslast(), Webinar.id.desc())
+    elif date_filter == "old":
+        webinars_query = webinars_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    else:  # По умолчанию - старые сначала
+        webinars_query = webinars_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
+    
+    # Выполняем запрос
+    webinars = webinars_query.all()
+    
+    current_app.logger.debug(
+        f"AJAX search found: {len(webinars) if webinars else 0} webinars"
+    )
+
+    watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.all()}
+    csrf_token_value = generate_csrf()
+    
+    # Рендерим только часть шаблона с вебинарами
+    html = render_template(
+        "webinars/_webinars_list.html",
+        webinars=webinars,
+        watched_webinar_ids=watched_webinar_ids,
+        current_user=current_user,
+        csrf_token_value=csrf_token_value,
+    )
+    
+    return html

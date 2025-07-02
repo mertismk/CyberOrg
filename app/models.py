@@ -18,6 +18,7 @@ class Webinar(db.Model):
     title = db.Column(db.String(200), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     date = db.Column(db.Date)
+    academic_year = db.Column(db.Integer, default=2025, nullable=False)  # Учебный год (2025, 2026, и т.д.)
     task_numbers = db.relationship(
         "TaskNumber", secondary="webinar_task_association", back_populates="webinars"
     )
@@ -35,6 +36,7 @@ class Webinar(db.Model):
     for_mocks = db.Column(db.Boolean, default=False)  # Разбор пробников
     for_practice = db.Column(db.Boolean, default=False)  # Нарешка
     for_minisnap = db.Column(db.Boolean, default=False)  # Мини-щелчок
+    for_summer = db.Column(db.Boolean, default=False)  # Летний курс (только для 2026 года)
     created_by_id = db.Column(
         db.Integer, db.ForeignKey("users.id"), nullable=False
     )  # ID создателя

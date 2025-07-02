@@ -3,7 +3,7 @@
 {% block title %}CyberOrg - Вебинары{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-5">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="display-4 mb-0" style="font-weight: 600; letter-spacing: -0.5px; color: #1d1d1f;">Вебинары</h1>
     <div class="d-flex align-items-center gap-3">
         {% if current_user.is_super_admin %}
@@ -11,9 +11,41 @@
                 <i class="fas fa-download me-2"></i> Скачать обложки
             </a>
         {% endif %}
+        {% if current_user.is_admin %}
+            <a href="{{ url_for('webinars.create_webinar', year=current_year) }}" class="btn btn-success px-4 py-2" style="border-radius: 20px; border: none; font-weight: 500;">
+                <i class="fas fa-plus-circle me-2"></i> Создать вебинар
+            </a>
+        {% endif %}
         <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-accent px-4 py-2" style="border-radius: 20px; background-color: #0071e3; border: none; font-weight: 500;">
             <i class="fas fa-file-import me-2"></i> Импортировать вебинары
         </a>
+    </div>
+</div>
+
+<!-- Переключатель учебного года -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0" style="font-weight: 600;">
+                <i class="fas fa-calendar-alt me-2" style="color: #0071e3;"></i> Учебный год
+            </h5>
+            <div class="btn-group" role="group">
+                {% for year in available_years %}
+                <a href="{{ url_for('webinars.webinars_list', year=year, q=search_query) }}" 
+                   class="btn {% if year == current_year %}btn-primary{% else %}btn-outline-primary{% endif %}" 
+                   style="border-radius: {% if loop.first %}20px 0 0 20px{% elif loop.last %}0 20px 20px 0{% else %}0{% endif %}; font-weight: 500;">
+                    {{ year }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="text-muted small mb-0 mt-2">
+            {% if current_year == 2025 %}
+            Текущие вебинары 2025 года
+            {% else %}
+            Вебинары учебного {{ current_year }} года
+            {% endif %}
+        </p>
     </div>
 </div>
 
@@ -24,19 +56,27 @@
             <div class="col-md-4 mb-3 mb-md-0">
                     <div class="input-group">
                     <span class="input-group-text bg-white border-end-0" style="border-radius: 20px 0 0 20px; border-color: #d2d2d7;"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" id="webinarFilter" class="form-control border-start-0" placeholder="Поиск вебинаров..." style="border-radius: 0 20px 20px 0; border-color: #d2d2d7; padding-left: 0;">
+                    <input type="text" id="webinarFilter" name="q" class="form-control border-start-0" placeholder="Поиск вебинаров..." style="border-radius: 0 20px 20px 0; border-color: #d2d2d7; padding-left: 0;" value="{{ search_query }}">
                 </div>
                 </div>
                 <div class="col-md-8">
                 <div class="filter-buttons" style="background-color: #f5f5f7; border-radius: 16px; padding: 6px; display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch;">
                     <button type="button" class="filter-btn active" data-filter="all" style="flex: 0 0 auto;">Все</button>
+                    
+                    {% if current_year == 2026 %}
+                        <button type="button" class="filter-btn" data-filter="for_summer" style="flex: 0 0 auto; background-color: #ff2d55; color: white; border-color: #ff2d55;">Летний курс</button>
+                    {% endif %}
+                    
                     <button type="button" class="filter-btn" data-filter="for_beginners" style="flex: 0 0 auto; background-color: #5ac8fa; color: white; border-color: #5ac8fa;">Python с нуля</button>
                     <button type="button" class="filter-btn" data-filter="for_basic" style="flex: 0 0 auto; background-color: #34c759; color: white; border-color: #34c759;">Основной курс</button>
                     <button type="button" class="filter-btn" data-filter="for_advanced" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Задание 26</button>
                     <button type="button" class="filter-btn" data-filter="for_expert" style="flex: 0 0 auto; background-color: #af52de; color: white; border-color: #af52de;">Задание 27</button>
                     <button type="button" class="filter-btn" data-filter="for_mocks" style="flex: 0 0 auto; background-color: #6c757d; color: white; border-color: #6c757d;">Разбор пробников</button>
                     <button type="button" class="filter-btn" data-filter="for_practice" style="flex: 0 0 auto; background-color: #0071e3; color: white; border-color: #0071e3;">Нарешка</button>
+                    
+                    {% if current_year == 2025 %}
                     <button type="button" class="filter-btn" data-filter="for_minisnap" style="flex: 0 0 auto; background-color: #1d1d1f; color: white; border-color: #1d1d1f;">Мини-щелчок</button>
+                    {% endif %}
                 </div>
                 </div>
             </div>
@@ -109,199 +149,10 @@
             </div>
             
             <!-- Плиточное отображение вебинаров -->
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                {% for webinar in webinars %}
-                    <div class="col webinar-item 
-                        {% if webinar.for_beginners %}for_beginners{% endif %}
-                        {% if webinar.for_basic %}for_basic{% endif %}
-                        {% if webinar.for_advanced %}for_advanced{% endif %}
-                        {% if webinar.for_expert %}for_expert{% endif %}
-                        {% if webinar.for_mocks %}for_mocks{% endif %}
-                        {% if webinar.for_practice %}for_practice{% endif %}
-                        {% if webinar.for_minisnap %}for_minisnap{% endif %}
-                        {% if webinar.is_programming %} is_programming{% endif %}
-                        {% if webinar.is_manual %} is_manual{% endif %}
-                        {% if webinar.is_excel %} is_excel{% endif %}
-                        {% if webinar.category %} category-{{ webinar.category }}{% endif %}
-                        {% for task in webinar.task_numbers %} task-{{ task.number }}{% endfor %}
-                        {% if webinar.date %} date-{{ webinar.date.strftime('%Y-%m-%d') }}{% endif %}
-                    " data-id="{{ webinar.id }}">
-                        <div class="card h-100 webinar-card">
-                            <!-- Обложка вебинара -->
-                            <div class="webinar-cover">
-                                {% if webinar.cover_url %}
-                                    <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}">
-                                {% else %}
-                            <div class="fallback-img">
-                                <i class="fas fa-video"></i>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="card-body">
-                                <!-- Название и дата -->
-                                <h5 class="card-title webinar-title">{{ webinar.title }}</h5>
-                                <p class="webinar-meta mb-2">
-                                    <i class="fas fa-calendar-alt"></i> {{ webinar.date|moscow_time if webinar.date else 'Не указано' }}
-                                    <span class="ms-2">
-                                        <i class="fas fa-hashtag"></i> ID: {{ webinar.url[-5:] if webinar.url|length >= 5 else webinar.url }}
-                                    </span>
-                                </p>
-                                
-                                <!-- Номера заданий -->
-                                <div class="task-badge-container">
-                                    {% for task in webinar.task_numbers %}
-                                        <span class="badge bg-secondary me-1 mb-1 text-white">№{{ task.number }}</span>
-                                    {% endfor %}
-                                </div>
-                                
-                                <!-- Группировка бейджей -->
-                                <div class="badge-section">
-                                    <!-- Категория -->
-                                    {% if webinar.category == 1 %}
-                                        <span class="badge bg-success me-1 mb-1"><i class="fas fa-key"></i> Обязательный</span>
-                                    {% elif webinar.category == 2 %}
-                                        <span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-redo"></i> Повторение</span>
-                                    {% elif webinar.category == 3 %}
-                                        <span class="badge bg-danger me-1 mb-1"><i class="fas fa-pencil-alt"></i> Необязательный</span>
-                                    {% elif webinar.category == 4 %}
-                                        <span class="badge bg-pink text-dark me-1 mb-1"><i class="fas fa-rocket"></i> Для продвинутых</span>
-                                    {% endif %}
-                                    <!-- Тип решения -->
-                                    {% if webinar.is_programming %}
-                                        <span class="badge bg-primary me-1 mb-1"><i class="fas fa-code"></i> Программирование</span>
-                                    {% endif %}
-                                    {% if webinar.is_manual %}
-                                        <span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-hand-paper"></i> Ручное решение</span>
-                                    {% endif %}
-                                    {% if webinar.is_excel %}
-                                        <span class="badge bg-success me-1 mb-1"><i class="fas fa-file-excel"></i> Электронные таблицы</span>
-                                    {% endif %}
-                                </div>
-
-                                <div class="badge-section">
-                                    <!-- Уровень -->
-                                    {% if webinar.for_beginners %}
-                                        <span class="badge bg-info me-1 mb-1"><i class="fas fa-baby"></i> Python с нуля</span>
-                                    {% endif %}
-                                    {% if webinar.for_basic %}
-                                        <span class="badge bg-success me-1 mb-1"><i class="fas fa-graduation-cap"></i> Основной курс</span>
-                                    {% endif %}
-                                    {% if webinar.for_advanced %}
-                                        <span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-brain"></i> Задание 26</span>
-                                    {% endif %}
-                                    {% if webinar.for_expert %}
-                                        <span class="badge bg-accent me-1 mb-1"><i class="fas fa-crown"></i> Задание 27</span>
-                                    {% endif %}
-                                    {% if webinar.for_mocks %}
-                                        <span class="badge bg-secondary me-1 mb-1"><i class="fas fa-file-alt"></i> Разбор пробников</span>
-                                    {% endif %}
-                                    {% if webinar.for_practice %}
-                                        <span class="badge bg-primary me-1 mb-1"><i class="fas fa-dumbbell"></i> Нарешка</span>
-                                    {% endif %}
-                                    {% if webinar.for_minisnap %}
-                                        <span class="badge bg-dark me-1 mb-1"><i class="fas fa-bolt"></i> Мини-щелчок</span>
-                                    {% endif %}
-                                </div>
-                                
-                            </div>
-                            
-                            <div class="card-footer bg-transparent">
-                                <div class="d-grid gap-2 mb-2">
-                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary" style="border-radius: 20px; font-weight: 500;">
-                                        <i class="fas fa-external-link-alt me-2"></i> Перейти к вебинару
-                                    </a>
-                                </div>
-                                
-                                <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-                                    <a href="{{ url_for('.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-success flex-grow-1" style="border-radius: 15px; font-weight: 500;">
-                                        <i class="fas fa-tasks me-1"></i> Задачи ({{ webinar.tasks|length }})
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-info flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComments{{ webinar.id }}" aria-expanded="false" aria-controls="collapseComments{{ webinar.id }}" style="border-radius: 15px; font-weight: 500;">
-                                        <i class="fas fa-comments me-1"></i> Комментарии ({{ webinar.comments|length }})
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary copy-link-btn" data-url="{{ webinar.url }}" title="Скопировать ссылку" style="border-radius: 15px; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;">
-                                        <i class="fas fa-link"></i>
-                                    </button>
-                                </div>
-                                
-                                <div class="collapse mt-2" id="collapseComments{{ webinar.id }}" aria-labelledby="headingComments{{ webinar.id }}" data-bs-parent="#webinarAccordion{{ webinar.id }}">
-                                    <div class="card card-body bg-light border-0 rounded-3 shadow-sm">
-                                        <!-- Форма добавления комментария -->
-                                        <div class="mb-4">
-                                            <h6 class="fw-bold mb-3"><i class="fas fa-comments me-1 text-primary"></i> Комментарии:</h6>
-                                            <form action="{{ url_for('webinars.add_webinar_comment', webinar_id=webinar.id) }}" method="post" class="mb-3">
-                                                <div class="input-group">
-                                                    <input type="text" name="comment_text" class="form-control comment-input" placeholder="Добавить комментарий..." required>
-                                                    <button class="btn btn-primary comment-submit" type="submit">
-                                                        <i class="fas fa-paper-plane"></i>
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                        
-                                        <!-- Список комментариев -->
-                                        {% if webinar.comments %}
-                                            <div class="comments-container">
-                                                {% for comment in webinar.comments|sort(attribute='created_at', reverse=true) %}
-                                                    <div class="comment-bubble {% if current_user.id == comment.user_id %}comment-bubble-right{% else %}comment-bubble-left{% endif %} mb-3">
-                                                        <div class="d-flex align-items-start">
-                                                            <div class="comment-avatar me-2 {% if current_user.id == comment.user_id %}comment-avatar-self{% else %}comment-avatar-other{% endif %}">
-                                                                <span>{{ comment.user.first_name[0] if comment.user else '?' }}{{ comment.user.last_name[0] if comment.user else '' }}</span>
-                                                            </div>
-                                                            <div class="flex-grow-1">
-                                                                <div class="d-flex justify-content-between align-items-center">
-                                                                    <div class="comment-author">
-                                                                        <strong class="comment-name">{{ comment.user.full_name }}</strong>
-                                                                        <div class="comment-date-badge">{{ comment.created_at|moscow_time }}</div>
-                                                                    </div>
-                                                                    {% if current_user.id == comment.user_id or current_user.is_admin %}
-                                                                        <form action="{{ url_for('webinars.delete_webinar_comment', comment_id=comment.id) }}" method="post" class="d-inline">
-                                                                            <button type="submit" class="btn btn-link btn-sm delete-comment-btn" 
-                                                                                    onclick="return confirm('Удалить комментарий?')"
-                                                                                    title="Удалить комментарий"
-                                                                            >
-                                                                                <i class="fas fa-trash-alt"></i>
-                                                                            </button>
-                                                                        </form>
-                                                                    {% endif %}
-                                                                </div>
-                                                                <div class="comment-text">{{ comment.text }}</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        {% else %}
-                                            <div class="text-center py-4 empty-comments">
-                                                <div class="empty-comments-icon mb-3">
-                                                    <i class="far fa-comment-dots"></i>
-                                                </div>
-                                                <p class="empty-comments-text">Нет комментариев. Будьте первым!</p>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                {# Кнопки редактирования/удаления для админов #}
-                                {% if current_user.is_admin %}
-                                <hr class="my-2">
-                                <div class="d-flex justify-content-end gap-2">
-                                    <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-warning" title="Редактировать">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form action="{{ url_for('webinars.delete_webinar', webinar_id=webinar.id) }}" method="POST" onsubmit="return confirm('Вы уверены, что хотите удалить этот вебинар? Это действие необратимо.');" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endif %}
-
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
+            <div id="webinar-results-container">
+                {% include 'webinars/_webinars_list.html' %}
+            </div>
+        </div>
     </div>
 {% else %}
     <div class="alert alert-info text-center" style="background-color: #f5f5f7; border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06); padding: 3rem 2rem;">
@@ -313,297 +164,179 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
-    // Функция debounce для предотвращения слишком частых запросов
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация копирования ссылок
+    initCopyLinks();
+    
+    // Инициализация AJAX-поиска
+    initAjaxSearch();
+    
+    // Инициализация фильтров
+    initFilters();
+});
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Обработчик ошибок загрузки изображений
-        document.querySelectorAll('.webinar-cover img').forEach(function(img) {
-            img.onerror = function() {
-                this.src = "{{ url_for('static', filename='images/sorry.png') }}";
-                this.classList.add('fallback-img');
-            };
-        });
-        
-        // Текущее состояние фильтров
-        const activeFilters = {
-            courseCategory: 'all',
-            date: 'all',
-            solution: 'all',
-            category: 'all',
-            tasks: [] // Для множественного выбора заданий
-        };
-        
-        // Элементы DOM
-        const filterInput = document.getElementById('webinarFilter');
-        const cardsContainer = document.querySelector('.row.g-4'); // Контейнер карточек
-        const filterButtons = document.querySelectorAll('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter)'); // Основные кнопки курса
-        const dateFilterButtons = document.querySelectorAll('.date-filter');
-        const solutionFilterButtons = document.querySelectorAll('.solution-filter .filter-btn');
-        const categoryFilterButtons = document.querySelectorAll('.category-filter');
-        const taskFilterSelect = document.getElementById('taskFilterSelect');
-        const resetButton = document.getElementById('resetAllFilters');
-
-        // Функция для копирования ссылок
-        function setupCopyButtons() {
-            document.querySelectorAll('.copy-link-btn').forEach(button => {
-                button.removeEventListener('click', copyLinkHandler); // Удаляем старый обработчик, если есть
-                button.addEventListener('click', copyLinkHandler);
-            });
-        }
-
-        // Обработчик для копирования ссылок
-        function copyLinkHandler(e) {
-            e.preventDefault();
-            const url = this.getAttribute('data-url');
+function initCopyLinks() {
+    // Делегирование событий для кнопок копирования (работает и для динамически добавленных элементов)
+    document.body.addEventListener('click', function(e) {
+        if (e.target.closest('.copy-link-btn')) {
+            const btn = e.target.closest('.copy-link-btn');
+            const url = btn.getAttribute('data-url');
             if (!url) return;
             
-            const originalText = this.innerHTML;
+            const originalHTML = btn.innerHTML;
             
-            // Создаем временный элемент для копирования
-            const tempInput = document.createElement('input');
-            tempInput.style.position = 'absolute';
-            tempInput.style.left = '-1000px';
-            tempInput.value = url;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            
-            try {
-                document.execCommand('copy');
-                this.innerHTML = '<i class="fas fa-check me-2"></i>Скопировано!';
-                this.classList.remove('btn-outline-secondary');
-                this.classList.add('btn-success');
-            } catch (err) {
-                console.error('Ошибка при копировании: ', err);
-                this.innerHTML = '<i class="fas fa-times me-2"></i>Ошибка!';
-                this.classList.remove('btn-outline-secondary');
-                this.classList.add('btn-danger');
-            }
-            
-            document.body.removeChild(tempInput);
-            
-            setTimeout(() => {
-                this.innerHTML = originalText;
-                this.classList.remove('btn-success', 'btn-danger');
-                this.classList.add('btn-outline-secondary');
-            }, 1500);
-        }
-
-        // Инициализируем обработчики копирования при загрузке страницы
-        setupCopyButtons();
-
-        // Фильтрация по тексту - ИЗМЕНЕНО для AJAX
-        if (filterInput) {
-            const debouncedFetchWebinars = debounce(fetchFilteredWebinars, 300); // Задержка 300ms
-            filterInput.addEventListener('keyup', debouncedFetchWebinars);
-        }
-        
-        // Фильтрация по основным кнопкам курса
-        filterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                activeFilters.courseCategory = filter;
-                fetchFilteredWebinars();
-            });
-        });
-        
-        // Фильтрация по дате
-        dateFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                // Убираем active только у кнопок этой группы
-                dateFilterButtons.forEach(btn => btn.classList.remove('active')); 
-                this.classList.add('active');
-                activeFilters.date = filter;
-                fetchFilteredWebinars();
-            });
-        });
-        
-        // Фильтрация по типу решения
-        solutionFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                // Убираем active только у кнопок этой группы
-                solutionFilterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                activeFilters.solution = filter;
-                fetchFilteredWebinars();
-            });
-        });
-        
-        // Фильтрация по категории
-        categoryFilterButtons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                const filter = this.getAttribute('data-filter');
-                // Убираем active только у кнопок этой группы
-                categoryFilterButtons.forEach(btn => btn.classList.remove('active')); 
-                this.classList.add('active');
-                activeFilters.category = filter;
-                fetchFilteredWebinars();
-            });
-        });
-        
-        // Фильтрация по номерам заданий (ОДИНОЧНЫЙ ВЫБОР через SELECT)
-        if (taskFilterSelect) {
-            taskFilterSelect.addEventListener('change', function() {
-                const filter = this.value;
-                if (filter === 'all') {
-                    activeFilters.tasks = [];
-                } else {
-                    activeFilters.tasks = [filter];
-                }
-                fetchFilteredWebinars();
+            navigator.clipboard.writeText(url).then(() => {
+                btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+                btn.title = 'Ссылка скопирована!';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.title = 'Копировать ссылку';
+                }, 1500);
+            }).catch(err => {
+                console.error('Ошибка копирования: ', err);
+                btn.innerHTML = '<i class="fas fa-times text-danger"></i>';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                }, 1500);
             });
         }
-        
-        // Кнопка сброса всех фильтров
-        if (resetButton) {
-            resetButton.addEventListener('click', function() {
-                activeFilters.courseCategory = 'all';
-                activeFilters.date = 'old';
-                activeFilters.solution = 'all';
-                activeFilters.category = 'all';
-                activeFilters.tasks = [];
-
-                if (filterInput) {
-                    filterInput.value = '';
-                }
-
-                filterButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active');
-                    }
-                });
-
-                dateFilterButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'old') {
-                        btn.classList.add('active');
-                    }
-                });
-
-                solutionFilterButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active');
-                    }
-                });
-
-                categoryFilterButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.getAttribute('data-filter') === 'all') {
-                        btn.classList.add('active');
-                    }
-                });
-
-                if (taskFilterSelect) {
-                    taskFilterSelect.value = 'all';
-                }
-
-                fetchFilteredWebinars();
-            });
-        }
-        
-        // --- НОВАЯ ФУНКЦИЯ для AJAX-запроса --- 
-        function fetchFilteredWebinars() {
-            const searchText = filterInput ? filterInput.value.trim() : '';
-            
-            // Собираем все активные фильтры
-            const params = new URLSearchParams();
-            if (searchText) {
-                params.append('q', searchText);
-            }
-            if (activeFilters.courseCategory !== 'all') {
-                params.append('course_category', activeFilters.courseCategory);
-            }
-            if (activeFilters.date !== 'all') {
-                params.append('date_filter', activeFilters.date);
-            }
-            if (activeFilters.solution !== 'all') {
-                params.append('solution', activeFilters.solution);
-            }
-            if (activeFilters.category !== 'all') {
-                params.append('category', activeFilters.category);
-            }
-            if (activeFilters.tasks.length > 0) {
-                // Отправляем первый выбранный таск (т.к. select одиночный)
-                params.append('task_num', activeFilters.tasks[0]); 
-            }
-            
-            const url = `{{ url_for('webinars.filter_webinars') }}?${params.toString()}`;
-            console.log("Fetching URL:", url); // Отладка: посмотрим, какой URL генерируется
-            
-            // Показываем индикатор загрузки (опционально)
-            if(cardsContainer) cardsContainer.innerHTML = '<div class="col-12 text-center my-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Загрузка...</span></div></div>';
-            
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text(); // Получаем HTML как текст
-                })
-                .then(html => {
-                    // Нам нужно извлечь только часть с карточками из полученного HTML
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newCardsContainer = doc.querySelector('.row.g-4'); // Ищем контейнер в ответе
-                    
-                    if (cardsContainer && newCardsContainer) {
-                        cardsContainer.innerHTML = newCardsContainer.innerHTML; // Заменяем содержимое
-                        window.originalCards = Array.from(document.querySelectorAll('.webinar-item')); // Обновляем кеш карточек
-                        setupCopyButtons(); // Повторно вешаем обработчики копирования
-                         // Восстанавливаем обработчики ошибок для новых изображений
-                        cardsContainer.querySelectorAll('.webinar-cover img').forEach(function(img) {
-                            img.onerror = function() {
-                                this.src = "{{ url_for('static', filename='images/sorry.png') }}";
-                                this.classList.add('fallback-img');
-                            };
-                        });
-                    } else if (cardsContainer) {
-                        // Если контейнер не найден в ответе, возможно, нет результатов
-                        // Попробуем найти сообщение об отсутствии результатов
-                        const noResults = doc.querySelector('.alert.alert-info'); 
-                        if(noResults) {
-                            cardsContainer.innerHTML = `<div class="col-12">${noResults.outerHTML}</div>`;
-                        } else {
-                            cardsContainer.innerHTML = '<div class="col-12 alert alert-warning">Ошибка обновления списка вебинаров.</div>';
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Ошибка при загрузке вебинаров:', error);
-                    if(cardsContainer) cardsContainer.innerHTML = '<div class="col-12 alert alert-danger">Не удалось загрузить вебинары. Попробуйте позже.</div>';
-                });
-        }
-        // --- КОНЕЦ НОВОЙ ФУНКЦИИ --- 
-        
-        // Удаляем старую функцию applyFiltersAndSort, так как фильтрация теперь на сервере
-        // function applyFiltersAndSort() { ... } 
-
-        // Вызываем fetchFilteredWebinars один раз при загрузке, чтобы загрузить/отсортировать начальный список (если нужно)
-        // Но пока оставим начальную загрузку через Jinja
-        // fetchFilteredWebinars(); 
-
-        // Устанавливаем начальную сортировку и вызываем КЛИЕНТСКУЮ функцию (надо будет переделать) 
-        // activeFilters.date = 'old';
-        // applyFiltersAndSort(); // <-- Старый вызов, который нужно будет убрать или переделать
-        setupCopyButtons(); // Вызываем для изначальных кнопок
     });
+}
+
+function initAjaxSearch() {
+    const searchInput = document.getElementById('webinarFilter');
+    if (!searchInput) return;
+    
+    let debounceTimer;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const query = this.value.trim();
+            performSearch(query);
+        }, 300); // Задержка 300мс для дебаунсинга
+    });
+}
+
+function initFilters() {
+    // Обработчики для всех фильтров
+    const courseFilterBtns = document.querySelectorAll('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter)');
+    const dateFilterBtns = document.querySelectorAll('.date-filter');
+    const solutionFilterBtns = document.querySelectorAll('.solution-filter');
+    const categoryFilterBtns = document.querySelectorAll('.category-filter');
+    const taskFilterSelect = document.getElementById('taskFilterSelect');
+    const resetBtn = document.getElementById('resetAllFilters');
+    
+    // Функция для обработки клика по кнопке фильтра
+    function handleFilterClick(btns, clickedBtn) {
+        btns.forEach(btn => btn.classList.remove('active'));
+        clickedBtn.classList.add('active');
+        const query = document.getElementById('webinarFilter').value.trim();
+        performSearch(query);
+    }
+    
+    // Обработчики для кнопок фильтров
+    courseFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleFilterClick(courseFilterBtns, this);
+        });
+    });
+    
+    dateFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleFilterClick(dateFilterBtns, this);
+        });
+    });
+    
+    solutionFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleFilterClick(solutionFilterBtns, this);
+        });
+    });
+    
+    categoryFilterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            handleFilterClick(categoryFilterBtns, this);
+        });
+    });
+    
+    // Обработчик для селекта с номерами заданий
+    if (taskFilterSelect) {
+        taskFilterSelect.addEventListener('change', function() {
+            const query = document.getElementById('webinarFilter').value.trim();
+            performSearch(query);
+        });
+    }
+    
+    // Обработчик для кнопки сброса фильтров
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            // Сбрасываем все фильтры
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.dataset.filter === 'all') {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Сбрасываем селект
+            if (taskFilterSelect) taskFilterSelect.value = 'all';
+            
+            // Сбрасываем поле поиска
+            const searchInput = document.getElementById('webinarFilter');
+            if (searchInput) searchInput.value = '';
+            
+            // Выполняем поиск с пустым запросом
+            performSearch('');
+        });
+    }
+}
+
+function performSearch(query) {
+    // Получаем значения всех фильтров
+    const courseFilter = document.querySelector('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter).active').dataset.filter;
+    const dateFilter = document.querySelector('.date-filter.active').dataset.filter;
+    const solutionFilter = document.querySelector('.solution-filter.active').dataset.filter;
+    const categoryFilter = document.querySelector('.category-filter.active').dataset.filter;
+    const taskFilter = document.getElementById('taskFilterSelect').value;
+    
+    // Показываем индикатор загрузки
+    const container = document.getElementById('webinar-results-container');
+    if (container) {
+        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Загрузка...</p></div>';
+    }
+    
+    // Формируем URL для AJAX-запроса
+    const url = `/webinars/ajax_search?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}`;
+    
+    // Выполняем AJAX-запрос
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Ошибка сети');
+            }
+            return response.text();
+        })
+        .then(html => {
+            // Обновляем контейнер с карточками
+            document.getElementById('webinar-results-container').innerHTML = html;
+            
+            // Обновляем URL страницы без перезагрузки
+            const newUrl = `/webinars/?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}`;
+            history.pushState({}, '', newUrl);
+        })
+        .catch(error => {
+            console.error('Ошибка при выполнении поиска:', error);
+            if (container) {
+                container.innerHTML = `<div class="text-center py-5"><div class="alert alert-danger">Ошибка при выполнении поиска: ${error.message}</div></div>`;
+            }
+        });
+}
 </script>
 {% endblock %}
 
