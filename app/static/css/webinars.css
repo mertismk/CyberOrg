@@ -1,0 +1,216 @@
+/* General Body Style */
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+/* === Webinars Page General Style === */
+.webinars-page {
+    padding-top: 1rem;
+    padding-bottom: 3rem;
+    background-color: var(--bg-color);
+}
+
+/* Glassmorphism Card Effect */
+.glass-card {
+    background: rgba(30, 30, 30, 0.5);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+
+/* === Initial Search View === */
+#initial-search-view {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-hero {
+    max-width: 650px;
+    width: 100%;
+    background-color: var(--card-bg-color);
+    padding: 3rem;
+    border-radius: 1.5rem; /* more rounded */
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.hero-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.search-hero h1 {
+    font-weight: 700;
+}
+
+.search-hero .lead {
+    color: var(--text-color-muted);
+}
+
+#main-search-input, .search-container .btn {
+    border-radius: 0.75rem !important;
+}
+
+.show-all-link {
+    display: inline-block;
+    margin-top: 1.5rem;
+    color: var(--text-color-muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    font-weight: 500;
+}
+.show-all-link:hover {
+    color: var(--primary-color);
+}
+
+/* === Filter Controls === */
+.filter-controls.card {
+    background-color: var(--card-bg-color);
+    position: sticky;
+    top: 100px; /* Adjust for fixed navbar */
+    z-index: 1020;
+}
+
+.filter-controls .card-header {
+    background-color: rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.filter-controls .form-control, .filter-controls .form-select {
+    background-color: var(--bg-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+.filter-controls .form-control:focus, .filter-controls .form-select:focus {
+    background-color: var(--card-bg-color);
+    color: var(--text-color);
+    border-color: var(--bs-primary);
+    box-shadow: none;
+}
+
+.btn-filter {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color-muted);
+    transition: all 0.2s ease-in-out;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+}
+.btn-filter:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+.btn-filter.active {
+    background: linear-gradient(45deg, var(--primary-color), var(--accent-color));
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 15px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+
+/* === Webinar Card Redesign === */
+.webinar-card {
+    background-color: var(--card-bg-color);
+    border-radius: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+.webinar-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px var(--shadow-color);
+}
+
+.card-img-top {
+    height: 180px;
+    object-fit: cover;
+}
+
+.watched-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.8rem;
+    background-color: rgba(var(--card-bg-rgb), 0.7);
+    backdrop-filter: blur(5px);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.webinar-card .card-body {
+    padding: 1rem;
+}
+
+.webinar-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-color);
+}
+.webinar-card .card-title a {
+    color: inherit;
+    text-decoration: none;
+}
+.webinar-card .card-title a:hover {
+    color: var(--primary-color);
+}
+
+.task-badge {
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--bs-primary-rgb), 0.2);
+    font-weight: 500;
+    font-size: 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.course-categories {
+    font-size: 0.8em;
+}
+
+.course-categories .badge {
+    padding: 0.4em 0.6em;
+    font-weight: 500;
+    border-radius: 0.5rem;
+}
+/* Category colors with dark theme support */
+.category-badge-beginner { background-color: #dcfce7; color: #166534; }
+[data-theme="dark"] .category-badge-beginner { background-color: #14532d; color: #bbf7d0; }
+.category-badge-basic { background-color: #dbeafe; color: #1e40af; }
+[data-theme="dark"] .category-badge-basic { background-color: #1e3a8a; color: #bfdbfe; }
+.category-badge-advanced { background-color: #fee2e2; color: #991b1b; }
+[data-theme="dark"] .category-badge-advanced { background-color: #7f1d1d; color: #fecaca; }
+.category-badge-expert { background-color: #e5e0f5; color: #492d7a; }
+[data-theme="dark"] .category-badge-expert { background-color: #3e2d6b; color: #dcd3f0; }
+.category-badge-mocks { background-color: #fef3c7; color: #92400e; }
+[data-theme="dark"] .category-badge-mocks { background-color: #78350f; color: #fde68a; }
+.category-badge-practice { background-color: #d1fae5; color: #065f46; }
+[data-theme="dark"] .category-badge-practice { background-color: #054e3a; color: #a7f3d0; }
+.category-badge-minisnap { background-color: #fef9c3; color: #854d0e; }
+[data-theme="dark"] .category-badge-minisnap { background-color: #713f12; color: #fef08a; }
+
+.webinar-card .list-group-item {
+    padding: 0.5rem 0;
+    border: none;
+}
+
+.webinar-card .btn-sm {
+    font-size: 0.8rem;
+    border-radius: 0.5rem;
+}
+
+#loader {
+    color: var(--primary-color);
+} 

@@ -1,0 +1,106 @@
+{% if webinars %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="webinar-cards-container">
+        {% for webinar in webinars %}
+        {# Определяем URL обложки заранее #}
+        {% set cover_image_url = url_for('static', filename='images/webinar_placeholder.jpg') %}
+        {% if webinar.id|webinar_cover_exists %}
+            {% set cover_image_url = url_for('static', filename='covers/' + webinar.id|string + '.png') %}
+        {% elif webinar.cover_url %}
+            {% set cover_image_url = webinar.cover_url %}
+        {% endif %}
+
+        <div class="col webinar-card-wrapper">
+            <div class="card h-100 webinar-card" data-webinar-id="{{ webinar.id }}">
+                <img src="{{ cover_image_url }}" class="card-img-top" alt="{{ webinar.title }}">
+                
+                {% if webinar.id in watched_webinar_ids %}
+                    <span class="badge bg-success watched-badge"><i class="fas fa-check-circle me-1"></i> Просмотрено</span>
+                {% endif %}
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ webinar.title }}</h5>
+
+                    {# Номера заданий #}
+                    {% if webinar.task_numbers %}
+                    <div class="task-numbers mt-auto mb-2">
+                        {% for task in webinar.task_numbers|sort(attribute='number') %}
+                            <span class="badge task-badge">№{{ task.number }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {# Категории курса #}
+                    <div class="course-categories mb-3">
+                        {% if webinar.for_beginners %}<span class="badge category-badge-beginner">Python с нуля</span>{% endif %}
+                        {% if webinar.for_basic %}<span class="badge category-badge-basic">Основной курс</span>{% endif %}
+                        {% if webinar.for_advanced %}<span class="badge category-badge-advanced">Задание 26</span>{% endif %}
+                        {% if webinar.for_expert %}<span class="badge category-badge-expert">Задание 27</span>{% endif %}
+                        {% if webinar.for_mocks %}<span class="badge category-badge-mocks">Разбор пробников</span>{% endif %}
+                        {% if webinar.for_practice %}<span class="badge category-badge-practice">Нарешка</span>{% endif %}
+                        {% if webinar.for_minisnap %}<span class="badge category-badge-minisnap">Мини-щелчок</span>{% endif %}
+                    </div>
+                    
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted"><i class="fas fa-calendar-alt me-2"></i> Дата</span>
+                            <strong>{{ webinar.date|moscow_time if webinar.date else 'Не указана' }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span class="text-muted"><i class="fas fa-layer-group me-2"></i> Категория</span>
+                            {% if webinar.category == 1 %}<span class="badge bg-danger">Обязательный</span>
+                            {% elif webinar.category == 2 %}<span class="badge bg-info">Повторение</span>
+                            {% elif webinar.category == 3 %}<span class="badge bg-secondary">Не обязательный</span>
+                            {% elif webinar.category == 4 %}<span class="badge bg-primary">Для продвинутых</span>
+                            {% else %}<span class="badge bg-light text-dark">Не указана</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+
+                    <div class="d-grid gap-2">
+                        <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary"><i class="fab fa-youtube me-2"></i> Смотреть</a>
+                        <a href="{{ url_for('webinars.webinar_tasks', webinar_id=webinar.id) }}" class="btn btn-outline-secondary"><i class="fas fa-tasks me-2"></i>Задачи ({{ webinar.tasks|length }})</a>
+                         {% if current_user.is_admin %}
+                         <div class="btn-group">
+                            <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" class="btn btn-sm btn-outline-secondary w-100"><i class="fas fa-edit"></i> Ред.</a>
+                             <button type="button" class="btn btn-sm btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteWebinarModal-{{ webinar.id }}"><i class="fas fa-trash"></i> Удал.</button>
+                         </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Модальное окно для удаления #}
+        {% if current_user.is_admin %}
+        <div class="modal fade" id="deleteWebinarModal-{{ webinar.id }}" tabindex="-1" aria-labelledby="deleteModalLabel-{{ webinar.id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel-{{ webinar.id }}">Подтвердить удаление</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        Вы уверены, что хотите удалить вебинар <strong>"{{ webinar.title }}"</strong>? Это действие нельзя будет отменить.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <form action="{{ url_for('webinars.delete_webinar', webinar_id=webinar.id) }}" method="post">
+                             <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                            <button type="submit" class="btn btn-danger">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-search-minus fa-4x text-muted mb-3"></i>
+            <h4>Вебинары не найдены</h4>
+            <p class="text-muted">Попробуйте изменить критерии поиска или сбросить фильтры.</p>
+        </div>
+    </div>
+{% endif %} 
