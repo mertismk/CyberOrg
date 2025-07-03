@@ -5,9 +5,6 @@ from collections import deque, Counter  # Добавляем Counter
 from app import db
 from app.models import Webinar  # Добавляем этот импорт
 
-# Определяем примерную длительность Т26/Т27 для логики капов
-T26_T27_APPROX_HOURS = 4.0
-
 
 def get_webinar_hours(webinar: Webinar) -> float:
     """Определяет "стоимость" вебинара в часах."""
@@ -21,7 +18,7 @@ def get_webinar_hours(webinar: Webinar) -> float:
         webinar.for_advanced or webinar.for_expert
     ):  # Считаем, что это T26/T27 для целей часов
         # Используем константу
-        return T26_T27_APPROX_HOURS
+        return 4.0
     # По умолчанию (включая for_basic, for_mocks, for_practice, for_minisnap и без флагов)
     return 3.0
 
@@ -222,6 +219,27 @@ def _filter_regular_webinars(
 
     print(f"\nФильтрация {len(regular_webinars)} регулярных вебинаров:")
     for w in regular_webinars:
+        # ДОБАВЛЕНО: Пропускаем "Нарешку" и "Мини-щелчок", которые не должны автоматически добавляться в план
+        if hasattr(w, 'for_mocks') and w.for_mocks:
+            print(f"  - Skip {w.id}: Нарешка (for_mocks)")
+            continue
+        if hasattr(w, 'for_minisnap') and w.for_minisnap:
+            print(f"  - Skip {w.id}: Мини-щелчок (for_minisnap)")
+            continue
+        
+        # Дополнительно проверяем название вебинара
+        if hasattr(w, 'title') and w.title:
+            title_lower = w.title.lower()
+            if "нарешка" in title_lower or "наре-шка" in title_lower:
+                print(f"  - Skip {w.id}: Нарешка (по названию)")
+                continue
+            if "мини-щелчок" in title_lower or "мини щелчок" in title_lower:
+                print(f"  - Skip {w.id}: Мини-щелчок (по названию)")
+                continue
+            if "большая нарешка" in title_lower:
+                print(f"  - Skip {w.id}: Большая Нарешка (по названию)")
+                continue
+        
         if w.id in assigned_webinar_ids or w.id in watched_webinar_ids:
             # print(f"  - Skip {w.id}: already assigned or watched")
             continue  # Уже назначен или просмотрен
@@ -266,29 +284,81 @@ def _filter_regular_webinars(
     return available_regular
 
 
+# def _group_and_sort_by_task(available_regular, required_tasks):
+#     """Группирует вебинары по задачам и сортирует их внутри групп."""
+#     webinars_by_task = {task_num: [] for task_num in required_tasks}
+#     for webinar in available_regular:
+#         webinar_tasks_covered = {t.number for t in webinar.task_numbers}
+#         relevant_tasks = webinar_tasks_covered.intersection(required_tasks)
+#         for task_num in relevant_tasks:
+#             webinars_by_task[task_num].append(webinar)
+
+#     task_deques = {}
+#     print("\nГруппировка и сортировка вебинаров по задачам:")
+#     for task_num in sorted(list(required_tasks)):
+#         webinar_list = webinars_by_task.get(task_num, [])
+#         # Убираем дубликаты вебинаров внутри одной задачи (если они как-то попали)
+#         unique_webinars = list({w.id: w for w in webinar_list}.values())
+#         if unique_webinars:
+#             unique_webinars.sort(key=create_webinar_sort_key)
+#             task_deques[task_num] = deque(unique_webinars)
+#             print(f"  Task {task_num}: {len(task_deques[task_num])} webinars sorted.")
+#         else:
+#             print(f"  Task {task_num}: No available webinars found.")
+
+#     return task_deques
+
 def _group_and_sort_by_task(available_regular, required_tasks):
-    """Группирует вебинары по задачам и сортирует их внутри групп."""
-    webinars_by_task = {task_num: [] for task_num in required_tasks}
-    for webinar in available_regular:
-        webinar_tasks_covered = {t.number for t in webinar.task_numbers}
-        relevant_tasks = webinar_tasks_covered.intersection(required_tasks)
-        for task_num in relevant_tasks:
-            webinars_by_task[task_num].append(webinar)
-
-    task_deques = {}
-    print("\nГруппировка и сортировка вебинаров по задачам:")
-    for task_num in sorted(list(required_tasks)):
-        webinar_list = webinars_by_task.get(task_num, [])
-        # Убираем дубликаты вебинаров внутри одной задачи (если они как-то попали)
-        unique_webinars = list({w.id: w for w in webinar_list}.values())
-        if unique_webinars:
-            unique_webinars.sort(key=create_webinar_sort_key)
-            task_deques[task_num] = deque(unique_webinars)
-            print(f"  Task {task_num}: {len(task_deques[task_num])} webinars sorted.")
-        else:
-            print(f"  Task {task_num}: No available webinars found.")
-
-    return task_deques
+   """Группирует вебинары по типам задач и сортирует их внутри групп."""
+   
+   # Определяем типы задач
+   task_types = {
+       'regular': set(range(1, 26)),  # Задачи 1-25 для основного курса
+       't26': {26},                   # Задача 26
+       't27': {27}                    # Задача 27
+   }
+   
+   # Инициализируем группы
+   webinars_by_type = {
+       'regular': [],
+       't26': [],
+       't27': []
+   }
+   
+   # Группируем вебинары по типам
+   for webinar in available_regular:
+       webinar_tasks_covered = {t.number for t in webinar.task_numbers}
+       relevant_tasks = webinar_tasks_covered.intersection(required_tasks)
+       
+       # Определяем к какому типу относится вебинар (с приоритетами)
+       if 27 in webinar_tasks_covered and 27 in required_tasks:
+           # T27 имеет высший приоритет
+           webinars_by_type['t27'].append(webinar)
+       elif 26 in webinar_tasks_covered and 26 in required_tasks:
+           # T26 имеет следующий приоритет
+           webinars_by_type['t26'].append(webinar)
+       elif relevant_tasks.intersection(task_types['regular']):
+           # Если есть пересечение с обычными задачами
+           webinars_by_type['regular'].append(webinar)
+   
+   # Создаем deque для каждого типа
+   task_deques = {}
+   print("\nГруппировка и сортировка вебинаров по типам:")
+   
+   for task_type in ['regular', 't26', 't27']:
+       webinar_list = webinars_by_type[task_type]
+       
+       # Убираем дубликаты вебинаров внутри одного типа
+       unique_webinars = list({w.id: w for w in webinar_list}.values())
+       
+       if unique_webinars:
+           unique_webinars.sort(key=create_webinar_sort_key)
+           task_deques[task_type] = deque(unique_webinars)
+           print(f" {task_type}: {len(task_deques[task_type])} webinars sorted.")
+       else:
+           print(f" {task_type}: No available webinars found.")
+   
+   return task_deques
 
 
 def _distribute_webinars_to_weeks(
@@ -300,420 +370,237 @@ def _distribute_webinars_to_weeks(
     assigned_webinar_ids,  # Модифицируется
     weekly_hours_summary,  # Модифицируется
 ):
-    """Распределяет вебинары по неделям, с приоритетным заполнением слотов T27/T26."""
+    """
+    Распределяет вебинары по неделям с учетом квот и приоритетов.
+    
+    Args:
+        task_deques: словарь с очередями вебинаров по типам ('regular', 't26', 't27')
+        remaining_beginner_overflow: очередь вебинаров для начинающих, не вошедшие в первую неделю
+        hours_per_week: доступные часы в неделю
+        quota_t26: квота вебинаров для задания 26 (количество вебинаров)
+        quota_t27: квота вебинаров для задания 27 (количество вебинаров)
+        assigned_webinar_ids: множество уже назначенных ID вебинаров (модифицируется)
+        weekly_hours_summary: словарь часов по неделям (модифицируется)
+    
+    Returns:
+        tuple: (webinar_weeks, selected_regular_webinars)
+            webinar_weeks: dict - словарь {id вебинара: номер недели}
+            selected_regular_webinars: list - список выбранных вебинаров основного курса
+    """
+    
+    # Словарь для хранения соответствия ID вебинара -> неделя
     webinar_weeks = {}
     selected_regular_webinars = []
-    total_t26_added = 0
-    total_t27_added = 0
-
-    # Рассчитываем бюджеты слотов и строгие капы (если квоты не заданы)
-    cap_percentage = 0.35
-    t27_budget_slot = hours_per_week * cap_percentage
-    t26_budget_slot = hours_per_week * cap_percentage
-    strict_max_t26_hours = t26_budget_slot if quota_t26 <= 0 else float("inf")
-    strict_max_t27_hours = t27_budget_slot if quota_t27 <= 0 else float("inf")
-
-    print(
-        f"\nWeekly Budgets: Total={hours_per_week:.2f}, T27 Slot={t27_budget_slot:.2f}, T26 Slot={t26_budget_slot:.2f}"
-    )
-    print(
-        f"Strict Caps: T26={strict_max_t26_hours:.2f}, T27={strict_max_t27_hours:.2f}"
-    )
-
-    print("\nРаспределение вебинаров по неделям (3 фазы):")
-    for week_num in range(1, 5):
-        print(f"\n--- Неделя {week_num} ---")
-        hours_filled_this_week = weekly_hours_summary[week_num]
-        current_t27_hours_this_week = 0.0
-        current_t26_hours_this_week = 0.0
-
-        # Добавляем overflow beginner на 2-й неделе (остается без изменений)
-        if week_num == 2 and remaining_beginner_overflow:
-            print(
-                f"  Phase 0: Добавляем overflow beginner ({len(remaining_beginner_overflow)} шт.)"
-            )
-            while remaining_beginner_overflow:
-                w_overflow = remaining_beginner_overflow[0]
-                if w_overflow.id in assigned_webinar_ids:
-                    remaining_beginner_overflow.popleft()
-                    continue
-                w_hours = get_webinar_hours(w_overflow)
-                if hours_filled_this_week + w_hours <= hours_per_week:
-                    w_to_add = remaining_beginner_overflow.popleft()
-                    webinar_weeks[w_to_add.id] = week_num
-                    assigned_webinar_ids.add(w_to_add.id)
-                    hours_filled_this_week += w_hours
-                    print(
-                        f"    + Added Overflow Beginner ID: {w_to_add.id} ({w_hours:.1f}h). Week total: {hours_filled_this_week:.1f}h"
-                    )
-                else:
-                    print(
-                        f"    - Skip Overflow Beginner ID: {w_overflow.id} ({w_hours:.1f}h) - not enough budget."
-                    )
-                    remaining_beginner_overflow.clear()
+    
+    # Словарь для хранения часов по неделям
+    weekly_stats = {
+        1: {'total': weekly_hours_summary[1], 't26': 0, 't27': 0, 'regular': 0},
+        2: {'total': 0, 't26': 0, 't27': 0, 'regular': 0},
+        3: {'total': 0, 't26': 0, 't27': 0, 'regular': 0},
+        4: {'total': 0, 't26': 0, 't27': 0, 'regular': 0},
+    }
+    
+    # Счетчики добавленных вебинаров
+    total_added = {'t26': 0, 't27': 0, 'regular': 0}
+    
+    # Расчет квот по часам для каждого типа вебинаров
+    max_t26_hours = hours_per_week * 0.35 if quota_t26 > 0 else 0  # 35% на T26
+    max_t27_hours = hours_per_week * 0.35 if quota_t27 > 0 else 0  # 35% на T27
+    
+    print(f"\nРасчет квот: T26 = {max_t26_hours:.1f}ч, T27 = {max_t27_hours:.1f}ч из {hours_per_week}ч")
+    
+    # Шаг 1: Распределение beginner overflow на вторую неделю
+    if remaining_beginner_overflow:
+        print("\n--- Распределение beginner overflow (неделя 2) ---")
+        while remaining_beginner_overflow:
+            w_overflow = remaining_beginner_overflow[0]
+            if w_overflow.id in assigned_webinar_ids:
+                remaining_beginner_overflow.popleft()
+                continue
+                
+            w_hours = get_webinar_hours(w_overflow)
+            
+            if weekly_stats[2]['total'] + w_hours <= hours_per_week:
+                w_to_add = remaining_beginner_overflow.popleft()
+                webinar_weeks[w_to_add.id] = 2  # На вторую неделю
+                assigned_webinar_ids.add(w_to_add.id)
+                weekly_stats[2]['total'] += w_hours
+                weekly_hours_summary[2] = weekly_stats[2]['total']
+                print(f"  + Добавлен beginner overflow ID: {w_to_add.id} ({w_hours:.1f}ч). Всего на неделе 2: {weekly_stats[2]['total']:.1f}ч")
+            else:
+                print(f"  - Пропущен beginner overflow ID: {w_overflow.id} - недостаточно часов")
+                break
+    
+    # Функция для добавления вебинара в план
+    def add_webinar_to_plan(webinar, week_number, webinar_type):
+        if webinar.id in assigned_webinar_ids:
+            return False
+        
+        webinar_hours = get_webinar_hours(webinar)
+        
+        # Проверяем, поместится ли вебинар в неделю
+        if weekly_stats[week_number]['total'] + webinar_hours <= hours_per_week:
+            # Для T26/T27 проверяем квоты
+            if webinar_type == 't26':
+                max_hours = hours_per_week * 0.35  # 35% от недельного времени
+                if weekly_stats[week_number]['t26'] + webinar_hours > max_hours:
+                    return False
+            elif webinar_type == 't27':
+                max_hours = hours_per_week * 0.35  # 35% от недельного времени
+                if weekly_stats[week_number]['t27'] + webinar_hours > max_hours:
+                    return False
+                
+            # Добавляем вебинар
+            webinar_weeks[webinar.id] = week_number
+            if webinar_type != 'beginner':
+                selected_regular_webinars.append(webinar)
+            assigned_webinar_ids.add(webinar.id)
+            
+            # Обновляем статистику
+            weekly_stats[week_number]['total'] += webinar_hours
+            weekly_stats[week_number][webinar_type] += webinar_hours
+            weekly_hours_summary[week_number] = weekly_stats[week_number]['total']
+            total_added[webinar_type] += 1
+            
+            print(f"  + Добавлен {webinar_type} ID: {webinar.id} ({webinar_hours:.1f}ч) на неделю {week_number}. " 
+                  f"Всего на неделе: {weekly_stats[week_number]['total']:.1f}ч")
+            return True
+        
+        return False
+    
+    # Шаг 2: Распределение T26/T27
+    for task_type in ['t26', 't27']:
+        if task_type not in task_deques or not task_deques[task_type]:
+            continue
+            
+        print(f"\n--- Распределение {task_type} вебинаров ---")
+        quota = quota_t26 if task_type == 't26' else quota_t27
+        if quota <= 0:
+            continue
+            
+        # Преобразуем очередь в список, чтобы работать с индексами
+        webinar_list = list(task_deques[task_type])
+        
+        # Вебинары уже отсортированы по create_webinar_sort_key (категория -> дата -> id)
+        # Распределяем последовательно по неделям, не перепрыгивая между ними
+        current_week = 1  # Начинаем с первой недели
+        added_per_week = {1: 0, 2: 0, 3: 0, 4: 0}  # Сколько добавлено в каждую неделю
+        
+        for webinar in webinar_list:
+            # Если в текущей неделе достигнута квота или добавлено максимальное количество
+            if added_per_week[current_week] >= quota:
+                # Переходим к следующей неделе
+                current_week += 1
+                if current_week > 4:
+                    # Все недели заполнены до квоты
                     break
-            weekly_hours_summary[week_num] = hours_filled_this_week
-
-        # --- Фаза 1: Заполнение слота T27 ---
-        print(f"  Phase 1: T27 Slot (Target: {t27_budget_slot:.1f}h)")
-        t27_deque = task_deques.get(27)
-        # Счетчик для отслеживания количества T27 вебинаров, добавленных за текущую неделю
-        weekly_t27_added = (
-            0  # ДОБАВЛЕНО: недельный счетчик (вместо глобального total_t27_added)
-        )
-
-        while t27_deque and hours_filled_this_week < hours_per_week:
-            if not t27_deque:  # Доп. проверка, если очередь опустела
-                break
-            candidate = t27_deque[0]
-            candidate_hours = get_webinar_hours(candidate)
-
-            if candidate.id in assigned_webinar_ids:
-                t27_deque.popleft()
+            
+            # Проверяем, не был ли вебинар уже добавлен
+            if webinar.id in assigned_webinar_ids:
                 continue
-
-            # --- ДОБАВЛЕНО: Проверка на превышение общего недельного бюджета ---
-            if hours_filled_this_week + candidate_hours > hours_per_week:
-                print(
-                    f"    - Skip T27 ID: {candidate.id} ({candidate_hours:.1f}h) - exceeds weekly budget {hours_per_week:.1f}h (current: {hours_filled_this_week:.1f}h)"
-                )
-                break  # Не помещается в общий бюджет, выходим из фазы T27
-            # --- КОНЕЦ ДОБАВЛЕНИЯ ---
-
-            # --- ИЗМЕНЕНО: Проверка на превышение ЕЖЕНЕДЕЛЬНОЙ квоты ---
-            if quota_t27 > 0 and weekly_t27_added >= quota_t27:
-                print(
-                    f"    - Skip T27 ID: {candidate.id} - Weekly T27 quota ({quota_t27}) reached for week {week_num}."
-                )
-                break  # Квота на эту неделю достигнута, выходим из фазы T27
-            # --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
-            # Добавляем вебинар T27
-            webinar_to_add = t27_deque.popleft()
-            webinar_weeks[webinar_to_add.id] = week_num
-            selected_regular_webinars.append(webinar_to_add)
-            assigned_webinar_ids.add(webinar_to_add.id)
-            hours_filled_this_week += candidate_hours
-            current_t27_hours_this_week += candidate_hours
-            total_t27_added += 1
-            weekly_t27_added += 1  # ДОБАВЛЕНО: увеличиваем недельный счетчик
-            print(
-                f"    + Added T27 ID: {webinar_to_add.id} ({candidate_hours:.1f}h). Week T27: {current_t27_hours_this_week:.1f}h. Week total: {hours_filled_this_week:.1f}h. Week T27 count: {weekly_t27_added}, Total T27 added: {total_t27_added}"
-            )
-
-        # --- Фаза 2: Заполнение слота T26 ---
-        print(f"  Phase 2: T26 Slot (Target: {t26_budget_slot:.1f}h)")
-        t26_deque = task_deques.get(26)
-        # Счетчик для отслеживания количества T26 вебинаров, добавленных за текущую неделю
-        weekly_t26_added = (
-            0  # ДОБАВЛЕНО: недельный счетчик (вместо глобального total_t26_added)
-        )
-
-        while t26_deque and hours_filled_this_week < hours_per_week:
-            if not t26_deque:
-                break
-            candidate = t26_deque[0]
-            candidate_hours = get_webinar_hours(candidate)
-
-            if candidate.id in assigned_webinar_ids:
-                t26_deque.popleft()
+                
+            # Пробуем добавить в текущую неделю
+            webinar_hours = get_webinar_hours(webinar)
+            if weekly_stats[current_week]['total'] + webinar_hours <= hours_per_week:
+                # Проверяем квоту по часам (35% от недельных часов)
+                max_hours = hours_per_week * 0.35
+                type_hours = weekly_stats[current_week][task_type]
+                
+                if type_hours + webinar_hours <= max_hours:
+                    # Добавляем вебинар
+                    webinar_weeks[webinar.id] = current_week
+                    selected_regular_webinars.append(webinar)
+                    assigned_webinar_ids.add(webinar.id)
+                    
+                    # Обновляем статистику
+                    weekly_stats[current_week]['total'] += webinar_hours
+                    weekly_stats[current_week][task_type] += webinar_hours
+                    weekly_hours_summary[current_week] = weekly_stats[current_week]['total']
+                    added_per_week[current_week] += 1
+                    total_added[task_type] += 1
+                    
+                    print(f"  + Добавлен {task_type} ID: {webinar.id} ({webinar_hours:.1f}ч) на неделю {current_week}. " 
+                          f"Всего на неделе: {weekly_stats[current_week]['total']:.1f}ч")
+            else:
+                # Не хватает часов в текущей неделе
+                print(f"  - Пропущен {task_type} ID: {webinar.id} - не хватает часов в неделе {current_week}")
+                # НЕ переходим к следующей неделе здесь
+            
+        # Очищаем очередь, так как мы уже обработали все вебинары
+        task_deques[task_type].clear()
+    
+    # Шаг 3: Распределение обычных вебинаров (regular) строго по дате внутри категории
+    if 'regular' in task_deques and task_deques['regular']:
+        print("\n--- Распределение regular вебинаров ---")
+        
+        # Преобразуем очередь в список
+        regular_webinars = list(task_deques['regular'])
+        
+        # Группируем вебинары по категории
+        webinars_by_category = {}
+        for webinar in regular_webinars:
+            category = webinar.category if hasattr(webinar, 'category') and webinar.category else 0
+            if category not in webinars_by_category:
+                webinars_by_category[category] = []
+            webinars_by_category[category].append(webinar)
+        
+        # Приоритет категорий: Обязательные (1) -> Повторение (2) -> Продвинутые (4) -> Необязательные (3) -> Прочие (0)
+        category_priority = [1, 2, 4, 3, 0]  # Определяем порядок обработки категорий
+        
+        # Обрабатываем категории по приоритету
+        for category in category_priority:
+            if category not in webinars_by_category:
                 continue
-
-            # --- ДОБАВЛЕНО: Проверка на превышение общего недельного бюджета ---
-            if hours_filled_this_week + candidate_hours > hours_per_week:
-                print(
-                    f"    - Skip T26 ID: {candidate.id} ({candidate_hours:.1f}h) - exceeds weekly budget {hours_per_week:.1f}h (current: {hours_filled_this_week:.1f}h)"
-                )
-                break  # Не помещается в общий бюджет, выходим из фазы T26
-            # --- КОНЕЦ ДОБАВЛЕНИЯ ---
-
-            # --- ИЗМЕНЕНО: Проверка на превышение ЕЖЕНЕДЕЛЬНОЙ квоты ---
-            if quota_t26 > 0 and weekly_t26_added >= quota_t26:
-                print(
-                    f"    - Skip T26 ID: {candidate.id} - Weekly T26 quota ({quota_t26}) reached for week {week_num}."
-                )
-                break  # Квота на эту неделю достигнута, выходим из фазы T26
-            # --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
-            # Добавляем вебинар T26
-            webinar_to_add = t26_deque.popleft()
-            webinar_weeks[webinar_to_add.id] = week_num
-            selected_regular_webinars.append(webinar_to_add)
-            assigned_webinar_ids.add(webinar_to_add.id)
-            hours_filled_this_week += candidate_hours
-            current_t26_hours_this_week += candidate_hours
-            total_t26_added += 1
-            weekly_t26_added += 1  # ДОБАВЛЕНО: увеличиваем недельный счетчик
-            print(
-                f"    + Added T26 ID: {webinar_to_add.id} ({candidate_hours:.1f}h). Week T26: {current_t26_hours_this_week:.1f}h. Week total: {hours_filled_this_week:.1f}h. Week T26 count: {weekly_t26_added}, Total T26 added: {total_t26_added}"
-            )
-
-        # --- Фаза 3: Заполнение остатка недели ---
-        print(
-            f"  Phase 3: Filling Remaining Budget ({(hours_per_week - hours_filled_this_week):.1f}h left)"
-        )
-        while hours_filled_this_week < hours_per_week:
-            added_in_this_iteration = False  # Флаг, показывающий, добавили ли мы что-то
-
-            # --- Шаг 3.1: Поиск лучшего кандидата из задач 1-25 ---
-            best_candidate_1_to_25 = None
-            best_task_num_1_to_25 = -1
-            best_sort_key_1_to_25 = (
-                float("inf"),
-                (float("inf"), datetime.max),
-                float("inf"),
-            )
-
-            # Собираем активные очереди только для задач 1-25
-            active_tasks_1_to_25 = {
-                k: v
-                for k, v in task_deques.items()
-                if v and 1 <= k <= 25  # Только непустые очереди в диапазоне 1-25
-            }
-
-            if active_tasks_1_to_25:  # Искать только если есть активные задачи 1-25
-                candidate_search_restart_needed = (
-                    False  # Флаг для перезапуска внутреннего поиска 1-25
-                )
-                while (
-                    True
-                ):  # Цикл для перезапуска поиска 1-25, если удалили уже добавленный
-                    best_candidate_1_to_25_inner = None
-                    best_task_num_1_to_25_inner = -1
-                    best_sort_key_1_to_25_inner = (
-                        float("inf"),
-                        (float("inf"), datetime.max),
-                        float("inf"),
-                    )
-
-                    for task_num, task_deque in active_tasks_1_to_25.items():
-                        if not task_deque:
-                            continue
-
-                        candidate = task_deque[0]
-                        candidate_hours = get_webinar_hours(candidate)
-
-                        # 1. Проверка: Уже добавлен?
-                        if candidate.id in assigned_webinar_ids:
-                            task_deque.popleft()
-                            candidate_search_restart_needed = (
-                                True  # Нужен перезапуск внешнего цикла
-                            )
-                            best_candidate_1_to_25_inner = (
-                                None  # Сбрасываем кандидата для этого цикла
-                            )
-                            break  # Выходим из for, чтобы перезапустить while True
-
-                        # 2. Проверка: Помещается ли в общий бюджет?
-                        if hours_filled_this_week + candidate_hours > hours_per_week:
-                            continue
-
-                        # 3. Сравнение с текущим лучшим (в рамках 1-25)
-                        candidate_sort_key = create_webinar_sort_key(candidate)
-                        if candidate_sort_key < best_sort_key_1_to_25_inner:
-                            best_candidate_1_to_25_inner = candidate
-                            best_task_num_1_to_25_inner = task_num
-                            best_sort_key_1_to_25_inner = candidate_sort_key
-
-                    if candidate_search_restart_needed:
-                        candidate_search_restart_needed = False  # Сбросили флаг
-                        active_tasks_1_to_25 = {
-                            k: v for k, v in active_tasks_1_to_25.items() if v
-                        }  # Обновляем активные очереди
-                        if (
-                            not active_tasks_1_to_25
-                        ):  # Если все очереди 1-25 опустели из-за popleft
-                            break  # Выходим из while True
-                        continue  # Перезапускаем поиск 1-25
+                
+            print(f"  Распределение вебинаров категории {category}")
+            
+            # Вебинары в категории уже отсортированы по дате
+            category_webinars = webinars_by_category[category]
+            
+            # Заполняем недели последовательно, а не равномерно
+            current_week = 1  # Начинаем с первой недели
+            for webinar in category_webinars:
+                # Проверяем, не был ли вебинар уже добавлен
+                if webinar.id in assigned_webinar_ids:
+                    continue
+                    
+                # Пытаемся добавить в текущую неделю
+                if current_week <= 4:  # Только если недели 1-4
+                    webinar_hours = get_webinar_hours(webinar)
+                    if weekly_stats[current_week]['total'] + webinar_hours <= hours_per_week:
+                        # Добавляем вебинар в текущую неделю
+                        add_webinar_to_plan(webinar, current_week, 'regular')
                     else:
-                        # Если поиск завершился без необходимости перезапуска
-                        best_candidate_1_to_25 = best_candidate_1_to_25_inner
-                        best_task_num_1_to_25 = best_task_num_1_to_25_inner
-                        best_sort_key_1_to_25 = best_sort_key_1_to_25_inner
-                        break  # Выходим из while True
-
-            # --- Шаг 3.2: Добавление лучшего кандидата 1-25, если найден и подходит ---
-            if best_candidate_1_to_25:
-                candidate_hours = get_webinar_hours(best_candidate_1_to_25)
-                if hours_filled_this_week + candidate_hours <= hours_per_week:
-                    webinar_to_add = task_deques[best_task_num_1_to_25].popleft()
-                    if webinar_to_add.id not in assigned_webinar_ids:
-                        w_hours = candidate_hours
-                        webinar_weeks[webinar_to_add.id] = week_num
-                        selected_regular_webinars.append(webinar_to_add)
-                        assigned_webinar_ids.add(webinar_to_add.id)
-                        hours_filled_this_week += w_hours
-                        added_in_this_iteration = True
-                        print(
-                            f"    + Added Other (1-25) ID: {webinar_to_add.id} (Task {best_task_num_1_to_25}, {w_hours:.1f}h). Week total: {hours_filled_this_week:.1f}h."
-                        )
-                        # --- Переходим к следующей итерации основного цикла while ---
-                        continue
-                    else:
-                        print(
-                            f"!!! WARNING: Trying to re-add webinar {webinar_to_add.id} (1-25) in Phase 3, skipping."
-                        )
-                        # added_in_this_iteration остается False, пробуем T26/T27
-                # else: Бюджет не позволяет добавить лучший 1-25, переходим к T26/T27
-
-            # --- Шаг 3.3: Если НЕ добавили 1-25, ищем лучший из T26/T27 ---
-            if not added_in_this_iteration:
-                best_candidate_t26_t27 = None
-                best_task_num_t26_t27 = -1
-                best_sort_key_t26_t27 = (
-                    float("inf"),
-                    (float("inf"), datetime.max),
-                    float("inf"),
-                )
-
-                active_tasks_t26_t27 = {
-                    k: v for k, v in task_deques.items() if v and k in [26, 27]
-                }
-
-                if active_tasks_t26_t27:
-                    candidate_search_restart_needed_t26_t27 = False
-                    while True:
-                        best_candidate_t26_t27_inner = None
-                        best_task_num_t26_t27_inner = -1
-                        best_sort_key_t26_t27_inner = (
-                            float("inf"),
-                            (float("inf"), datetime.max),
-                            float("inf"),
-                        )
-
-                        for task_num, task_deque in active_tasks_t26_t27.items():
-                            if not task_deque:
-                                continue
-                            candidate = task_deque[0]
-                            candidate_hours = get_webinar_hours(candidate)
-
-                            if candidate.id in assigned_webinar_ids:
-                                task_deque.popleft()
-                                candidate_search_restart_needed_t26_t27 = True
-                                best_candidate_t26_t27_inner = None
-                                break
-
-                            is_t26 = task_num == 26
-                            is_t27 = task_num == 27
-
-                            if (
-                                hours_filled_this_week + candidate_hours
-                                > hours_per_week
-                            ):
-                                continue
-                            if (
-                                is_t26
-                                and quota_t26 <= 0
-                                and current_t26_hours_this_week + candidate_hours
-                                > strict_max_t26_hours
-                            ):
-                                continue
-                            if (
-                                is_t27
-                                and quota_t27 <= 0
-                                and current_t27_hours_this_week + candidate_hours
-                                > strict_max_t27_hours
-                            ):
-                                continue
-                            # --- ИЗМЕНЕНО: Проверяем недельные квоты вместо общих ---
-                            if is_t26 and quota_t26 > 0:
-                                # Считаем текущее количество T26 вебинаров на этой неделе
-                                week_t26_count = sum(
-                                    1
-                                    for wid, wk in webinar_weeks.items()
-                                    if wk == week_num
-                                    and any(
-                                        26 in w.task_numbers_set
-                                        for w in selected_regular_webinars
-                                        if w.id == wid
-                                    )
-                                )
-                                if week_t26_count >= quota_t26:
-                                    continue
-
-                            if is_t27 and quota_t27 > 0:
-                                # Считаем текущее количество T27 вебинаров на этой неделе
-                                week_t27_count = sum(
-                                    1
-                                    for wid, wk in webinar_weeks.items()
-                                    if wk == week_num
-                                    and any(
-                                        27 in w.task_numbers_set
-                                        for w in selected_regular_webinars
-                                        if w.id == wid
-                                    )
-                                )
-                                if week_t27_count >= quota_t27:
-                                    continue
-                            # --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
-                            candidate_sort_key = create_webinar_sort_key(candidate)
-                            if candidate_sort_key < best_sort_key_t26_t27_inner:
-                                best_candidate_t26_t27_inner = candidate
-                                best_task_num_t26_t27_inner = task_num
-                                best_sort_key_t26_t27_inner = candidate_sort_key
-
-                        if candidate_search_restart_needed_t26_t27:
-                            candidate_search_restart_needed_t26_t27 = False
-                            active_tasks_t26_t27 = {
-                                k: v for k, v in active_tasks_t26_t27.items() if v
-                            }
-                            if not active_tasks_t26_t27:
-                                break
+                        # Неделя заполнена, переходим к следующей
+                        current_week += 1
+                        # Если все недели заполнены, пропускаем вебинар
+                        if current_week > 4:
+                            print(f"  - Пропущен regular ID: {webinar.id} категории {category} - все недели заполнены")
                             continue
+                        # Пробуем добавить в следующую неделю
+                        if weekly_stats[current_week]['total'] + webinar_hours <= hours_per_week:
+                            add_webinar_to_plan(webinar, current_week, 'regular')
                         else:
-                            best_candidate_t26_t27 = best_candidate_t26_t27_inner
-                            best_task_num_t26_t27 = best_task_num_t26_t27_inner
-                            best_sort_key_t26_t27 = best_sort_key_t26_t27_inner
-                            break
-
-                # --- Шаг 3.4: Добавление лучшего кандидата T26/T27, если найден и подходит ---
-                if best_candidate_t26_t27:
-                    candidate_hours = get_webinar_hours(best_candidate_t26_t27)
-                    # Проверки бюджета/капов/квот уже были сделаны при поиске, можно добавлять
-                    webinar_to_add = task_deques[best_task_num_t26_t27].popleft()
-                    if webinar_to_add.id not in assigned_webinar_ids:
-                        w_hours = candidate_hours
-                        webinar_weeks[webinar_to_add.id] = week_num
-                        selected_regular_webinars.append(webinar_to_add)
-                        assigned_webinar_ids.add(webinar_to_add.id)
-                        hours_filled_this_week += w_hours
-                        added_in_this_iteration = True
-
-                        if best_task_num_t26_t27 == 26:
-                            current_t26_hours_this_week += w_hours
-                            total_t26_added += 1
-                            print(
-                                f"    + Added Other (T26) ID: {webinar_to_add.id} ({w_hours:.1f}h). Week total: {hours_filled_this_week:.1f}h. Wk T26: {current_t26_hours_this_week:.1f}h."
-                            )
-                        elif best_task_num_t26_t27 == 27:
-                            current_t27_hours_this_week += w_hours
-                            total_t27_added += 1
-                            print(
-                                f"    + Added Other (T27) ID: {webinar_to_add.id} ({w_hours:.1f}h). Week total: {hours_filled_this_week:.1f}h. Wk T27: {current_t27_hours_this_week:.1f}h."
-                            )
-                        # --- Переходим к следующей итерации основного цикла while ---
-                        continue
-                    else:
-                        print(
-                            f"!!! WARNING: Trying to re-add webinar {webinar_to_add.id} (T26/T27) in Phase 3, skipping."
-                        )
-                        # added_in_this_iteration остается False, выйдем из цикла
-
-            # --- Шаг 3.5: Если ничего не добавили ни из 1-25, ни из T26/T27, выходим ---
-            if not added_in_this_iteration:
-                print(
-                    "    -> No suitable candidate found in Phase 3 this iteration (from 1-25 or T26/T27)."
-                )
-                break  # Не нашли подходящего кандидата нигде, завершаем неделю
-
-            # --- Конец основного цикла while для Фазы 3 ---
-
-        weekly_hours_summary[week_num] = hours_filled_this_week
-        if not any(task_deques.values()):
-            print("\n--- Все очереди задач исчерпаны, завершаем распределение ---")
-            break  # Все задачи обработаны
-
+                            # Если и в следующую неделю не помещается, пропускаем
+                            print(f"  - Пропущен regular ID: {webinar.id} категории {category} - не хватает часов")
+                            current_week += 1  # Переходим к следующей неделе для следующих вебинаров
+                else:
+                    # Если все недели заполнены, пропускаем оставшиеся вебинары
+                    print(f"  - Пропущен regular ID: {webinar.id} категории {category} - все недели заполнены")
+        
+        # Очищаем очередь
+        task_deques['regular'].clear()
+    
+    # Выводим итоговую статистику
+    print("\n--- Итоговое распределение вебинаров ---")
+    for week in range(1, 5):
+        print(f"Неделя {week}: всего {weekly_stats[week]['total']:.1f}ч, " 
+              f"T26: {weekly_stats[week]['t26']:.1f}ч, "
+              f"T27: {weekly_stats[week]['t27']:.1f}ч, "
+              f"regular: {weekly_stats[week]['regular']:.1f}ч")
+    
+    print(f"Всего добавлено: T26: {total_added['t26']}, T27: {total_added['t27']}, regular: {total_added['regular']}")
+    
     return webinar_weeks, selected_regular_webinars
 
 
@@ -725,9 +612,10 @@ def recommend_webinars(
     known_task_numbers,
     watched_webinar_ids,
     is_first_plan=True,
-    last_plan_completion_perc=0.0,  # Параметр пока не используется, но оставлен
     quota_t26=0,
     quota_t27=0,
+    selected_task_numbers=None,
+    include_2025_webinars=False,
 ):
     """Подбирает вебинары для плана обучения студента."""
     print("\n=== recommend_webinars START ===")
@@ -742,8 +630,17 @@ def recommend_webinars(
     webinar_weeks = {}
     weekly_hours_summary = {w: 0.0 for w in range(1, 5)}
     assigned_webinar_ids = set()
-    all_webinars = Webinar.query.options(db.joinedload(Webinar.task_numbers)).all()
+    
+    # Получение всех вебинаров с фильтрацией по академическому году
+    webinars_query = Webinar.query.options(db.joinedload(Webinar.task_numbers))
+    
+    # Если не нужно включать вебинары 2025 года, фильтруем их
+    if not include_2025_webinars and hasattr(Webinar, 'academic_year'):
+        webinars_query = webinars_query.filter(Webinar.academic_year == 2026)
+    
+    all_webinars = webinars_query.all()
     print(f"Total webinars in DB: {len(all_webinars)}")
+    print(f"Academic Year Filter: {'Both 2025 and 2026' if include_2025_webinars else 'Only 2026'}")
 
     # --- 2. Обработка вебинаров "Python с нуля" ---
     (
@@ -762,9 +659,14 @@ def recommend_webinars(
     weekly_hours_summary[1] = week1_hours
 
     # --- 3. Определение необходимых заданий ---
-    required_tasks = _determine_required_tasks(
-        student, known_task_numbers, is_first_plan, quota_t26, quota_t27
-    )
+    # Если заданы выбранные задания, используем их вместо определения на основе целевого балла
+    if selected_task_numbers:
+        required_tasks = set(selected_task_numbers)
+        print(f"Используем явно выбранные задания ({len(required_tasks)}): {sorted(list(required_tasks))}")
+    else:
+        required_tasks = _determine_required_tasks(
+            student, known_task_numbers, is_first_plan, quota_t26, quota_t27
+        )
 
     # --- 4. Фильтрация обычных вебинаров ---
     regular_webinars = [w for w in all_webinars if not w.for_beginners]

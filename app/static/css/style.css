@@ -1003,4 +1003,21 @@ body.sidebar-collapsed .sidebar-section:after {
 
 .webinar-cover .gradient-overlay {
     background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+}
+
+/* Стиль для скрытия сайдбара при начальной загрузке страницы */
+.hide-on-load {
+    transform: translateX(-100%) !important;
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 } 

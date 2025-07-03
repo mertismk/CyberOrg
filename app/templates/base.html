@@ -20,7 +20,7 @@
     </button>
     
     <!-- Боковое меню (сайдбар) -->
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar hide-on-load" id="sidebar">
         <div class="sidebar-header">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.index') }}">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CyberOrg Logo" height="50" class="me-2">
@@ -47,8 +47,8 @@
             </li>
             
             <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('webinars.webinars_list') }}">
-                    <i class="fas fa-video"></i> <span class="nav-text">Вебинары</span>
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('webinars.') and request.endpoint != 'webinars.batch_create_webinars' %}active{% endif %}" href="{{ url_for('webinars.webinars_list') }}">
+                    <i class="fas fa-video me-1"></i> <span class="nav-text">Вебинары</span>
                 </a>
             </li>
             
@@ -74,8 +74,8 @@
                     <ul class="dropdown-menu show">
                         {% if current_user.is_admin %}
                         <li>
-                            <a class="dropdown-item" href="{{ url_for('webinars.import_webinars') }}">
-                                <i class="fas fa-file-import me-2"></i> Импорт вебинаров
+                            <a class="dropdown-item {% if request.endpoint == 'webinars.batch_create_webinars' %}active{% endif %}" href="{{ url_for('webinars.batch_create_webinars') }}">
+                                <i class="fas fa-upload me-2"></i> Загрузить вебинары
                             </a>
                         </li>
                         {% endif %}
@@ -181,8 +181,12 @@
             const toggleBtn = document.getElementById('toggleSidebar');
             const contentContainer = document.getElementById('contentContainer');
             
-            // При загрузке страницы сайдбар закрыт
-            document.body.classList.add('sidebar-collapsed');
+            // Инициализация сайдбара - удаляем класс скрытия
+            setTimeout(() => {
+                sidebar.classList.remove('hide-on-load');
+                // После того как сайдбар инициализирован, добавляем класс свернутости
+                document.body.classList.add('sidebar-collapsed');
+            }, 10);
             
             // Функция переключения состояния сайдбара
             function toggleSidebar() {
@@ -210,26 +214,21 @@
             toggleBtn.addEventListener('click', toggleSidebar);
             overlay.addEventListener('click', toggleSidebar);
             
-            // Раскрываем сайдбар при клике на выпадающие пункты меню
+            // Обработка кликов на выпадающие пункты меню
             const dropdownToggles = document.querySelectorAll('.sidebar-nav .nav-link[data-bs-toggle="collapse"]');
             dropdownToggles.forEach(toggle => {
                 toggle.addEventListener('click', function(e) {
-                    // Если сайдбар свернут, раскрываем его перед открытием подменю
+                    // Остановим действие по умолчанию только если сайдбар открыт
+                    if (!document.body.classList.contains('sidebar-collapsed')) {
+                        // Ничего не делаем, позволяем Bootstrap обработать клик
+                        return;
+                    }
+                    
+                    // Если сайдбар свёрнут, просто открываем его, но не трогаем подменю
                     if (document.body.classList.contains('sidebar-collapsed')) {
                         toggleSidebar();
-                        
-                        // Предотвращаем раскрытие меню до того, как сайдбар полностью откроется
                         e.preventDefault();
                         e.stopPropagation();
-                        
-                        // Имитируем клик на текущий элемент после небольшой задержки,
-                        // чтобы дать время сайдбару открыться
-                        setTimeout(() => {
-                            const collapseId = this.getAttribute('href');
-                            const collapseEl = document.querySelector(collapseId);
-                            const bsCollapse = new bootstrap.Collapse(collapseEl);
-                            bsCollapse.show();
-                        }, 300);
                     }
                 });
             });

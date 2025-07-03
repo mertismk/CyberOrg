@@ -28,8 +28,15 @@ def students_list():
     # Получаем параметр сортировки
     sort_param = request.args.get('sort', 'date_desc')
     
-    # Базовый запрос к ученикам
-    students_query = Student.query
+    # Получаем фильтр по учебному году (по умолчанию 2025)
+    academic_year = request.args.get('year', '2025')
+    try:
+        academic_year = int(academic_year)
+    except ValueError:
+        academic_year = 2025
+    
+    # Базовый запрос к ученикам с фильтром по учебному году
+    students_query = Student.query.filter(Student.academic_year == academic_year)
 
     # Если есть поисковый запрос, фильтруем
     if query:
@@ -71,7 +78,7 @@ def students_list():
         logger.info(f"Student: {s.first_name} {s.last_name}, Registration: {s.registration_date}")
 
     # Шаблон students/templates/students/students.html
-    return render_template("students/students.html", students=students)
+    return render_template("students/students.html", students=students, current_year=academic_year)
 
 
 @bp.route("/<int:student_id>")
@@ -300,6 +307,7 @@ def student_new():
             first_name=form.first_name.data,
             last_name=form.last_name.data,
             platform_id=form.platform_id.data,
+            academic_year=form.academic_year.data,
             target_score=form.target_score.data,
             hours_per_week=form.hours_per_week.data,
             needs_python_basics=form.needs_python_basics.data,

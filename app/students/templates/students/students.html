@@ -29,9 +29,14 @@
                     <option value="hours_asc" {% if request.args.get('sort') == 'hours_asc' %}selected{% endif %}>По часам ↑</option>
                 </select>
                 
+                <!-- Сохраняем year в hidden поле, если он установлен -->
+                {% if request.args.get('year') %}
+                    <input type="hidden" name="year" value="{{ request.args.get('year') }}">
+                {% endif %}
+                
                 <button class="btn btn-primary" type="submit">Найти</button>
                 {% if request.args.get('q') or request.args.get('sort') %}
-                    <a href="{{ url_for('students.students_list') }}" class="btn btn-outline-secondary" title="Сбросить фильтры">
+                    <a href="{{ url_for('students.students_list', year=current_year) }}" class="btn btn-outline-secondary" title="Сбросить фильтры">
                         <i class="fas fa-times"></i>
                     </a>
                 {% endif %}
@@ -48,6 +53,21 @@
     </div>
 </div>
 
+<!-- Переключатель между учебными годами -->
+<div class="mb-4">
+    <div class="btn-group w-100" role="group" aria-label="Выбор учебного года">
+        <a href="{{ url_for('students.students_list', year=2025, q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}" 
+           class="btn btn-lg {% if current_year == 2025 %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            <i class="fas fa-graduation-cap me-2"></i>
+            2025 год (прошлогодние ученики)
+        </a>
+        <a href="{{ url_for('students.students_list', year=2026, q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}" 
+           class="btn btn-lg {% if current_year == 2026 %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            <i class="fas fa-user-graduate me-2"></i>
+            2026 год (текущие ученики)
+        </a>
+    </div>
+</div>
 
 {% if students %}
 

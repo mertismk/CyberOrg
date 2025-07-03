@@ -14,122 +14,196 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-    
-    <div class="row mb-5">
+
+    <div class="row mb-4">
         <div class="col-lg-12">
-            <div class="card shadow">
-                <div class="card-body text-center py-5">
-                    <h1 class="display-5 fw-bold mb-4">Система планирования обучения <span style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CyberOrg</span></h1>
-                    <p class="lead mb-4">Добро пожаловать, {{ current_user.first_name }}! 👋</p>
-                    <div class="mt-4 d-flex flex-wrap justify-content-center gap-3">
-                        {% if not current_user.is_educational_curator %}
-                        <a href="{{ url_for('students.students_list') }}" class="btn btn-primary btn-lg">
-                            <i class="fas fa-user-graduate me-2"></i> Список учеников
-                        </a>
-                        {% endif %}
-                        <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-accent btn-lg">
-                            <i class="fas fa-video me-2"></i> Список вебинаров
-                        </a>
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-0">
+                    <div class="row g-0">
+                        <div class="col-lg-8 p-5">
+                            <h1 class="display-5 fw-bold mb-2">Добро пожаловать, {{ current_user.first_name }}!</h1>
+                            <p class="lead text-muted mb-4">Система планирования обучения <span class="fw-bold" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CyberOrg</span></p>
+                        </div>
+                        <div class="col-lg-4 d-none d-lg-block">
+                            <div class="h-100 d-flex align-items-center justify-content-center p-4" 
+                                 style="background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-color) 100%);">
+                                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CyberOrg Logo" class="img-fluid" style="max-height: 180px;">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="row">
-        {% if not current_user.is_educational_curator %}
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="mb-3">
-                        <div class="d-inline-block p-3 rounded-circle mb-3" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);">
-                            <i class="fas fa-graduation-cap fa-2x text-white"></i>
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="rounded-4 p-3" style="background-color: rgba(var(--bs-primary-rgb), 0.1);">
+                                <i class="fas fa-user-graduate fa-lg" style="color: var(--primary-color);"></i>
+                            </div>
                         </div>
-                        <h5 class="card-title">Ученики</h5>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1 small">Всего учеников</h6>
+                            <h4 class="mb-0 fw-bold">{{ students_count if students_count is defined else '—' }}</h4>
+                        </div>
                     </div>
-                    <p class="card-text flex-grow-1">Просмотр и управление списком учеников. Отслеживайте прогресс и организуйте учебный план.</p>
-                    <a href="{{ url_for('students.students_list') }}" class="btn btn-primary mt-auto">
-                        <i class="fas fa-arrow-right me-2"></i>Перейти
-                    </a>
                 </div>
             </div>
         </div>
-        {% endif %}
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="mb-3">
-                        <div class="d-inline-block p-3 rounded-circle mb-3" style="background: linear-gradient(135deg, var(--accent-color) 0%, var(--light-accent) 100%);">
-                            <i class="fas fa-video fa-2x text-white"></i>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="rounded-4 p-3" style="background-color: rgba(var(--bs-accent-rgb), 0.1);">
+                                <i class="fas fa-video fa-lg" style="color: var(--accent-color);"></i>
+                            </div>
                         </div>
-                        <h5 class="card-title">Вебинары</h5>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1 small">Всего вебинаров</h6>
+                            <h4 class="mb-0 fw-bold">{{ webinars_count if webinars_count is defined else '—' }}</h4>
+                        </div>
                     </div>
-                    <p class="card-text flex-grow-1">Просмотр и управление списком вебинаров. Организуйте учебные материалы и следите за прогрессом.</p>
-                    <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-accent mt-auto">
-                        <i class="fas fa-arrow-right me-2"></i>Перейти
-                    </a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body d-flex flex-column">
-                    <div class="mb-3">
-                        <div class="d-inline-block p-3 rounded-circle mb-3" style="background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-dark) 100%);">
-                            <i class="fas fa-search fa-2x text-white"></i>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="rounded-4 p-3" style="background-color: rgba(var(--bs-success-rgb), 0.1);">
+                                <i class="fas fa-tasks fa-lg text-success"></i>
+                            </div>
                         </div>
-                        <h5 class="card-title">Поиск</h5>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1 small">Активные планы</h6>
+                            <h4 class="mb-0 fw-bold">{{ plans_count if plans_count is defined else '—' }}</h4>
+                        </div>
                     </div>
-                    <p class="card-text flex-grow-1">Быстрый поиск по ученикам и вебинарам. Найдите нужную информацию за считанные секунды.</p>
-                    <form action="{{ url_for('main.search') }}" method="get" class="mt-auto">
-                        <div class="input-group">
-                            <input type="text" class="form-control" name="q" placeholder="Имя, фамилия, ID, название...">
-                            <button class="btn btn-secondary" type="submit">
-                                <i class="fas fa-search me-1"></i> Искать
-                            </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="rounded-4 p-3" style="background-color: rgba(var(--bs-warning-rgb), 0.1);">
+                                <i class="fas fa-calendar-alt fa-lg text-warning"></i>
+                            </div>
                         </div>
-                    </form>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1 small">Учебный год</h6>
+                            <h4 class="mb-0 fw-bold">{{ current_academic_year }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Access Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4"><i class="fas fa-bolt me-2 text-warning"></i>Быстрый доступ</h5>
+                    <div class="row g-3">
+                        {% if not current_user.is_educational_curator %}
+                        <div class="col-md-4 col-sm-6">
+                            <a href="{{ url_for('students.students_list') }}" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm hover-elevate">
+                                    <div class="card-body text-center p-4">
+                                        <div class="icon-wrapper rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);">
+                                            <i class="fas fa-user-graduate fa-2x text-white"></i>
+                                        </div>
+                                        <h6 class="fw-bold mb-2">Ученики</h6>
+                                        <p class="small text-muted mb-0">Управление списком учеников</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-4 col-sm-6">
+                            <a href="{{ url_for('webinars.webinars_list') }}" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm hover-elevate">
+                                    <div class="card-body text-center p-4">
+                                        <div class="icon-wrapper rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--accent-color) 0%, var(--light-accent) 100%);">
+                                            <i class="fas fa-video fa-2x text-white"></i>
+                                        </div>
+                                        <h6 class="fw-bold mb-2">Вебинары</h6>
+                                        <p class="small text-muted mb-0">Управление учебными материалами</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            <a href="{{ url_for('plans.view_plans') }}" class="text-decoration-none">
+                                <div class="card h-100 border-0 shadow-sm hover-elevate">
+                                    <div class="card-body text-center p-4">
+                                        <div class="icon-wrapper rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                                             style="width: 70px; height: 70px; background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-dark) 100%);">
+                                            <i class="fas fa-tasks fa-2x text-white"></i>
+                                        </div>
+                                        <h6 class="fw-bold mb-2">Учебные планы</h6>
+                                        <p class="small text-muted mb-0">Управление планами обучения</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
     {% if current_user.is_admin %}
-    <div class="row mt-4">
+    <!-- Admin Tools Section -->
+    <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header" style="background: linear-gradient(135deg, var(--warning-color) 0%, #f7d06b 100%);">
-                    <h5 class="mb-0 text-dark"><i class="fas fa-cog me-2"></i>Административные функции</h5>
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header border-0 bg-transparent">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2 text-danger"></i>Административные инструменты</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3 mb-md-0">
-                            <div class="d-flex align-items-start">
-                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" style="background-color: #ffeeba;">
-                                    <i class="fas fa-upload text-warning fa-lg"></i>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center p-3 border rounded-3 bg-light hover-elevate">
+                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" 
+                                     style="background-color: rgba(var(--bs-warning-rgb), 0.1);">
+                                    <i class="fas fa-upload text-warning"></i>
                                 </div>
-                                <div>
-                                    <h6 class="fw-bold">Импорт вебинаров</h6>
-                                    <p class="mb-3">Загрузка вебинаров из Excel файла</p>
-                                    <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-sm" style="background-color: var(--warning-color); color: #333;">
-                                <i class="fas fa-upload me-1"></i> Импортировать
-                            </a>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Импорт вебинаров</h6>
+                                    <p class="mb-0 small text-muted">Загрузка данных из Excel файла</p>
                                 </div>
+                                <a href="{{ url_for('webinars.import_webinars') }}" class="btn btn-sm btn-outline-warning ms-2">
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
                             </div>
                         </div>
                         {% if current_user.is_super_admin %}
                         <div class="col-md-6">
-                            <div class="d-flex align-items-start">
-                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" style="background-color: #f8d7da;">
-                                    <i class="fas fa-users-cog text-danger fa-lg"></i>
+                            <div class="d-flex align-items-center p-3 border rounded-3 bg-light hover-elevate">
+                                <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" 
+                                     style="background-color: rgba(var(--bs-accent-rgb), 0.1);">
+                                    <i class="fas fa-users-cog" style="color: var(--accent-color);"></i>
                                 </div>
-                                <div>
-                                    <h6 class="fw-bold">Пользователи</h6>
-                                    <p class="mb-3">Управление пользователями системы</p>
-                                    <a href="{{ url_for('users.users_list') }}" class="btn btn-sm btn-accent">
-                                <i class="fas fa-cogs me-1"></i> Управлять
-                            </a>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">Пользователи</h6>
+                                    <p class="mb-0 small text-muted">Управление пользователями системы</p>
                                 </div>
+                                <a href="{{ url_for('users.users_list') }}" class="btn btn-sm btn-outline-accent ms-2">
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
                             </div>
                         </div>
                         {% endif %}
@@ -140,4 +214,37 @@
     </div>
     {% endif %}
 </div>
+
+<style>
+.hover-elevate {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.hover-elevate:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+.rounded-4 {
+    border-radius: 0.75rem !important;
+}
+.search-suggestion {
+    color: var(--primary-color);
+}
+.search-suggestion:hover {
+    text-decoration: underline !important;
+    color: var(--accent-color);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка поисковых подсказок
+    document.querySelectorAll('.search-suggestion').forEach(function(el) {
+        el.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            document.getElementById('searchInput').value = query;
+            document.getElementById('searchForm').submit();
+        });
+    });
+});
+</script>
 {% endblock %} 

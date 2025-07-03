@@ -1,5 +1,5 @@
 import os
-from flask import render_template, request, redirect, url_for, flash, abort, current_app
+from flask import render_template, request, redirect, url_for, flash, abort, current_app, jsonify
 from flask_login import login_required, current_user
 import pandas as pd
 from datetime import datetime
@@ -10,6 +10,10 @@ import re
 from flask_wtf.csrf import generate_csrf
 import pymorphy3
 from sqlalchemy.dialects import postgresql  # Для вывода SQL
+import requests
+from urllib.parse import urlparse
+import uuid
+from werkzeug.utils import secure_filename
 
 from app import db
 from app.models import (
@@ -907,3 +911,164 @@ def ajax_search():
     )
     
     return html
+
+
+@bp.route("/batch-create", methods=["GET", "POST"])
+@login_required
+def batch_create_webinars():
+    if not current_user.is_admin:
+        abort(403)  # Доступ запрещен
+    
+    if request.method == "POST":
+        try:
+            data = request.get_json()
+            academic_year = int(data.get('academic_year', 2026))
+            webinars_data = data.get('webinars', [])
+            
+            created_count = 0
+            errors = []
+            
+            # Создаем директорию для сохранения обложек, если она не существует
+            upload_folder = os.path.join(current_app.static_folder, 'uploads', 'covers')
+            if not os.path.exists(upload_folder):
+                os.makedirs(upload_folder)
+            
+            for webinar_data in webinars_data:
+                try:
+                    # Проверка обязательных полей
+                    if not webinar_data.get('title') or not webinar_data.get('url'):
+                        errors.append(f"Отсутствуют обязательные поля у вебинара: {webinar_data.get('title', 'Без названия')}")
+                        continue
+                    
+                    # Проверка на дубликат по URL
+                    existing_webinar = Webinar.query.filter_by(
+                        url=webinar_data.get('url')
+                    ).first()
+                    if existing_webinar:
+                        errors.append(f"Вебинар с URL '{webinar_data.get('url')}' уже существует (ID: {existing_webinar.id})")
+                        continue
+                    
+                    # Обработка даты
+                    date_value = None
+                    if webinar_data.get('date'):
+                        try:
+                            date_value = datetime.strptime(webinar_data.get('date'), "%Y-%m-%d").date()
+                        except ValueError:
+                            errors.append(f"Неверный формат даты для вебинара: {webinar_data.get('title')}")
+                    
+                    # Создание вебинара
+                    webinar = Webinar(
+                        title=webinar_data.get('title'),
+                        url=webinar_data.get('url'),
+                        date=date_value,
+                        academic_year=academic_year,
+                        created_by_id=current_user.id,
+                        is_programming=webinar_data.get('is_programming', False),
+                        is_manual=webinar_data.get('is_manual', False),
+                        is_excel=webinar_data.get('is_excel', False)
+                    )
+                    
+                    # Обработка и скачивание обложки
+                    cover_url = webinar_data.get('cover_url', '')
+                    if cover_url:
+                        try:
+                            # Получаем расширение файла из URL
+                            parsed_url = urlparse(cover_url)
+                            path = parsed_url.path
+                            ext = os.path.splitext(path)[1].lower()
+                            
+                            if not ext or ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                                ext = '.jpg'  # По умолчанию .jpg если расширение не распознано
+                            
+                            # Создаем уникальное имя файла
+                            filename = f"{uuid.uuid4().hex}{ext}"
+                            filepath = os.path.join(upload_folder, filename)
+                            
+                            # Скачиваем изображение
+                            response = requests.get(cover_url, timeout=10)
+                            response.raise_for_status()  # Проверка на ошибки HTTP
+                            
+                            # Сохраняем изображение
+                            with open(filepath, 'wb') as f:
+                                f.write(response.content)
+                            
+                            # Устанавливаем локальный путь к обложке
+                            webinar.cover_url = f'/static/uploads/covers/{filename}'
+                            
+                        except Exception as e:
+                            # В случае ошибки просто сохраняем оригинальный URL
+                            webinar.cover_url = cover_url
+                            errors.append(f"Ошибка при скачивании обложки для '{webinar_data.get('title')}': {str(e)}")
+                    
+                    # Установка категории
+                    if webinar_data.get('category'):
+                        try:
+                            webinar.category = int(webinar_data.get('category'))
+                        except (ValueError, TypeError):
+                            errors.append(f"Неверное значение категории для вебинара: {webinar_data.get('title')}")
+                    
+                    # Установка типа курса
+                    course_type = webinar_data.get('course_type')
+                    if course_type:
+                        setattr(webinar, course_type, True)
+                    
+                    # Обработка номеров заданий
+                    task_nums_str = webinar_data.get('task_numbers', '')
+                    if task_nums_str:
+                        task_nums = re.findall(r'\d+', task_nums_str)
+                        for num_str in task_nums:
+                            task_num = int(num_str)
+                            if 1 <= task_num <= 27:
+                                task_number = TaskNumber.query.filter_by(number=task_num).first()
+                                if not task_number:
+                                    task_number = TaskNumber(number=task_num)
+                                    db.session.add(task_number)
+                                    db.session.flush()
+                                webinar.task_numbers.append(task_number)
+                    
+                    db.session.add(webinar)
+                    created_count += 1
+                
+                except Exception as e:
+                    db.session.rollback()
+                    errors.append(f"Ошибка при создании вебинара '{webinar_data.get('title', 'Без названия')}': {str(e)}")
+            
+            if created_count > 0:
+                db.session.commit()
+                flash(f"Успешно создано {created_count} вебинаров", "success")
+            
+            if errors:
+                for error in errors[:5]:  # Показываем только первые 5 ошибок
+                    flash(error, "danger")
+                if len(errors) > 5:
+                    flash(f"... и еще {len(errors) - 5} ошибок", "danger")
+            
+            return jsonify({"success": True, "created": created_count, "errors": len(errors)})
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Batch create error: {str(e)}")
+            return jsonify({"success": False, "error": str(e)}), 500
+    
+    # При GET-запросе отображаем форму
+    # Получаем список доступных годов
+    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
+    available_years = [year[0] for year in available_years]
+    
+    if not available_years:
+        available_years = [2025, 2026]
+    
+    # Добавляем 2026 если его нет в списке
+    if 2026 not in available_years:
+        available_years.append(2026)
+    
+    # Сортируем годы
+    available_years.sort()
+    
+    # Генерируем CSRF-токен
+    csrf_token = generate_csrf()
+    
+    return render_template("webinars/batch_create_webinars.html", 
+                          available_years=available_years, 
+                          current_year=2026,
+                          csrf_token=csrf_token)

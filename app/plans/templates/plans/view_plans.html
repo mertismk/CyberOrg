@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Все планы обучения</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Главная</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Планы обучения</li>
+            </ol>
+        </nav>
+    </div>
+    
+    {% if students_with_plans %}
+        {% for student_id, data in students_with_plans.items() %}
+            <div class="card shadow-sm mb-4 border-0 rounded-4">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <h5 class="mb-1 fw-bold">{{ data.student.full_name }}</h5>
+                        <p class="mb-0 text-muted small">ID платформы: {{ data.student.platform_id }}</p>
+                    </div>
+                    <a href="{{ url_for('students.student_detail', student_id=student_id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-user me-1"></i> Профиль ученика
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for plan in data.plans %}
+                            <div class="list-group-item border-0 py-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="d-inline-flex align-items-center justify-content-center me-3 rounded-circle" 
+                                                style="width: 48px; height: 48px; background-color: rgba(var(--bs-primary-rgb), 0.1);">
+                                                <i class="fas fa-calendar-week text-primary"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">План #{{ plan.id }}</h6>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i> {{ plan.created_at|moscow_time if plan.created_at else "Дата не указана" }}
+                                                    <span class="mx-2">|</span>
+                                                    <i class="fas fa-user me-1"></i> {{ plan.created_by.full_name }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        {% set planned_count = plan.planned_webinars|length %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <span class="badge bg-primary rounded-pill">{{ planned_count }} вебинар{{ "ов" if planned_count > 4 else "а" if planned_count > 1 else "" }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 text-md-end mt-2 mt-md-0">
+                                        <a href="{{ url_for('plans.view_study_plan', plan_id=plan.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye me-1"></i> Просмотр
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle me-2"></i> Планы обучения не найдены.
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.hover-elevate:hover {
+    transform: translateY(-3px);
+    transition: transform 0.2s ease;
+}
+.rounded-4 {
+    border-radius: 0.75rem !important;
+}
+</style>
+{% endblock %} 

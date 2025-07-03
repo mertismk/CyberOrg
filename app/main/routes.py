@@ -1,34 +1,65 @@
-from flask import render_template, request
+from flask import render_template, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_ # Импортируем and_, or_
 import re # Импортируем re для обработки синонимов
 
 from app.main import bp
-from app.models import Student, Webinar, WebinarTask, WebinarComment, TaskNumber # Добавил WebinarComment и TaskNumber
+from app.models import Student, Webinar, WebinarTask, WebinarComment, TaskNumber, StudyPlan # Исправил на StudyPlan
 
 @bp.route('/')
 @login_required
 def index():
-    # Шаблон будет искаться в app/templates/index.html
-    return render_template("index.html")
-
-
-@bp.route('/guide')
-@login_required
-def guide():
-    # Шаблон будет искаться в app/templates/guide.html
-    return render_template("guide.html")
-
-
-@bp.route('/search')
-@login_required
-def search():
+    # Получаем статистику для главной страницы
+    students_count = Student.query.count() if not current_user.is_educational_curator else None
+    webinars_count = Webinar.query.count()
+    plans_count = StudyPlan.query.count()
+    
+    # Устанавливаем фиксированный учебный год
+    current_academic_year = "2025-2026"
+    
+    # Выполняем поиск, если запрос был передан
     query = request.args.get("q", "").strip()
+    search_results = None
+    
+    if query:
+        # Используем существующую логику поиска
+        search_results = perform_search(query)
+    
+    # Передаём статистику и результаты поиска в шаблон
+    return render_template("index.html", 
+                          students_count=students_count,
+                          webinars_count=webinars_count,
+                          plans_count=plans_count,
+                          current_academic_year=current_academic_year,
+                          search_results=search_results,
+                          query=query)
+
+
+@bp.route('/search-ajax')
+@login_required
+def search_ajax():
+    """AJAX endpoint для поиска на главной странице"""
+    query = request.args.get("q", "").strip()
+    
+    if not query:
+        return jsonify({"students": [], "webinars": []})
+    
+    # Используем существующую логику поиска
+    results = perform_search(query)
+    
+    return jsonify({
+        "students": [{"id": s.id, "name": s.full_name, "platform_id": s.platform_id} for s in results["students"]],
+        "webinars": [{"id": w.id, "title": w.title} for w in results["webinars"]]
+    })
+
+
+def perform_search(query):
+    """Общая функция для поиска по ученикам и вебинарам"""
     students = []
     webinars = []
 
     if not query:
-        return render_template("search.html", results=None, query=None)
+        return {"students": [], "webinars": []}
 
     # --- Обработка синонимов и чисел ---
     processed_query = query.lower() # Приводим к нижнему регистру для сравнения
@@ -43,29 +74,27 @@ def search():
         "двоичн": ["второй", "вторая", "второе", "двоичной", "двоичная", "двоичное", "2й"],
     }
 
-    query_variants = {processed_query} # Множество для хранения вариантов запроса
+    query_variants = {processed_query}
 
     # Простая проверка на наличие ключей синонимов в запросе
     for key, values in synonyms.items():
         # Используем \\b для поиска целых слов/аббревиатур
-        if re.search(r'\\b' + re.escape(key) + r'\\b', processed_query):
+        if re.search(r'\b' + re.escape(key) + r'\b', processed_query):
             query_variants.add(processed_query.replace(key, values[0])) # Добавляем основной синоним
             query_variants.update(values) # Добавляем все варианты из словаря
         # Проверяем, не содержится ли значение синонима в запросе
         for value in values:
-             if re.search(r'\\b' + re.escape(value) + r'\\b', processed_query):
+             if re.search(r'\b' + re.escape(value) + r'\b', processed_query):
                  query_variants.add(key) # Добавляем ключ (например, "сс")
                  query_variants.update(values) # Добавляем остальные варианты
 
     # Преобразуем множество обратно в список для ilike
     search_terms = list(query_variants)
-    print(f"Варианты поиска: {search_terms}") # Отладочный вывод
 
     # Разделяем исходный запрос на слова для поиска по И
     query_words = query.split()
 
     # --- Поиск по ученикам (теперь для всех пользователей) ---
-    # Убираем условие if not current_user.is_educational_curator:
     student_filters = []
     for term in search_terms: # Используем варианты запроса для поиска
         student_filters.append(Student.first_name.ilike(f"%{term}%"))
@@ -102,7 +131,6 @@ def search():
     webinars = webinar_base_query.all()
 
     # --- Дополнительный поиск по синонимам (если основной поиск по словам не дал результатов или для расширения) ---
-    # Если поиск по словам ничего не дал ИЛИ мы хотим всегда добавлять результаты по синонимам
     if not webinars or True: # Пока всегда добавляем результаты по синонимам
         webinar_synonym_filters = []
         for term in search_terms: # Ищем по каждому варианту запроса
@@ -135,7 +163,26 @@ def search():
                     webinars.append(w)
                     webinar_ids.add(w.id)
 
+    return {"students": students, "webinars": webinars}
 
+@bp.route('/guide')
+@login_required
+def guide():
+    # Шаблон будет искаться в app/templates/guide.html
+    return render_template("guide.html")
+
+
+@bp.route('/search')
+@login_required
+def search():
+    # Для обратной совместимости оставляем этот маршрут,
+    # но по сути он делает то же самое, что и главная страница с параметром q
+    query = request.args.get("q", "").strip()
+    results = perform_search(query)
+    
     return render_template(
-        "search.html", students=students, webinars=webinars, query=query
+        "search.html", 
+        students=results["students"], 
+        webinars=results["webinars"], 
+        query=query
     )

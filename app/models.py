@@ -94,6 +94,7 @@ class Student(db.Model):
     last_name = db.Column(db.String(64), index=True)
     platform_id = db.Column(db.String(100), nullable=False, index=True)
     registration_date = db.Column(db.DateTime, default=datetime.utcnow)
+    academic_year = db.Column(db.Integer, default=2025, nullable=False)  # Учебный год (2025, 2026, и т.д.)
     target_score = db.Column(db.Integer)
     hours_per_week = db.Column(db.Integer)
     known_tasks = db.relationship(

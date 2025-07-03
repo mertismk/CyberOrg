@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка вебинаров{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Загрузка вебинаров</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">Инструкция по заполнению:</h5>
+                        <p>Заполните данные для каждого вебинара и нажмите "Добавить вебинары". Обязательные поля отмечены звездочкой (*).</p>
+                        <ul>
+                            <li><strong>Название вебинара</strong> - обязательное поле</li>
+                            <li><strong>Ссылка на вебинар</strong> - обязательное поле</li>
+                            <li><strong>Дата вебинара</strong> - в формате ГГГГ-ММ-ДД (опционально)</li>
+                            <li><strong>Номера заданий</strong> - через запятую (например: "1, 2, 5") (опционально)</li>
+                            <li><strong>Ссылка на обложку</strong> - URL изображения (опционально, будет автоматически скачано)</li>
+                            <li><strong>Категория важности</strong> - выберите из списка (опционально)</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post" id="batch-webinars-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <!-- Выбор учебного года -->
+                        <div class="mb-3">
+                            <label for="academic_year" class="form-label">Учебный год</label>
+                            <select class="form-select" id="academic_year" name="academic_year" required>
+                                {% for year in available_years %}
+                                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Все добавленные вебинары будут отнесены к выбранному учебному году.
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="webinars-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Название вебинара *</th>
+                                        <th>Ссылка на вебинар *</th>
+                                        <th>Дата</th>
+                                        <th>Номера заданий</th>
+                                        <th>Ссылка на обложку</th>
+                                        <th>Тип решения</th>
+                                        <th>Категория</th>
+                                        <th>Тип курса</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="webinar-row">
+                                        <td>
+                                            <input type="text" class="form-control" name="titles[]" required>
+                                        </td>
+                                        <td>
+                                            <input type="url" class="form-control" name="urls[]" required>
+                                        </td>
+                                        <td>
+                                            <input type="date" class="form-control" name="dates[]">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control" name="task_numbers[]" placeholder="1, 2, 5">
+                                        </td>
+                                        <td>
+                                            <input type="url" class="form-control" name="cover_urls[]" placeholder="https://example.com/image.jpg">
+                                        </td>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="is_programming_0" id="is_programming_0">
+                                                <label class="form-check-label" for="is_programming_0">Программирование</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="is_manual_0" id="is_manual_0">
+                                                <label class="form-check-label" for="is_manual_0">Руками</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="is_excel_0" id="is_excel_0">
+                                                <label class="form-check-label" for="is_excel_0">Excel</label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <select class="form-select" name="categories[]">
+                                                <option value="">Не выбрана</option>
+                                                <option value="1">Обязательный</option>
+                                                <option value="2">Повторение</option>
+                                                <option value="3">Не обязательный</option>
+                                                <option value="4">Для продвинутых</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-select" name="course_types[]">
+                                                <option value="">Не выбран</option>
+                                                <option value="for_beginners">Python с нуля</option>
+                                                <option value="for_basic">Основной курс</option>
+                                                <option value="for_advanced">Задание 26</option>
+                                                <option value="for_expert">Задание 27</option>
+                                                <option value="for_mocks">Разбор пробников</option>
+                                                <option value="for_practice">Нарешка</option>
+                                                <option value="for_minisnap">Мини-щелчок</option>
+                                                <option value="for_summer">Летний курс</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger remove-row" disabled><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button type="button" id="add-row" class="btn btn-success">
+                                <i class="fas fa-plus me-1"></i> Добавить строку
+                            </button>
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-1"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Загрузить вебинары
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    $(document).ready(function() {
+        let rowCounter = 1;
+        
+        // Функция для добавления новой строки
+        $('#add-row').click(function() {
+            const newRow = `
+                <tr class="webinar-row">
+                    <td>
+                        <input type="text" class="form-control" name="titles[]" required>
+                    </td>
+                    <td>
+                        <input type="url" class="form-control" name="urls[]" required>
+                    </td>
+                    <td>
+                        <input type="date" class="form-control" name="dates[]">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" name="task_numbers[]" placeholder="1, 2, 5">
+                    </td>
+                    <td>
+                        <input type="url" class="form-control" name="cover_urls[]" placeholder="https://example.com/image.jpg">
+                    </td>
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_programming_${rowCounter}" id="is_programming_${rowCounter}">
+                            <label class="form-check-label" for="is_programming_${rowCounter}">Программирование</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_manual_${rowCounter}" id="is_manual_${rowCounter}">
+                            <label class="form-check-label" for="is_manual_${rowCounter}">Руками</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_excel_${rowCounter}" id="is_excel_${rowCounter}">
+                            <label class="form-check-label" for="is_excel_${rowCounter}">Excel</label>
+                        </div>
+                    </td>
+                    <td>
+                        <select class="form-select" name="categories[]">
+                            <option value="">Не выбрана</option>
+                            <option value="1">Обязательный</option>
+                            <option value="2">Повторение</option>
+                            <option value="3">Не обязательный</option>
+                            <option value="4">Для продвинутых</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select" name="course_types[]">
+                            <option value="">Не выбран</option>
+                            <option value="for_beginners">Python с нуля</option>
+                            <option value="for_basic">Основной курс</option>
+                            <option value="for_advanced">Задание 26</option>
+                            <option value="for_expert">Задание 27</option>
+                            <option value="for_mocks">Разбор пробников</option>
+                            <option value="for_practice">Нарешка</option>
+                            <option value="for_minisnap">Мини-щелчок</option>
+                            <option value="for_summer">Летний курс</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-danger remove-row"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+            
+            $('#webinars-table tbody').append(newRow);
+            rowCounter++;
+            
+            // Активируем все кнопки удаления после добавления второй строки
+            if ($('.webinar-row').length > 1) {
+                $('.remove-row').prop('disabled', false);
+            }
+        });
+        
+        // Обработчик для удаления строк (делегирование событий)
+        $('#webinars-table').on('click', '.remove-row', function() {
+            $(this).closest('tr').remove();
+            
+            // Если осталась только одна строка, деактивируем её кнопку удаления
+            if ($('.webinar-row').length === 1) {
+                $('.remove-row').prop('disabled', true);
+            }
+        });
+        
+        // Обработка отправки формы
+        $('#batch-webinars-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Преобразуем данные формы в JSON для отправки
+            const formData = new FormData(this);
+            const jsonData = {
+                academic_year: formData.get('academic_year'),
+                webinars: []
+            };
+            
+            // Собираем данные по каждому вебинару
+            const rows = $('.webinar-row');
+            rows.each(function(index) {
+                const rowData = {
+                    title: formData.getAll('titles[]')[index],
+                    url: formData.getAll('urls[]')[index],
+                    date: formData.getAll('dates[]')[index] || null,
+                    task_numbers: formData.getAll('task_numbers[]')[index] || "",
+                    cover_url: formData.getAll('cover_urls[]')[index] || "",
+                    category: formData.getAll('categories[]')[index] || null,
+                    course_type: formData.getAll('course_types[]')[index] || null,
+                    is_programming: formData.has(`is_programming_${index}`),
+                    is_manual: formData.has(`is_manual_${index}`),
+                    is_excel: formData.has(`is_excel_${index}`)
+                };
+                
+                jsonData.webinars.push(rowData);
+            });
+            
+            // Показываем загрузку
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalBtnText = submitBtn.html();
+            submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i> Загрузка...');
+            submitBtn.prop('disabled', true);
+            
+            // Отправляем данные на сервер
+            $.ajax({
+                url: "{{ url_for('webinars.batch_create_webinars') }}",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(jsonData),
+                headers: {
+                    'X-CSRFToken': formData.get('csrf_token')
+                },
+                success: function(response) {
+                    // Перенаправляем на страницу списка вебинаров
+                    window.location.href = "{{ url_for('webinars.webinars_list') }}";
+                },
+                error: function(xhr) {
+                    submitBtn.html(originalBtnText);
+                    submitBtn.prop('disabled', false);
+                    alert('Произошла ошибка при добавлении вебинаров. Пожалуйста, проверьте введенные данные.');
+                    console.error(xhr.responseText);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 

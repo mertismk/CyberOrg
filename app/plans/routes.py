@@ -18,7 +18,7 @@ from app.models import (
 from app.plans import bp
 
 # Импортируем сервис для рекомендаций
-from app.services.plan_service import recommend_webinars, get_webinar_hours
+from app.services.plan_service import recommend_webinars, get_webinar_hours, get_priority_for_webinar
 
 # Используем относительный импорт для форм внутри того же пакета
 # from .forms import CreatePlanForm, EditPlanForm # Формы не используются в этих роутах
@@ -122,27 +122,39 @@ def create_study_plan(student_id):
         if request.form.get("is_tasks_selection") == "1":
             # Получаем выбранные задания
             selected_tasks = set(map(int, request.form.getlist("selected_tasks")))
+            
+            # Получаем параметр включения вебинаров 2025 года
+            include_2025_webinars = request.form.get("include_2025_webinars") == "yes"
 
             if not selected_tasks:
                 flash("Выберите хотя бы одно задание для плана.", "warning")
                 return redirect(url_for(".select_tasks", student_id=student_id))
 
             # Получаем рекомендации на основе выбранных заданий
+            # Здесь квоты не передаем, так как это просто предварительный выбор вебинаров
             suitable_webinars, webinar_weeks, weekly_hours_summary = (
-                recommend_webinars_for_tasks(
+                recommend_webinars(
                     student=student,
-                    selected_task_numbers=selected_tasks,
                     known_task_numbers=known_task_numbers,
                     watched_webinar_ids=watched_webinar_ids,
                     is_first_plan=is_first_plan,
+                    selected_task_numbers=selected_tasks,
+                    include_2025_webinars=include_2025_webinars,
                 )
             )
 
             # Разделение вебинаров на рекомендованные и остальные
             suitable_webinar_ids = {w.id for w in suitable_webinars}
-            all_webinars = Webinar.query.order_by(
+            
+            # Фильтруем все вебинары по году, если не включаем 2025
+            all_webinars_query = Webinar.query
+            if not include_2025_webinars:
+                all_webinars_query = all_webinars_query.filter(Webinar.academic_year == 2026)
+                
+            all_webinars = all_webinars_query.order_by(
                 Webinar.date.desc(), Webinar.id.desc()
             ).all()
+            
             other_webinars = [
                 w
                 for w in all_webinars
@@ -167,6 +179,7 @@ def create_study_plan(student_id):
                 selected_tasks=selected_tasks,
                 csrf_token_value=csrf_token_value,
                 get_webinar_hours=get_webinar_hours,
+                include_2025_webinars=include_2025_webinars,
             )
 
         # Обработка финального создания плана
@@ -269,130 +282,7 @@ def create_study_plan(student_id):
     return redirect(url_for(".select_tasks", student_id=student_id))
 
 
-# Функция для получения рекомендаций на основе выбранных заданий
-def recommend_webinars_for_tasks(
-    student,
-    selected_task_numbers,
-    known_task_numbers,
-    watched_webinar_ids,
-    is_first_plan=True,
-):
-    """
-    Получить рекомендации по вебинарам на основе выбранных заданий.
 
-    Args:
-        student: объект Student
-        selected_task_numbers: набор номеров заданий, выбранных для плана
-        known_task_numbers: набор номеров заданий, которые ученик уже знает
-        watched_webinar_ids: набор ID вебинаров, которые ученик уже посмотрел
-        is_first_plan: является ли это первым планом для ученика
-
-    Returns:
-        tuple: (список подходящих вебинаров, словарь номеров недель, сводка по часам в неделю)
-    """
-    # Получаем все вебинары с задачами
-    all_webinars = Webinar.query.options(db.joinedload(Webinar.task_numbers)).all()
-
-    # Максимальное количество часов на неделю
-    max_hours_per_week = student.hours_per_week or 9  # По умолчанию 9 часов
-
-    # Группируем вебинары по заданиям для удобства обработки
-    webinars_by_task = {}
-    for webinar in all_webinars:
-        if webinar.id in watched_webinar_ids:
-            continue  # Пропускаем уже просмотренные вебинары
-
-        # Пропускаем ролики для начинающих по Python, если студенту не нужны основы
-        if not student.needs_python_basics and webinar.title:
-            # Проверяем разные варианты обозначения вебинаров для начинающих
-            python_beginner_keywords = [
-                "Python для начинающих",
-                "основы Python",
-                "базовый Python",
-                "введение в Python",
-                "Python с нуля",
-            ]
-            if any(
-                keyword.lower() in webinar.title.lower()
-                for keyword in python_beginner_keywords
-            ):
-                print(
-                    f"DEBUG: Пропускаем ролик для начинающих по Python: {webinar.title} (ID: {webinar.id})"
-                )
-                continue
-
-        webinar_task_numbers = {task.number for task in webinar.task_numbers}
-
-        for task_num in webinar_task_numbers:
-            if task_num not in webinars_by_task:
-                webinars_by_task[task_num] = []
-            webinars_by_task[task_num].append(webinar)
-
-    # Определяем приоритет вебинаров
-    def get_webinar_priority(webinar):
-        if not webinar:
-            return 999
-
-        # Приоритеты категорий (ниже = важнее)
-        category_priority = {
-            1: 0,  # Обязательный
-            2: 1,  # Повторение
-            4: 2,  # Для продвинутых
-            3: 3,  # Необязательный
-            None: 4,  # Без категории
-        }
-
-        # Количество заданий из выбранных, которые покрывает вебинар
-        webinar_task_numbers = {task.number for task in webinar.task_numbers}
-        covered_tasks = webinar_task_numbers.intersection(selected_task_numbers)
-        relevance_score = len(covered_tasks)
-
-        return (
-            category_priority.get(webinar.category, 4),  # Приоритет по категории
-            -relevance_score,  # Больше заданий = выше приоритет
-            (
-                webinar.date if webinar.date else datetime(2099, 1, 1)
-            ),  # Сортировка по дате
-        )
-
-    # Подготовка вебинаров для добавления
-    candidate_webinars = []
-    for task_num in selected_task_numbers:
-        if task_num in webinars_by_task:
-            for webinar in webinars_by_task[task_num]:
-                if webinar not in candidate_webinars:  # Избегаем дубликатов
-                    candidate_webinars.append(webinar)
-
-    # Сортируем кандидатов по приоритету
-    candidate_webinars.sort(key=get_webinar_priority)
-
-    # Распределяем вебинары по неделям с учетом лимита часов
-    suitable_webinars = []
-    webinar_weeks = {}
-    weekly_hours = {1: 0, 2: 0, 3: 0, 4: 0}
-
-    for webinar in candidate_webinars:
-        # Рассчитываем часы вебинара
-        webinar_hours = get_webinar_hours(webinar)
-
-        # Находим неделю с минимальной нагрузкой
-        current_min_week = min(weekly_hours, key=weekly_hours.get)
-
-        # Проверяем, не превысит ли добавление вебинара лимит часов
-        if weekly_hours[current_min_week] + webinar_hours <= max_hours_per_week:
-            suitable_webinars.append(webinar)
-            webinar_weeks[webinar.id] = current_min_week
-            weekly_hours[current_min_week] += webinar_hours
-
-    print(
-        f"DEBUG: student {student.id}, hours_per_week={max_hours_per_week}, selected_tasks={selected_task_numbers}, needs_python_basics={student.needs_python_basics}"
-    )
-    print(
-        f"DEBUG: found {len(suitable_webinars)} suitable webinars out of {len(candidate_webinars)} candidates"
-    )
-    print(f"DEBUG: weekly hours: {weekly_hours}")
-
-    return suitable_webinars, webinar_weeks, weekly_hours
 
 
 @bp.route("/<int:plan_id>")
@@ -870,9 +760,9 @@ def get_recommendations(student_id):
             known_task_numbers=known_task_numbers,
             watched_webinar_ids=watched_webinar_ids,
             is_first_plan=is_first_plan,
-            last_plan_completion_perc=last_plan_completion_perc,
             quota_t26=quota_t26,
             quota_t27=quota_t27,
+            include_2025_webinars=False,  # По умолчанию только 2026 год
         )
 
         # Форматируем результат
@@ -904,3 +794,35 @@ def get_recommendations(student_id):
         )
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/")
+@login_required
+def view_plans():
+    """Отображает список всех планов обучения"""
+    if current_user.is_educational_curator:
+        abort(403)
+        
+    # Получаем все планы обучения, сортируем по дате создания (новые сверху)
+    plans = StudyPlan.query.options(
+        db.joinedload(StudyPlan.student),
+        db.joinedload(StudyPlan.created_by)
+    ).order_by(StudyPlan.created_at.desc()).all()
+    
+    # Группируем планы по студентам для более удобного отображения
+    students_with_plans = {}
+    
+    for plan in plans:
+        student_id = plan.student_id
+        if student_id not in students_with_plans:
+            students_with_plans[student_id] = {
+                'student': plan.student,
+                'plans': []
+            }
+        students_with_plans[student_id]['plans'].append(plan)
+    
+    return render_template(
+        "plans/view_plans.html",
+        students_with_plans=students_with_plans,
+        title="Все планы обучения"
+    )
