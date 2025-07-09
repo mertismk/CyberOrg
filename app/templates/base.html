@@ -12,6 +12,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
     {% block styles %}{% endblock %}
+    <style>
+        .sidebar-section .section-text {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: #6366f1;
+        }
+        
+        .admin-nav-link {
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .admin-nav-link:hover, 
+        .admin-nav-link[aria-expanded="true"] {
+            background-color: rgba(99, 102, 241, 0.1);
+            border-left-color: #6366f1;
+        }
+        
+        #adminSubmenu .dropdown-item:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+        
+        #adminSubmenu .dropdown-item.active {
+            background-color: #6366f1;
+        }
+    </style>
 </head>
 <body>
     <!-- Кнопка для открытия/закрытия бокового меню -->
@@ -48,7 +75,7 @@
             
             <li class="nav-item">
                 <a class="nav-link {% if request.endpoint and request.endpoint.startswith('webinars.') and request.endpoint != 'webinars.batch_create_webinars' %}active{% endif %}" href="{{ url_for('webinars.webinars_list') }}">
-                    <i class="fas fa-video me-1"></i> <span class="nav-text">Вебинары</span>
+                    <i class="fas fa-video"></i> <span class="nav-text">Вебинары</span>
                 </a>
             </li>
             
@@ -62,12 +89,12 @@
             
             {% if current_user.is_admin or current_user.is_super_admin %}
             <li class="sidebar-section">
-                <span class="section-text">Администрирование</span>
+                <span class="section-text"><i class="fas fa-shield-alt me-2"></i>Управление системой</span>
             </li>
             
             <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="collapse" href="#adminSubmenu" role="button" aria-expanded="false" aria-controls="adminSubmenu">
-                    <i class="fas fa-cogs"></i> <span class="nav-text">Администрирование</span>
+                <a class="nav-link admin-nav-link" data-bs-toggle="collapse" href="#adminSubmenu" role="button" aria-expanded="false" aria-controls="adminSubmenu">
+                    <i class="fas fa-cogs"></i> <span class="nav-text">Инструменты администратора</span>
                     <i class="fas fa-chevron-down ms-auto chevron-icon"></i>
                 </a>
                 <div class="collapse" id="adminSubmenu">
@@ -165,7 +192,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center">
                     <p class="mb-0 text-muted">&copy; 2025 CyberOrg. Все права на вебинары принадлежат образовательной платформе Школково.</p>
                     <div>
-                        <span class="text-muted">Система планирования обучения. Версия 1.2.</span>
+                        <span class="text-muted">Версия 1.3. Дата последнего обновления: 09.07.2025.</span>
                     </div>
                 </div>
             </div>

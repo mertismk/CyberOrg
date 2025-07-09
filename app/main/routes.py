@@ -12,7 +12,7 @@ def index():
     # Получаем статистику для главной страницы
     students_count = Student.query.count() if not current_user.is_educational_curator else None
     webinars_count = Webinar.query.count()
-    plans_count = StudyPlan.query.count()
+    plans_count = StudyPlan.query.count() if not current_user.is_educational_curator else None
     
     # Устанавливаем фиксированный учебный год
     current_academic_year = "2025-2026"
