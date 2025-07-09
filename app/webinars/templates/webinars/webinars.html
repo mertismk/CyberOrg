@@ -172,6 +172,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Инициализация фильтров
     initFilters();
+    
+    // Инициализация пагинации
+    initPagination();
 });
 
 function initCopyLinks() {
@@ -294,7 +297,7 @@ function initFilters() {
     }
 }
 
-function performSearch(query) {
+function performSearch(query, page = 1) {
     // Получаем значения всех фильтров
     const courseFilter = document.querySelector('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter).active').dataset.filter;
     const dateFilter = document.querySelector('.date-filter.active').dataset.filter;
@@ -308,8 +311,8 @@ function performSearch(query) {
         container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Загрузка...</p></div>';
     }
     
-    // Формируем URL для AJAX-запроса
-    const url = `/webinars/ajax_search?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}`;
+    // Формируем URL для AJAX-запроса с учетом страницы
+    const url = `/webinars/ajax_search?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}&page=${page}`;
     
     // Выполняем AJAX-запрос
     fetch(url)
@@ -323,8 +326,11 @@ function performSearch(query) {
             // Обновляем контейнер с карточками
             document.getElementById('webinar-results-container').innerHTML = html;
             
+            // Инициализируем обработчики пагинации
+            initPagination();
+            
             // Обновляем URL страницы без перезагрузки
-            const newUrl = `/webinars/?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}`;
+            const newUrl = `/webinars/?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}&page=${page}`;
             history.pushState({}, '', newUrl);
         })
         .catch(error => {
@@ -333,6 +339,35 @@ function performSearch(query) {
                 container.innerHTML = `<div class="text-center py-5"><div class="alert alert-danger">Ошибка при выполнении поиска: ${error.message}</div></div>`;
             }
         });
+}
+
+// Инициализация обработчиков для пагинации
+function initPagination() {
+    // Обработчик для номеров страниц
+    document.querySelectorAll('.page-num').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.getAttribute('data-page');
+            const query = document.getElementById('webinarFilter').value.trim();
+            performSearch(query, page);
+            // Прокрутка к началу контейнера
+            document.getElementById('webinar-results-container').scrollIntoView({behavior: 'smooth'});
+        });
+    });
+    
+    // Обработчик для кнопок "Предыдущая" и "Следующая"
+    document.querySelectorAll('.page-nav').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!this.parentElement.classList.contains('disabled')) {
+                const page = this.getAttribute('data-page');
+                const query = document.getElementById('webinarFilter').value.trim();
+                performSearch(query, page);
+                // Прокрутка к началу контейнера
+                document.getElementById('webinar-results-container').scrollIntoView({behavior: 'smooth'});
+            }
+        });
+    });
 }
 </script>
 {% endblock %}
@@ -389,6 +424,48 @@ function performSearch(query) {
         background-color: #0071e3;
         color: white;
         border-color: #0071e3;
+    }
+    
+    /* --- Стили для пагинации --- */
+    .pagination-container {
+        margin-top: 2rem;
+    }
+    
+    .pagination {
+        justify-content: center;
+    }
+    
+    .page-item .page-link {
+        color: #0071e3;
+        border-color: #dee2e6;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        line-height: 1;
+        border-radius: 8px;
+        margin: 0 3px;
+        min-width: 38px;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+    
+    .page-item .page-link:hover {
+        background-color: #f0f0f0;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+        z-index: 2;
+    }
+    
+    .page-item.active .page-link {
+        background-color: #0071e3;
+        border-color: #0071e3;
+        color: #fff;
+    }
+    
+    .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #dee2e6;
     }
 
     /* --- Стили карточки вебинара в стиле Apple --- */

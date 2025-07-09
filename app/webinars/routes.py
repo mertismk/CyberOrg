@@ -49,6 +49,10 @@ def webinars_list():
     category = request.args.get("category", "all")
     task_num_str = request.args.get("task_num", "all")
     
+    # Получаем номер страницы из параметров запроса (по умолчанию 1)
+    page = request.args.get('page', 1, type=int)
+    per_page = 18  # Количество вебинаров на странице
+    
     # Создаем и выполняем запрос с фильтрацией
     query = _get_filtered_webinars_query(
         query=search_query,
@@ -68,8 +72,9 @@ def webinars_list():
     else:  # По умолчанию - старые сначала
         query = query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
     
-    # Выполняем запрос
-    webinars = query.all()
+    # Используем пагинацию вместо получения всех результатов сразу
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    webinars = pagination.items
     
     # Получаем список доступных годов для выбора
     available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
@@ -82,11 +87,12 @@ def webinars_list():
             available_years.sort()
     
     # Для удобства отладки
-    current_app.logger.debug(f"DEBUG: Found {len(webinars)} webinars after filtering")
+    current_app.logger.debug(f"DEBUG: Found {pagination.total} webinars after filtering, showing page {page} of {pagination.pages}")
 
     return render_template(
         "webinars/webinars.html",
         webinars=webinars,
+        pagination=pagination,
         available_years=available_years,
         current_year=selected_year,
         course_category=course_category,
@@ -919,6 +925,8 @@ def ajax_search():
     solution = request.args.get("solution", "all")
     category = request.args.get("category", "all")
     task_num_str = request.args.get("task_num", "all")
+    page = request.args.get('page', 1, type=int)
+    per_page = 18  # Количество вебинаров на странице
 
     try:
         academic_year = int(academic_year)
@@ -926,7 +934,7 @@ def ajax_search():
         academic_year = 2026
 
     current_app.logger.debug(
-        f"AJAX search query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}"
+        f"AJAX search query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}, page: {page}"
     )
 
     # Создаем запрос для фильтрации вебинаров
@@ -948,26 +956,17 @@ def ajax_search():
     else:  # По умолчанию - старые сначала
         webinars_query = webinars_query.order_by(Webinar.date.asc().nullsfirst(), Webinar.id.asc())
     
-    # Выполняем запрос
-    webinars = webinars_query.all()
+    # Пагинация результатов
+    pagination = webinars_query.paginate(page=page, per_page=per_page, error_out=False)
+    webinars = pagination.items
     
-    current_app.logger.debug(
-        f"AJAX search found: {len(webinars) if webinars else 0} webinars"
-    )
-
-    watched_webinar_ids = {w.webinar_id for w in WatchedWebinar.query.all()}
-    csrf_token_value = generate_csrf()
-    
-    # Рендерим только часть шаблона с вебинарами
-    html = render_template(
+    return render_template(
         "webinars/_webinars_list.html",
         webinars=webinars,
-        watched_webinar_ids=watched_webinar_ids,
+        pagination=pagination,
         current_user=current_user,
-        csrf_token_value=csrf_token_value,
+        is_ajax=True
     )
-    
-    return html
 
 
 @bp.route("/batch-create", methods=["GET", "POST"])

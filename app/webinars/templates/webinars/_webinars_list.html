@@ -233,6 +233,59 @@
         </div>
         {% endfor %}
     </div>
+    
+    {# Блок пагинации #}
+    {% if pagination and pagination.pages > 1 %}
+    <div class="pagination-container my-4">
+        <nav aria-label="Навигация по страницам">
+            <ul class="pagination pagination-sm justify-content-center">
+                {# Кнопка "Предыдущая" #}
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link page-nav" href="javascript:void(0);" data-page="{{ pagination.prev_num }}" aria-label="Предыдущая">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                
+                {# Отображаем страницы #}
+                {% set start_page = pagination.page - 2 if pagination.page > 2 else 1 %}
+                {% set end_page = start_page + 4 if start_page + 4 <= pagination.pages else pagination.pages %}
+                {% if start_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link page-num" href="javascript:void(0);" data-page="1">1</a>
+                    </li>
+                    {% if start_page > 2 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endif %}
+                
+                {% for page_num in range(start_page, end_page + 1) %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link page-num" href="javascript:void(0);" data-page="{{ page_num }}">{{ page_num }}</a>
+                    </li>
+                {% endfor %}
+                
+                {% if end_page < pagination.pages %}
+                    {% if end_page < pagination.pages - 1 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                    <li class="page-item">
+                        <a class="page-link page-num" href="javascript:void(0);" data-page="{{ pagination.pages }}">{{ pagination.pages }}</a>
+                    </li>
+                {% endif %}
+                
+                {# Кнопка "Следующая" #}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link page-nav" href="javascript:void(0);" data-page="{{ pagination.next_num }}" aria-label="Следующая">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="text-center text-muted" style="font-size: 0.8rem;">
+            Страница {{ pagination.page }} из {{ pagination.pages }}, всего {{ pagination.total }} вебинаров
+        </div>
+    </div>
+    {% endif %}
 {% else %}
     <div class="row">
         <div class="col-12">
