@@ -750,20 +750,77 @@ def download_all_covers():
     if not current_user.is_super_admin:
         abort(403)  # Доступ запрещен
 
-    # Получаем все вебинары с непустыми URL обложек
+    # Получаем все вебинары с непустыми URL обложек, исключая те, что уже имеют локальные пути
     webinars_with_covers = Webinar.query.filter(
         Webinar.cover_url.isnot(None), 
-        Webinar.cover_url != ""
+        Webinar.cover_url != "",
+        ~Webinar.cover_url.startswith("/static/")  # Исключаем уже локальные пути
     ).all()
     
     # Подсчитываем, сколько обложек нужно скачать
     count = len(webinars_with_covers)
     
     if request.method == "POST":
-        # Здесь логика скачивания обложек
-        # Код для скачивания будет добавлен позже
-        flash("Начато скачивание обложек. Это может занять некоторое время.", "info")
-        # После скачивания перенаправляем на список вебинаров
+        # Создаем директорию для сохранения обложек, если она не существует
+        upload_folder = os.path.join(current_app.static_folder, 'uploads', 'covers')
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+        
+        downloaded_count = 0
+        error_count = 0
+        skipped_count = 0
+        
+        for webinar in webinars_with_covers:
+            try:
+                # Проверяем, что URL не является уже локальным путем
+                if webinar.cover_url.startswith(('/static/', 'static/')):
+                    skipped_count += 1
+                    continue
+                
+                # Получаем расширение файла из URL
+                parsed_url = urlparse(webinar.cover_url)
+                path = parsed_url.path
+                ext = os.path.splitext(path)[1].lower()
+                
+                if not ext or ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                    ext = '.jpg'  # По умолчанию .jpg если расширение не распознано
+                
+                # Создаем уникальное имя файла
+                filename = f"{uuid.uuid4().hex}{ext}"
+                filepath = os.path.join(upload_folder, filename)
+                
+                # Скачиваем изображение
+                response = requests.get(webinar.cover_url, timeout=10)
+                response.raise_for_status()  # Проверка на ошибки HTTP
+                
+                # Сохраняем изображение
+                with open(filepath, 'wb') as f:
+                    f.write(response.content)
+                
+                # Обновляем путь к обложке в базе данных
+                old_url = webinar.cover_url
+                webinar.cover_url = f'/static/uploads/covers/{filename}'
+                
+                # Логируем изменение
+                current_app.logger.info(f"Обложка обновлена для вебинара '{webinar.title}': {old_url} -> {webinar.cover_url}")
+                
+                downloaded_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                current_app.logger.error(f"Ошибка при скачивании обложки для '{webinar.title}': {str(e)}")
+        
+        # Сохраняем изменения в базе данных
+        db.session.commit()
+        
+        # Формируем сообщение о результатах
+        result_message = f"Скачано обложек: {downloaded_count}"
+        if error_count > 0:
+            result_message += f", с ошибками: {error_count}"
+        if skipped_count > 0:
+            result_message += f", пропущено: {skipped_count}"
+        
+        flash(result_message, "success" if error_count == 0 else "warning")
         return redirect(url_for("webinars.webinars_list"))
     
     return render_template("webinars/download_covers.html", count=count)

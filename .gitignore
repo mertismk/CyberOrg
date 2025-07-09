@@ -144,3 +144,7 @@ __pycache__/run.cpython-313.pyc
 app/__pycache__/models.cpython-313.pyc
 app/auth/__pycache__/routes.cpython-313.pyc
 app/webinars/__pycache__/routes.cpython-313.pyc
+
+# Uploaded webinar covers
+app/static/uploads/covers/
+static/uploads/covers/
