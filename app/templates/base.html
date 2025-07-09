@@ -17,7 +17,7 @@
             display: flex;
             align-items: center;
             font-weight: 600;
-            color: #6366f1;
+            color: var(--primary-purple);
         }
         
         .admin-nav-link {
@@ -27,16 +27,49 @@
         
         .admin-nav-link:hover, 
         .admin-nav-link[aria-expanded="true"] {
-            background-color: rgba(99, 102, 241, 0.1);
-            border-left-color: #6366f1;
+            background-color: rgba(138, 43, 226, 0.1);
+            border-left-color: var(--primary-purple);
         }
         
         #adminSubmenu .dropdown-item:hover {
-            background-color: rgba(99, 102, 241, 0.1);
+            background-color: rgba(138, 43, 226, 0.1);
         }
         
         #adminSubmenu .dropdown-item.active {
-            background-color: #6366f1;
+            background-color: var(--primary-purple);
+        }
+        
+        /* Стили для бейджей пользователей */
+        .user-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+        }
+        
+        .badge-super-admin {
+            background-color: var(--primary-purple);
+            color: white;
+        }
+        
+        .badge-admin {
+            background-color: var(--warning-color);
+            color: #000;
+        }
+        
+        .badge-organizational {
+            background-color: var(--info-color);
+            color: white;
+        }
+        
+        .badge-educational {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .badge-other {
+            background-color: var(--primary-light);
+            color: white;
         }
     </style>
 </head>
@@ -131,17 +164,17 @@
                 <div class="collapse" id="profileSubmenu">
                     <ul class="dropdown-menu show">
                         <li>
-                            <span class="dropdown-item text-muted">
+                            <span class="dropdown-item">
                                 {% if current_user.is_super_admin %}
-                                    <span class="badge bg-accent me-1">Супер-админ</span>
+                                    <span class="user-badge badge-super-admin">Супер-администратор</span>
                                 {% elif current_user.is_admin %}
-                                    <span class="badge bg-warning text-dark me-1">Админ</span>
+                                    <span class="user-badge badge-admin">Администратор</span>
                                 {% elif current_user.is_educational_curator %}
-                                    <span class="badge bg-success me-1">Учебный куратор</span>
+                                    <span class="user-badge badge-educational">Учебный куратор</span>
                                 {% elif current_user.is_organizational_curator %}
-                                    <span class="badge bg-info me-1">Организационный куратор</span>
+                                    <span class="user-badge badge-organizational">Организационный куратор</span>
                                 {% else %}
-                                    <span class="badge bg-secondary me-1">{{ current_user.role }}</span>
+                                    <span class="user-badge badge-other">{{ current_user.role }}</span>
                                 {% endif %}
                             </span>
                         </li>

@@ -12,9 +12,49 @@ VALID_ROLES = [ROLE_EDUCATIONAL_CURATOR, ROLE_ORGANIZATIONAL_CURATOR, ROLE_ADMIN
 @bp.route("/") # Базовый URL будет /users (задается при регистрации blueprint)
 @super_admin_required
 def users_list():
-    users = User.query.all()
+    # Создаем словарь для категорий пользователей
+    user_categories = {
+        "super_admin": {
+            "title": "Супер-администраторы",
+            "users": []
+        },
+        "admin": {
+            "title": "Администраторы",
+            "users": []
+        },
+        "organizational_curator": {
+            "title": "Организационные кураторы",
+            "users": []
+        },
+        "educational_curator": {
+            "title": "Учебные кураторы",
+            "users": []
+        },
+        "other": {
+            "title": "Другие пользователи",
+            "users": []
+        }
+    }
+    
+    # Получаем всех пользователей и распределяем по категориям
+    users = User.query.order_by(User.last_login.desc().nullslast()).all()
+    
+    for user in users:
+        if user.is_super_admin:
+            user_categories["super_admin"]["users"].append(user)
+        elif user.is_admin:
+            user_categories["admin"]["users"].append(user)
+        elif user.is_organizational_curator:
+            user_categories["organizational_curator"]["users"].append(user)
+        elif user.is_educational_curator:
+            user_categories["educational_curator"]["users"].append(user)
+        else:
+            user_categories["other"]["users"].append(user)
+    
+    total_users = len(users)
+    
     # Шаблон ищем в users/templates/users/users.html
-    return render_template("users/users.html", users=users)
+    return render_template("users/users.html", user_categories=user_categories, total_users=total_users)
 
 
 @bp.route("/new", methods=["GET", "POST"])

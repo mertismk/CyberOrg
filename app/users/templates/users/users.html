@@ -2,12 +2,268 @@
 
 {% block title %}Управление пользователями{% endblock %}
 
+{% block styles %}
+<style>
+    .user-header {
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        background: var(--accent-gradient);
+        padding: 1.5rem;
+        color: white;
+        box-shadow: 0 10px 15px -3px rgba(114, 9, 183, 0.2);
+    }
+    
+    .user-header h1 {
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+    }
+    
+    .user-header p {
+        opacity: 0.8;
+        margin-bottom: 0;
+    }
+    
+    .add-user-btn {
+        background-color: white;
+        color: var(--primary-purple);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .add-user-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        background-color: white;
+        color: var(--primary-dark);
+    }
+    
+    .user-category {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: transform 0.3s ease;
+        margin-bottom: 2rem;
+        border: none;
+    }
+    
+    .user-category:hover {
+        transform: translateY(-5px);
+    }
+    
+    .category-header {
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid rgba(138, 43, 226, 0.1);
+    }
+    
+    .category-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        margin-right: 1rem;
+        color: white;
+        font-size: 1.2rem;
+    }
+    
+    .super-admin-icon {
+        background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-dark) 100%);
+    }
+    
+    .admin-icon {
+        background: linear-gradient(135deg, var(--warning-color) 0%, #e5b935 100%);
+    }
+    
+    .organizational-icon {
+        background: linear-gradient(135deg, var(--info-color) 0%, #45b9cc 100%);
+    }
+    
+    .educational-icon {
+        background: linear-gradient(135deg, var(--success-color) 0%, #3db9e0 100%);
+    }
+    
+    .other-icon {
+        background: linear-gradient(135deg, #9d4edd 0%, var(--primary-light) 100%);
+    }
+    
+    .category-title {
+        flex-grow: 1;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin: 0;
+        color: #1f2937;
+    }
+    
+    .table-custom {
+        margin-bottom: 0;
+    }
+    
+    .table-custom thead th {
+        background-color: #f9fafb;
+        color: #4b5563;
+        font-weight: 600;
+        border-top: none;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .table-custom tbody tr {
+        transition: background-color 0.2s;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .table-custom tbody tr:hover {
+        background-color: rgba(138, 43, 226, 0.05);
+    }
+    
+    .user-avatar {
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: var(--accent-gradient);
+        color: white;
+        margin-right: 1rem;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 6px -1px rgba(114, 9, 183, 0.3);
+    }
+    
+    .user-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 9999px;
+    }
+    
+    .badge-super-admin {
+        background-color: var(--primary-purple);
+        color: white;
+    }
+    
+    .badge-admin {
+        background-color: var(--warning-color);
+        color: #000;
+    }
+    
+    .badge-organizational {
+        background-color: var(--info-color);
+        color: white;
+    }
+    
+    .badge-educational {
+        background-color: var(--success-color);
+        color: white;
+    }
+    
+    .badge-other {
+        background-color: var(--primary-light);
+        color: white;
+    }
+    
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .edit-btn {
+        background-color: rgba(138, 43, 226, 0.1);
+        color: var(--primary-purple);
+        border: none;
+        margin-right: 0.5rem;
+    }
+    
+    .edit-btn:hover {
+        background-color: var(--primary-purple);
+        color: white;
+    }
+    
+    .delete-btn {
+        background-color: rgba(247, 37, 133, 0.1);
+        color: var(--primary-pink);
+        border: none;
+    }
+    
+    .delete-btn:hover {
+        background-color: var(--primary-pink);
+        color: white;
+    }
+    
+    .last-login {
+        display: flex;
+        align-items: center;
+    }
+    
+    .last-login i {
+        margin-right: 0.5rem;
+        color: #6b7280;
+    }
+    
+    .login-time {
+        font-size: 0.875rem;
+        color: #4b5563;
+    }
+    
+    .no-login {
+        font-size: 0.875rem;
+        color: #9ca3af;
+        font-style: italic;
+    }
+    
+    .user-stats {
+        background-color: #f9fafb;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stats-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--accent-gradient);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-right: 1rem;
+    }
+    
+    .stats-text {
+        font-size: 0.95rem;
+        color: #4b5563;
+        margin-bottom: 0;
+    }
+    
+    .stats-text strong {
+        color: #1f2937;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="fw-bold">Управление пользователями</h1>
-    <a href="{{ url_for('users.user_new') }}" class="btn btn-accent">
-        <i class="fas fa-plus me-2"></i> Добавить пользователя
-    </a>
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="fw-bold">Управление пользователями</h1>
+        <a href="{{ url_for('users.user_new') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i> Добавить пользователя
+        </a>
+    </div>
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -21,86 +277,104 @@
     {% endif %}
 {% endwith %}
 
-<div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-3">ID</th>
-                        <th class="py-3">Пользователь</th>
-                        <th class="py-3">Контактная информация</th>
-                        <th class="py-3">Роль</th>
-                        <th class="py-3">Последний вход</th>
-                        <th class="py-3 text-end pe-4">Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td class="px-4 py-3">{{ user.id }}</td>
-                        <td class="py-3">
-                            <div class="d-flex align-items-center">
-                                <div class="d-inline-flex align-items-center justify-content-center me-3 rounded-circle" style="width: 40px; height: 40px; background-color: rgba(114, 9, 183, 0.1);">
-                                    <i class="fas fa-user text-primary"></i>
+{% for category_key, category in user_categories.items() %}
+    {% if category.users %}
+    <div class="card user-category">
+        <div class="category-header">
+            <div class="category-icon 
+                {% if category_key == 'super_admin' %}super-admin-icon
+                {% elif category_key == 'admin' %}admin-icon
+                {% elif category_key == 'organizational_curator' %}organizational-icon
+                {% elif category_key == 'educational_curator' %}educational-icon
+                {% else %}other-icon{% endif %}">
+                {% if category_key == 'super_admin' %}<i class="fas fa-user-shield"></i>
+                {% elif category_key == 'admin' %}<i class="fas fa-cog"></i>
+                {% elif category_key == 'organizational_curator' %}<i class="fas fa-clipboard-list"></i>
+                {% elif category_key == 'educational_curator' %}<i class="fas fa-chalkboard-teacher"></i>
+                {% else %}<i class="fas fa-user"></i>{% endif %}
+            </div>
+            <h5 class="category-title">{{ category.title }}</h5>
+            <span class="badge bg-accent">{{ category.users|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="py-3">Пользователь</th>
+                            <th class="py-3">Статус</th>
+                            <th class="py-3">Последний вход</th>
+                            <th class="py-3 text-end pe-4">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in category.users %}
+                        <tr>
+                            <td class="px-4 py-3">{{ user.id }}</td>
+                            <td class="py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-medium">{{ user.username }}</div>
+                                        <div class="small text-muted">{{ user.full_name or 'Имя не указано' }}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="fw-medium">{{ user.username }}</div>
-                                    <div class="small text-muted">{{ user.full_name or 'Имя не указано' }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-3">
-                            <div class="small text-muted">
-                                <i class="fas fa-id-card me-1"></i> {{ user.first_name or 'Не указано' }} {{ user.last_name or '' }}
-                            </div>
-                        </td>
-                        <td class="py-3">
-                            {% if user.is_super_admin %}
-                                <span class="badge bg-accent">Супер-администратор</span>
-                            {% elif user.is_admin %}
-                                <span class="badge bg-warning text-dark">Администратор</span>
-                            {% elif user.is_organizational_curator %}
-                                <span class="badge bg-info">Организационный куратор</span>
-                            {% elif user.is_educational_curator %}
-                                <span class="badge bg-success">Учебный куратор</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ user.role }}</span> {# На случай других ролей #}
-                            {% endif %}
-                        </td>
-                        <td class="py-3">
-                            {% if user.last_login %}
-                                <span class="small">{{ user.last_login|moscow_time }}</span>
-                            {% else %}
-                                <span class="small text-muted">Не входил</span>
-                            {% endif %}
-                        </td>
-                        <td class="py-3 text-end pe-4">
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('users.user_edit', user_id=user.id) }}" class="btn btn-sm btn-primary" title="Редактировать">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                {% if user.id != current_user.id %}
-                                <a href="{{ url_for('users.confirm_user_delete', user_id=user.id) }}" 
-                                   class="btn btn-sm btn-danger"
-                                   title="Удалить">
-                                    <i class="fas fa-trash"></i>
-                                </a>
+                            </td>
+                            <td class="py-3">
+                                {% if user.is_super_admin %}
+                                    <span class="user-badge badge-super-admin">Супер-администратор</span>
+                                {% elif user.is_admin %}
+                                    <span class="user-badge badge-admin">Администратор</span>
+                                {% elif user.is_organizational_curator %}
+                                    <span class="user-badge badge-organizational">Организационный куратор</span>
+                                {% elif user.is_educational_curator %}
+                                    <span class="user-badge badge-educational">Учебный куратор</span>
+                                {% else %}
+                                    <span class="user-badge badge-other">{{ user.role }}</span>
                                 {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td class="py-3">
+                                <div class="last-login">
+                                    <i class="far fa-clock"></i>
+                                    {% if user.last_login %}
+                                        <span class="login-time">{{ user.last_login|moscow_time }}</span>
+                                    {% else %}
+                                        <span class="no-login">Не входил в систему</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="py-3 text-end pe-4">
+                                <div class="d-flex justify-content-end">
+                                    <a href="{{ url_for('users.user_edit', user_id=user.id) }}" class="action-btn edit-btn" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if user.id != current_user.id %}
+                                    <a href="{{ url_for('users.confirm_user_delete', user_id=user.id) }}" 
+                                       class="action-btn delete-btn"
+                                       title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+    {% endif %}
+{% endfor %}
+
+<div class="user-stats mt-4">
+    <div class="stats-icon">
+        <i class="fas fa-users"></i>
+    </div>
+    <p class="stats-text">Всего в системе <strong>{{ total_users }}</strong> пользователей</p>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mt-4">
-    <p class="text-muted mb-0"><i class="fas fa-users me-2"></i> Всего пользователей: <strong>{{ users|length }}</strong></p>
-</div>
-
-{% block scripts %}
-{% endblock %}
 {% endblock %} 
