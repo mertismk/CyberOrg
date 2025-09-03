@@ -18,7 +18,7 @@ class Webinar(db.Model):
     title = db.Column(db.String(200), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     date = db.Column(db.Date)
-    academic_year = db.Column(db.Integer, default=2025, nullable=False)  # Учебный год (2025, 2026, и т.д.)
+    academic_year = db.Column(db.Integer, default=2026, nullable=False)  # Учебный год (2025, 2026, и т.д.)
     task_numbers = db.relationship(
         "TaskNumber", secondary="webinar_task_association", back_populates="webinars"
     )
@@ -94,7 +94,7 @@ class Student(db.Model):
     last_name = db.Column(db.String(64), index=True)
     platform_id = db.Column(db.String(100), nullable=False, index=True)
     registration_date = db.Column(db.DateTime, default=datetime.utcnow)
-    academic_year = db.Column(db.Integer, default=2025, nullable=False)  # Учебный год (2025, 2026, и т.д.)
+    academic_year = db.Column(db.Integer, default=2026, nullable=False)  # Учебный год (2025, 2026, и т.д.)
     target_score = db.Column(db.Integer)
     hours_per_week = db.Column(db.Integer)
     known_tasks = db.relationship(

@@ -15,7 +15,7 @@ CATEGORY_CHOICES = [
 
 # Choices для учебного года
 current_year = datetime.now().year
-ACADEMIC_YEAR_CHOICES = [(year, str(year)) for year in range(2025, current_year + 2)]
+ACADEMIC_YEAR_CHOICES = [(year, str(year)) for year in range(2026, current_year + 2)] + [(year, str(year)) for year in range(2025, 2026)]
 
 def validate_task_numbers(form, field):
     if field.data:

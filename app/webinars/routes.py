@@ -81,7 +81,7 @@ def webinars_list():
     available_years = [year[0] for year in available_years]
     if not available_years or selected_year not in available_years:
         if not available_years:
-            available_years = [2025, 2026]
+            available_years = [2026, 2025]
         elif selected_year not in available_years:
             available_years.append(selected_year)
             available_years.sort()
@@ -163,7 +163,7 @@ def filter_webinars():
     available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
     available_years = [year[0] for year in available_years]
     if not available_years:
-        available_years = [2025, 2026]  # Если нет данных, показываем по умолчанию
+        available_years = [2026, 2025]  # Если нет данных, показываем по умолчанию
 
     current_app.logger.debug("--- filter_webinars route END ---")  # <--- Логгирование
     # Возвращаем отрендеренный ОСНОВНОЙ шаблон с отфильтрованными данными
@@ -523,7 +523,7 @@ def import_webinars():
     available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
     available_years = [year[0] for year in available_years]
     if not available_years:
-        available_years = [2025, 2026]
+        available_years = [2026, 2025]
     
     # Добавляем 2026 если его нет в списке
     if 2026 not in available_years:
@@ -905,7 +905,7 @@ def create_webinar():
     available_years = [year[0] for year in available_years]
     if not available_years or 2026 not in available_years:
         if not available_years:
-            available_years = [2025, 2026]
+            available_years = [2026, 2025]
         elif 2026 not in available_years:
             available_years.append(2026)
             available_years.sort()
@@ -1112,7 +1112,7 @@ def batch_create_webinars():
     available_years = [year[0] for year in available_years]
     
     if not available_years:
-        available_years = [2025, 2026]
+        available_years = [2026, 2025]
     
     # Добавляем 2026 если его нет в списке
     if 2026 not in available_years:

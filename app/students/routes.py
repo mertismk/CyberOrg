@@ -28,12 +28,12 @@ def students_list():
     # Получаем параметр сортировки
     sort_param = request.args.get('sort', 'date_desc')
     
-    # Получаем фильтр по учебному году (по умолчанию 2025)
-    academic_year = request.args.get('year', '2025')
+    # Получаем фильтр по учебному году (по умолчанию 2026)
+    academic_year = request.args.get('year', '2026')
     try:
         academic_year = int(academic_year)
     except ValueError:
-        academic_year = 2025
+        academic_year = 2026
     
     # Базовый запрос к ученикам с фильтром по учебному году
     students_query = Student.query.filter(Student.academic_year == academic_year)

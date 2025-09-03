@@ -20,29 +20,41 @@
 </div>
 
 <!-- Переключатель учебного года -->
-<div class="card mb-4 border-0 shadow-sm">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0" style="font-weight: 600;">
-                <i class="fas fa-calendar-alt me-2" style="color: #0071e3;"></i> Учебный год
-            </h5>
-            <div class="btn-group" role="group">
-                {% for year in available_years %}
-                <a href="{{ url_for('webinars.webinars_list', year=year, q=search_query) }}" 
-                   class="btn {% if year == current_year %}btn-primary{% else %}btn-outline-primary{% endif %}" 
-                   style="border-radius: {% if loop.first %}20px 0 0 20px{% elif loop.last %}0 20px 20px 0{% else %}0{% endif %}; font-weight: 500;">
-                    {{ year }}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0 fw-bold">
+        <i class="fas fa-calendar-alt me-2 text-primary"></i> Учебный год
+    </h5>
+    <div class="dropdown">
+        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="yearDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
+            <i class="fas fa-{% if current_year == 2026 %}user-graduate{% else %}graduation-cap{% endif %} me-2"></i>
+            {{ current_year }} год
+            <span class="badge bg-{% if current_year == 2026 %}success{% else %}secondary{% endif %} ms-2">
+                {% if current_year == 2026 %}текущие{% else %}прошлогодние{% endif %}
+            </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="yearDropdown" style="z-index: 1050;">
+            <li>
+                <a class="dropdown-item d-flex align-items-center {% if current_year == 2026 %}active{% endif %}" 
+                   href="{{ url_for('webinars.webinars_list', year=2026, q=search_query) }}">
+                    <i class="fas fa-user-graduate me-2 text-success"></i>
+                    <div>
+                        <div class="fw-bold">2026 год</div>
+                        <small class="text-muted">Текущие вебинары</small>
+                    </div>
                 </a>
-                {% endfor %}
-            </div>
-        </div>
-        <p class="text-muted small mb-0 mt-2">
-            {% if current_year == 2025 %}
-            Текущие вебинары 2025 года
-            {% else %}
-            Вебинары учебного {{ current_year }} года
-            {% endif %}
-        </p>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center {% if current_year == 2025 %}active{% endif %}" 
+                   href="{{ url_for('webinars.webinars_list', year=2025, q=search_query) }}">
+                    <i class="fas fa-graduation-cap me-2 text-secondary"></i>
+                    <div>
+                        <div class="fw-bold">2025 год</div>
+                        <small class="text-muted">Прошлогодние вебинары</small>
+                    </div>
+                </a>
+            </li>
+        </ul>
     </div>
 </div>
 
@@ -841,6 +853,68 @@ function initPagination() {
             transform: scale(1);
             opacity: 0.7;
         }
+    }
+    
+    /* Стили для dropdown переключения годов */
+    .dropdown-toggle {
+        border-radius: 20px !important;
+        padding: 8px 16px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border-color: #d2d2d7;
+    }
+    .dropdown-toggle:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .dropdown-menu {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        padding: 8px 0;
+        z-index: 1050 !important;
+        position: absolute !important;
+    }
+    .dropdown-item {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 0 8px;
+        transition: all 0.2s ease;
+    }
+    .dropdown-item:hover {
+        background-color: rgba(0, 113, 227, 0.08);
+        transform: translateX(4px);
+    }
+    .dropdown-item.active {
+        background-color: #0071e3;
+        color: white;
+    }
+    .dropdown-item.active:hover {
+        background-color: #0077ed;
+    }
+    .dropdown-divider {
+        margin: 8px 16px;
+        border-color: #e9ecef;
+    }
+    /* Исправление для обрезания dropdown */
+    .dropdown {
+        position: relative;
+    }
+    .dropdown-menu {
+        position: absolute !important;
+        top: 100% !important;
+        left: auto !important;
+        right: 0 !important;
+        transform: none !important;
+    }
+    /* Дополнительные гарантии для корректного отображения dropdown */
+    .dropdown-menu.show {
+        display: block !important;
+        z-index: 9999 !important;
+    }
+    /* Убираем overflow hidden у родительских контейнеров */
+    .card, .card-body, .container, .row, .col {
+        overflow: visible !important;
     }
 </style>
 {% endblock %} 
