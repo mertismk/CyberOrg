@@ -179,10 +179,12 @@
                                                     {{ comment.user.first_name[0] if comment.user else '?' }}{{ comment.user.last_name[0] if comment.user else '' }}
                                                 </div>
                                                 <div class="flex-grow-1">
-                                                    <div class="d-flex justify-content-between align-items-center">
+                                                    <div class="d-flex justify-content-between align-items-start">
                                                         <div class="comment-author">
                                                             <strong class="comment-name" style="font-size: 0.8rem;">{{ comment.user.full_name }}</strong>
-                                                            <small class="text-muted ms-1" style="font-size: 0.7rem;">{{ comment.created_at|moscow_time }}</small>
+                                                            <div class="comment-time mt-1">
+                                                                <small class="text-muted" style="font-size: 0.7rem;">{{ comment.created_at|moscow_time }}</small>
+                                                            </div>
                                                         </div>
                                                         {% if current_user.id == comment.user_id or current_user.is_admin %}
                                                             <form action="{{ url_for('webinars.delete_webinar_comment', comment_id=comment.id) }}" method="post" class="d-inline">

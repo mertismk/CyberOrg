@@ -1,8 +1,5 @@
 /* General Body Style */
-body {
-    background-color: #121212;
-    color: #e0e0e0;
-}
+/* Тема наследуется из style.css через CSS-переменные */
 
 /* === Webinars Page General Style === */
 .webinars-page {
