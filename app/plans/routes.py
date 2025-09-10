@@ -18,7 +18,7 @@ from app.models import (
 from app.plans import bp
 
 # Импортируем сервис для рекомендаций
-from app.services.plan_service import recommend_webinars, get_webinar_hours, get_priority_for_webinar
+from app.services.plan_service import recommend_webinars, get_webinar_hours, get_priority_for_webinar, analyze_webinar_blocks
 
 # Используем относительный импорт для форм внутри того же пакета
 # from .forms import CreatePlanForm, EditPlanForm # Формы не используются в этих роутах
@@ -43,28 +43,39 @@ def select_tasks(student_id):
     known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
     known_task_numbers = {task.task_number for task in known_tasks}
 
-    # Определяем рекомендуемые задания на основе целевого балла
+    # Определяем рекомендуемые задания на основе целевого балла/оценки
     recommended_tasks = set()
     target_score = student.target_score or 80
-    tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
-    tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
-    tasks_80_85 = set(range(1, 24)) | {25}
-    tasks_85_90 = set(range(1, 26))
-    tasks_90_95 = set(range(1, 26)) | {27}
-    tasks_95_100 = set(range(1, 28))
-
-    if target_score <= 70:
-        recommended_tasks = tasks_60_70.copy()
-    elif target_score <= 80:
-        recommended_tasks = tasks_70_80.copy()
-    elif target_score <= 85:
-        recommended_tasks = tasks_80_85.copy()
-    elif target_score <= 90:
-        recommended_tasks = tasks_85_90.copy()
-    elif target_score <= 95:
-        recommended_tasks = tasks_90_95.copy()
+    
+    if student.exam_type == 'oge':
+        # Для ОГЭ только задания 1-16, логика по оценкам (3-5)
+        if target_score <= 3:
+            recommended_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+        elif target_score <= 4:
+            recommended_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+        else:  # target_score == 5
+            recommended_tasks = set(range(1, 17))  # Все задания 1-16
     else:
-        recommended_tasks = tasks_95_100.copy()
+        # Для ЕГЭ логика по баллам (60-100)
+        tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
+        tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
+        tasks_80_85 = set(range(1, 24)) | {25}
+        tasks_85_90 = set(range(1, 26))
+        tasks_90_95 = set(range(1, 26)) | {27}
+        tasks_95_100 = set(range(1, 28))
+
+        if target_score <= 70:
+            recommended_tasks = tasks_60_70.copy()
+        elif target_score <= 80:
+            recommended_tasks = tasks_70_80.copy()
+        elif target_score <= 85:
+            recommended_tasks = tasks_80_85.copy()
+        elif target_score <= 90:
+            recommended_tasks = tasks_85_90.copy()
+        elif target_score <= 95:
+            recommended_tasks = tasks_90_95.copy()
+        else:
+            recommended_tasks = tasks_95_100.copy()
 
     # Удаляем уже изученные задания из рекомендуемых
     recommended_tasks = recommended_tasks - known_task_numbers
@@ -76,6 +87,77 @@ def select_tasks(student_id):
         known_task_numbers=known_task_numbers,
         recommended_tasks=sorted(recommended_tasks),
     )
+
+
+# Новый маршрут для анализа блоков вебинаров
+@bp.route("/analyze_blocks/<int:student_id>", methods=["GET", "POST"])
+@login_required
+def analyze_blocks(student_id):
+    if current_user.is_educational_curator:
+        abort(403)
+
+    student = Student.query.get_or_404(student_id)
+    form = CsrfForm()
+
+    if request.method == "POST":
+        # Получаем выбранные задания из формы
+        selected_tasks = set(map(int, request.form.getlist("selected_tasks")))
+        include_2025_webinars = request.form.get("include_2025_webinars") == "yes"
+        
+        if not selected_tasks:
+            flash("Выберите хотя бы одно задание для плана.", "warning")
+            return redirect(url_for(".select_tasks", student_id=student_id))
+
+        # Получаем известные задания и просмотренные вебинары
+        known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
+        known_task_numbers = {task.task_number for task in known_tasks}
+        watched_webinar_ids = {
+            w.webinar_id
+            for w in WatchedWebinar.query.filter_by(student_id=student_id).all()
+        }
+        
+        # Получаем все вебинары для анализа блоков
+        webinars_query = Webinar.query.options(db.joinedload(Webinar.task_numbers))
+        webinars_query = webinars_query.filter(Webinar.exam_type == student.exam_type)
+        
+        if not include_2025_webinars:
+            webinars_query = webinars_query.filter(Webinar.academic_year == 2026)
+        
+        all_webinars = webinars_query.all()
+        
+        # Анализируем блоки вебинаров
+        hours_per_week = student.hours_per_week or 9
+        plan_count = StudyPlan.query.filter_by(student_id=student.id).count()
+        is_first_plan = plan_count == 0
+        
+        # Определяем нужны ли задания 26
+        needs_task_26 = 26 in selected_tasks
+        
+        webinar_blocks = analyze_webinar_blocks(
+            all_webinars, 
+            watched_webinar_ids, 
+            hours_per_week, 
+            student.needs_python_basics, 
+            is_first_plan, 
+            needs_task_26,
+            include_2025_webinars
+        )
+        
+        # Генерируем CSRF токен для формы
+        csrf_token_value = generate_csrf()
+        
+        return render_template(
+            "plans/analyze_blocks.html",
+            student=student,
+            webinar_blocks=webinar_blocks,
+            selected_tasks=sorted(list(selected_tasks)),
+            include_2025_webinars=include_2025_webinars,
+            csrf_token_value=csrf_token_value,
+            plan_count=plan_count,
+        )
+
+    # GET запрос - перенаправляем на выбор заданий
+    return redirect(url_for(".select_tasks", student_id=student_id))
 
 
 # Маршрут создания плана теперь внутри 'plans' Blueprint,
@@ -130,9 +212,91 @@ def create_study_plan(student_id):
                 flash("Выберите хотя бы одно задание для плана.", "warning")
                 return redirect(url_for(".select_tasks", student_id=student_id))
 
-            # Получаем рекомендации на основе выбранных заданий
-            # Здесь квоты не передаем, так как это просто предварительный выбор вебинаров
-            suitable_webinars, webinar_weeks, weekly_hours_summary = (
+        # Проверяем, является ли этот запрос финальным созданием плана
+        elif request.form.get("final_create") == "1":
+            # Обработка финального создания плана
+            selected_webinar_ids = request.form.getlist("selected_webinar_ids")
+            webinar_weeks = {}
+            
+            # Получаем распределение по неделям
+            for i in range(1, 5):  # недели 1-4
+                week_webinars = request.form.getlist(f"week_{i}_webinars")
+                for webinar_id in week_webinars:
+                    webinar_weeks[webinar_id] = i
+            
+            if not selected_webinar_ids:
+                flash("Не выбраны вебинары для плана.", "warning")
+                return redirect(url_for(".create_study_plan", student_id=student_id))
+            
+            # Создаем план в базе данных
+            study_plan = StudyPlan(student_id=student.id, created_by_id=current_user.id)
+            db.session.add(study_plan)
+            db.session.flush()  # Получаем ID для study_plan
+
+            # Сохраняем вебинары с их неделями
+            added_count = 0
+            for webinar_id_str in selected_webinar_ids:
+                try:
+                    webinar_id = int(webinar_id_str)
+                    week_number = webinar_weeks.get(webinar_id_str, 1)
+                    
+                    # Проверяем, существует ли вебинар
+                    webinar_exists = (
+                        db.session.query(Webinar.id).filter_by(id=webinar_id).scalar()
+                        is not None
+                    )
+                    if webinar_exists:
+                        planned_webinar = PlannedWebinar(
+                            study_plan_id=study_plan.id,
+                            webinar_id=webinar_id,
+                            week_number=week_number,
+                        )
+                        db.session.add(planned_webinar)
+                        added_count += 1
+                except ValueError:
+                    continue
+
+            if added_count == 0:
+                db.session.rollback()
+                flash("Не удалось добавить выбранные вебинары.", "danger")
+                return redirect(url_for(".create_study_plan", student_id=student_id))
+
+            db.session.commit()
+            flash("План обучения успешно создан!", "success")
+            return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
+        
+        # Обработка формы анализа блоков - показываем страницу с ручным редактированием
+        else:
+            # Получаем выбранные задания из формы анализа блоков
+            selected_tasks = set(map(int, request.form.getlist("selected_tasks")))
+            include_2025_webinars = request.form.get("include_2025_webinars") == "yes"
+            needs_python_basics = request.form.get("needs_python_basics") == "yes"
+            
+            if not selected_tasks:
+                flash("Не выбраны задания для плана.", "warning")
+                return redirect(url_for(".select_tasks", student_id=student_id))
+                
+            # Получаем известные задания и просмотренные вебинары
+            known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
+            known_task_numbers = {task.task_number for task in known_tasks}
+            watched_webinar_ids = {
+                w.webinar_id
+                for w in WatchedWebinar.query.filter_by(student_id=student_id).all()
+            }
+            plan_count = StudyPlan.query.filter_by(student_id=student.id).count()
+            is_first_plan = plan_count == 0
+            
+            # Читаем квоты блоков из формы (недельные квоты)
+            block_quotas = {}
+            block_keys = ['beginners', 'basic', 'advanced', 'mocks', 'practice']
+            for block_key in block_keys:
+                try:
+                    block_quotas[block_key] = int(request.form.get(f"weekly_block_quota_{block_key}", 0))
+                except ValueError:
+                    block_quotas[block_key] = 0
+
+            # Получаем рекомендации на основе выбранных заданий и квот блоков
+            suitable_webinars, webinar_weeks, weekly_hours_summary, webinar_blocks = (
                 recommend_webinars(
                     student=student,
                     known_task_numbers=known_task_numbers,
@@ -140,142 +304,96 @@ def create_study_plan(student_id):
                     is_first_plan=is_first_plan,
                     selected_task_numbers=selected_tasks,
                     include_2025_webinars=include_2025_webinars,
+                    block_quotas=block_quotas,
                 )
             )
-
-            # Разделение вебинаров на рекомендованные и остальные
-            suitable_webinar_ids = {w.id for w in suitable_webinars}
             
-            # Фильтруем все вебинары по году, если не включаем 2025
-            all_webinars_query = Webinar.query
+            # Используем рекомендованные вебинары как выбранные
+            selected_webinar_ids = [str(w.id) for w in suitable_webinars]
+            
+            if not selected_webinar_ids:
+                flash("Не удалось подобрать вебинары для плана.", "warning")
+                return redirect(url_for(".analyze_blocks", student_id=student_id))
+            
+            # Получаем все доступные вебинары для отображения в разделе "Доступные вебинары"
+            all_webinars_query = Webinar.query.options(db.joinedload(Webinar.task_numbers))
+            all_webinars_query = all_webinars_query.filter(Webinar.exam_type == student.exam_type)
+            
+            # Применяем фильтр по академическому году
             if not include_2025_webinars:
                 all_webinars_query = all_webinars_query.filter(Webinar.academic_year == 2026)
                 
-            all_webinars = all_webinars_query.order_by(
-                Webinar.date.desc(), Webinar.id.desc()
-            ).all()
+            all_available_webinars = all_webinars_query.all()
+            print(f"DEBUG: Total available webinars: {len(all_available_webinars)}")
+            print(f"DEBUG: Include 2025 webinars: {include_2025_webinars}")
             
-            other_webinars = [
-                w
-                for w in all_webinars
-                if w.id not in suitable_webinar_ids and w.id not in watched_webinar_ids
-            ]
+            # Отладочная информация по годам
+            webinars_by_year = {}
+            for webinar in all_available_webinars:
+                year = webinar.academic_year
+                if year not in webinars_by_year:
+                    webinars_by_year[year] = 0
+                webinars_by_year[year] += 1
+            print(f"DEBUG: Webinars by academic year: {webinars_by_year}")
 
-            # Генерируем CSRF токен для формы
+            # Вычисляем required_tasks для отображения в шаблоне
+            required_tasks = set()
+            target_score = student.target_score or 80
+            
+            if student.exam_type == 'oge':
+                # Для ОГЭ только задания 1-16, логика по оценкам (3-5)
+                if target_score <= 3:
+                    required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+                elif target_score <= 4:
+                    required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+                else:  # target_score == 5
+                    required_tasks = set(range(1, 17))  # Все задания 1-16
+            else:
+                # Для ЕГЭ логика по баллам (60-100)
+                tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
+                tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
+                tasks_80_85 = set(range(1, 24)) | {25}
+                tasks_85_90 = set(range(1, 26))
+                tasks_90_95 = set(range(1, 26)) | {27}
+                tasks_95_100 = set(range(1, 28))
+                
+                if target_score <= 70:
+                    required_tasks = tasks_60_70.copy()
+                elif target_score <= 80:
+                    required_tasks = tasks_70_80.copy()
+                elif target_score <= 85:
+                    required_tasks = tasks_80_85.copy()
+                elif target_score <= 90:
+                    required_tasks = tasks_85_90.copy()
+                elif target_score <= 95:
+                    required_tasks = tasks_90_95.copy()
+                else:
+                    required_tasks = tasks_95_100.copy()
+                
+                # Откладываем 26/27 если initial_score низкий
+                if student.initial_score is not None and student.initial_score <= 40:
+                    required_tasks.discard(26)
+                    required_tasks.discard(27)
+
+            # Показываем страницу с ручным редактированием
             csrf_token_value = generate_csrf()
-
             return render_template(
                 "plans/create_plan.html",
                 student=student,
-                webinars=all_webinars,
+                selected_tasks=sorted(list(selected_tasks)),
+                include_2025_webinars=include_2025_webinars,
+                needs_python_basics=needs_python_basics,
                 suitable_webinars=suitable_webinars,
-                other_webinars=other_webinars,
-                known_task_numbers=known_task_numbers,
-                watched_webinar_ids=watched_webinar_ids,
+                webinars=all_available_webinars,  # Добавляем все доступные вебинары
                 webinar_weeks=webinar_weeks,
                 weekly_hours_summary=weekly_hours_summary,
-                required_tasks=sorted(list(selected_tasks)),
-                is_first_plan=is_first_plan,
-                selected_tasks=selected_tasks,
+                webinar_blocks=webinar_blocks,
                 csrf_token_value=csrf_token_value,
                 get_webinar_hours=get_webinar_hours,
-                include_2025_webinars=include_2025_webinars,
+                required_tasks=sorted(list(required_tasks)),
+                known_task_numbers=known_task_numbers,
+                watched_webinar_ids=watched_webinar_ids,  # Добавляем ID просмотренных вебинаров
             )
-
-        # Обработка финального создания плана
-        # Читаем квоты из формы
-        try:
-            quota_t26 = int(request.form.get("quota_t26", 0))
-        except ValueError:
-            quota_t26 = 0
-        try:
-            quota_t27 = int(request.form.get("quota_t27", 0))
-        except ValueError:
-            quota_t27 = 0
-
-        # --- ИЗМЕНЕНИЕ: Получаем данные из формы ---
-        selected_webinar_ids = request.form.getlist(
-            "webinar_ids"
-        )  # ID только выбранных вебинаров
-        # --- Добавляем отладочный вывод ---
-        print(f"--- Saving Plan --- ")
-        print(
-            f"Received webinar_ids from form ({len(selected_webinar_ids)}): {selected_webinar_ids}"
-        )
-        if len(selected_webinar_ids) != len(set(selected_webinar_ids)):
-            print("!!! WARNING: Duplicate IDs received from form!")
-        # --- Конец отладочного вывода ---
-
-        if not selected_webinar_ids:
-            # flash("Не выбран ни один вебинар для плана.", "warning") # Можно раскомментировать, если нужно
-            # Редирект обратно на страницу GET
-            return redirect(url_for(".create_study_plan", student_id=student_id))
-
-        study_plan = StudyPlan(student_id=student.id, created_by_id=current_user.id)
-        db.session.add(study_plan)
-        db.session.flush()  # Получаем ID для study_plan
-
-        # --- ИЗМЕНЕНИЕ: Сохраняем вебинары, выбранные в форме ---
-        added_count = 0
-        for webinar_id_str in selected_webinar_ids:
-            try:
-                webinar_id = int(webinar_id_str)
-                # Получаем номер недели из соответствующего поля week_numbers_webinarId
-                week_number_str = request.form.get(f"week_numbers_{webinar_id}")
-                try:
-                    # Определяем неделю, по умолчанию 1
-                    week_number = int(week_number_str) if week_number_str else 1
-                    if not 1 <= week_number <= 4:
-                        week_number = 1
-                except (ValueError, TypeError):
-                    week_number = 1  # По умолчанию неделя 1, если значение некорректно
-
-                # Проверяем, существует ли вебинар (опционально, но безопасно)
-                webinar_exists = (
-                    db.session.query(Webinar.id).filter_by(id=webinar_id).scalar()
-                    is not None
-                )
-                if webinar_exists:
-                    planned_webinar = PlannedWebinar(
-                        study_plan_id=study_plan.id,
-                        webinar_id=webinar_id,
-                        week_number=week_number,
-                    )
-                    db.session.add(planned_webinar)
-                    added_count += 1
-                else:
-                    print(
-                        f"Предупреждение: Вебинар с ID {webinar_id} не найден, пропущен при создании плана."
-                    )
-                    # Можно добавить flash-сообщение, если нужно
-
-            except ValueError:
-                print(
-                    f"Предупреждение: Некорректный ID вебинара {webinar_id_str}, пропущен."
-                )
-                continue  # Пропускаем некорректный ID
-
-        if added_count == 0 and selected_webinar_ids:
-            # Если были выбраны ID, но ни один не прошел проверку
-            db.session.rollback()  # Откатываем создание study_plan
-            flash(
-                "Не удалось добавить выбранные вебинары. Возможно, они были удалены.",
-                "danger",
-            )
-            return redirect(url_for(".create_study_plan", student_id=student_id))
-        elif added_count == 0:
-            # Если изначально не было выбрано вебинаров (хотя проверка выше должна была сработать)
-            db.session.rollback()
-            flash("Не выбран ни один вебинар для плана.", "warning")
-            return redirect(url_for(".create_study_plan", student_id=student_id))
-
-        # --- Добавляем лог перед коммитом ---
-        print(f"Committing {added_count} PlannedWebinar entries.")
-        # --- Конец лога ---
-
-        db.session.commit()
-        flash("План обучения успешно создан!", "success")
-        return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
 
     # --- GET Запрос ---
     # При обычном GET запросе, перенаправляем на страницу выбора заданий
@@ -358,28 +476,39 @@ def view_study_plan(plan_id):
     # Рассчитываем required_tasks для ИНФОРМАЦИОННОГО блока (с учетом initial_score)
     required_tasks = set()
     target_score = student.target_score or 80  # Дефолтный балл для расчета
-    tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
-    tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
-    tasks_80_85 = set(range(1, 24)) | {25}
-    tasks_85_90 = set(range(1, 26))
-    tasks_90_95 = set(range(1, 26)) | {27}
-    tasks_95_100 = set(range(1, 28))
-    if target_score <= 70:
-        required_tasks = tasks_60_70.copy()
-    elif target_score <= 80:
-        required_tasks = tasks_70_80.copy()
-    elif target_score <= 85:
-        required_tasks = tasks_80_85.copy()
-    elif target_score <= 90:
-        required_tasks = tasks_85_90.copy()
-    elif target_score <= 95:
-        required_tasks = tasks_90_95.copy()
+    
+    if student.exam_type == 'oge':
+        # Для ОГЭ только задания 1-16, логика по оценкам (3-5)
+        if target_score <= 3:
+            required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+        elif target_score <= 4:
+            required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+        else:  # target_score == 5
+            required_tasks = set(range(1, 17))  # Все задания 1-16
     else:
-        required_tasks = tasks_95_100.copy()
-    # Откладываем 26/27 если initial_score низкий - ТОЛЬКО для отображения в блоке
-    if student.initial_score is not None and student.initial_score <= 40:
-        required_tasks.discard(26)
-        required_tasks.discard(27)
+        # Для ЕГЭ логика по баллам (60-100)
+        tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
+        tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))
+        tasks_80_85 = set(range(1, 24)) | {25}
+        tasks_85_90 = set(range(1, 26))
+        tasks_90_95 = set(range(1, 26)) | {27}
+        tasks_95_100 = set(range(1, 28))
+        if target_score <= 70:
+            required_tasks = tasks_60_70.copy()
+        elif target_score <= 80:
+            required_tasks = tasks_70_80.copy()
+        elif target_score <= 85:
+            required_tasks = tasks_80_85.copy()
+        elif target_score <= 90:
+            required_tasks = tasks_85_90.copy()
+        elif target_score <= 95:
+            required_tasks = tasks_90_95.copy()
+        else:
+            required_tasks = tasks_95_100.copy()
+        # Откладываем 26/27 если initial_score низкий - ТОЛЬКО для отображения в блоке
+        if student.initial_score is not None and student.initial_score <= 40:
+            required_tasks.discard(26)
+            required_tasks.discard(27)
 
     # Создаем список НЕИЗВЕСТНЫХ базовых заданий (1-25) для отображения в скобках
     basic_tasks_to_study = sorted(
@@ -475,7 +604,7 @@ def edit_study_plan(plan_id):
     )
 
     current_webinar_ids = {pw.webinar_id for pw in current_planned_webinars}
-    webinars = Webinar.query.all()  # Все вебинары для выбора
+    webinars = Webinar.query.filter(Webinar.exam_type == student.exam_type).all()  # Только вебинары нужного типа экзамена
     known_tasks = KnownTaskNumber.query.filter_by(student_id=student.id).all()
     known_task_numbers = {task.task_number for task in known_tasks}
     watched_webinar_ids = {
@@ -713,12 +842,9 @@ def mark_all_webinars_watched(plan_id):
 def get_recommendations(student_id):
     """
     API эндпоинт для получения рекомендаций по вебинарам.
-    Принимает параметры quota_t26 и quota_t27 для настройки квот.
+    Квоты T26 и T27 теперь распределяются в предыдущем окне.
     """
     try:
-        # Получаем квоты из параметров запроса
-        quota_t26 = int(request.args.get("quota_t26", 0))
-        quota_t27 = int(request.args.get("quota_t27", 0))
 
         # Получаем студента
         student = Student.query.get_or_404(student_id)
@@ -755,13 +881,11 @@ def get_recommendations(student_id):
             )
 
         # Получаем рекомендации
-        suitable_webinars, webinar_weeks, weekly_hours = recommend_webinars(
+        suitable_webinars, webinar_weeks, weekly_hours, webinar_blocks = recommend_webinars(
             student=student,
             known_task_numbers=known_task_numbers,
             watched_webinar_ids=watched_webinar_ids,
             is_first_plan=is_first_plan,
-            quota_t26=quota_t26,
-            quota_t27=quota_t27,
             include_2025_webinars=False,  # По умолчанию только 2026 год
         )
 
@@ -784,6 +908,7 @@ def get_recommendations(student_id):
                 "success": True,
                 "recommendations": recommendations,
                 "weekly_hours": weekly_hours,
+                "webinar_blocks": webinar_blocks,
             }
         )
 

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика уведомлений{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><i class="fas fa-chart-bar me-2"></i>Статистика просмотров уведомлений</h1>
+    <a href="{{ url_for('updates.manage_updates') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> К управлению
+    </a>
+</div>
+
+<!-- Фильтр по уведомлениям -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Фильтр</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-6">
+                <label for="notification_id" class="form-label">Конкретное уведомление</label>
+                <select class="form-select" id="notification_id" name="notification_id">
+                    <option value="">Все уведомления</option>
+                    {% for stat in stats_data %}
+                        <option value="{{ stat.notification.id }}" 
+                                {% if current_notification_id == stat.notification.id %}selected{% endif %}>
+                            {{ stat.notification.title }} 
+                            {% if stat.notification.version %}({{ stat.notification.version }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i>Применить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Статистика уведомлений -->
+{% if stats_data %}
+<div class="row">
+    {% for stat in stats_data %}
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">
+                        {{ stat.notification.title }}
+                        {% if stat.notification.version %}
+                            <small class="text-muted">({{ stat.notification.version }})</small>
+                        {% endif %}
+                    </h5>
+                    <small class="text-muted">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ stat.notification.created_at|moscow_time }}
+                    </small>
+                </div>
+                <div class="text-end">
+                    <h3 class="mb-0 text-primary">{{ stat.total_views }}</h3>
+                    <small class="text-muted">просмотров</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-2">
+                            {% if stat.notification.is_active %}
+                                <span class="badge bg-success">Активно</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Неактивно</span>
+                            {% endif %}
+                            <span class="badge bg-info">Приоритет: {{ stat.notification.priority }}</span>
+                        </div>
+                        <p class="text-muted mb-3">{{ stat.notification.content|truncate(200) }}</p>
+                        
+                        {% if stat.viewed_users %}
+                        <h6>Последние просмотры:</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {% for status, user in stat.viewed_users[:10] %}
+                                <span class="badge bg-light text-dark" title="{{ status.viewed_at|moscow_time }}">
+                                    {{ user.full_name or user.username }}
+                                    <small class="text-muted">{{ status.viewed_at.strftime('%d.%m %H:%M') }}</small>
+                                </span>
+                            {% endfor %}
+                            {% if stat.viewed_users|length > 10 %}
+                                <span class="badge bg-secondary">+{{ stat.viewed_users|length - 10 }} ещё</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <a href="{{ url_for('updates.notification_detailed_stats', notification_id=stat.notification.id) }}" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-eye me-1"></i>
+                            Подробная статистика
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Пагинация -->
+{% if notifications.pages > 1 %}
+<nav aria-label="Навигация по страницам">
+    <ul class="pagination justify-content-center">
+        {% if notifications.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('updates.notification_statistics', page=notifications.prev_num, notification_id=current_notification_id) }}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        {% endif %}
+        
+        {% for page_num in notifications.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != notifications.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('updates.notification_statistics', page=page_num, notification_id=current_notification_id) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if notifications.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('updates.notification_statistics', page=notifications.next_num, notification_id=current_notification_id) }}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+    <h4 class="text-muted">Нет данных для отображения</h4>
+    <p class="text-muted">Пока что нет уведомлений или статистики просмотров.</p>
+</div>
+{% endif %}
+{% endblock %}

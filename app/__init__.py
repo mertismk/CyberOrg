@@ -73,6 +73,12 @@ def create_app(config_class=Config):
     from .plans import bp as plans_bp
     app.register_blueprint(plans_bp)
 
+    from .updates import bp as updates_bp
+    app.register_blueprint(updates_bp, url_prefix='/updates')
+
+    from .topics import bp as topics_bp
+    app.register_blueprint(topics_bp, url_prefix='/topics')
+
     # Обновление времени последнего доступа
     @app.before_request
     def update_last_seen():

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Управление обновлениями{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><i class="fas fa-rocket me-2"></i>Управление уведомлениями об обновлениях</h1>
+    <a href="{{ url_for('updates.create_update') }}" class="btn btn-accent">
+        <i class="fas fa-plus me-1"></i> Создать уведомление
+    </a>
+</div>
+
+{% if notifications %}
+<div class="row">
+    {% for notification in notifications %}
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    {% if notification.images %}
+                    <div class="col-md-3">
+                        {% set first_image = notification.images[0] %}
+                        <img src="{{ url_for('static', filename=first_image.image_url) }}" 
+                             alt="{{ notification.title }}" 
+                             class="img-fluid rounded" 
+                             style="max-height: 150px; object-fit: cover;">
+                        {% if notification.images|length > 1 %}
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-images me-1"></i>
+                                +{{ notification.images|length - 1 }} ещё
+                            </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                    {% else %}
+                    <div class="col-12">
+                    {% endif %}
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">
+                                {{ notification.title }}
+                                {% if notification.version %}
+                                    <small class="text-muted">({{ notification.version }})</small>
+                                {% endif %}
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('updates.edit_update', id=notification.id) }}" 
+                                   class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('updates.resend_notification', notification_id=notification.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Отправить всем еще раз">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="confirmDelete({{ notification.id }}, '{{ notification.title }}')" title="Удалить">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            {% if notification.is_active %}
+                                <span class="badge bg-success">Активно</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Неактивно</span>
+                            {% endif %}
+                            
+                            <span class="badge bg-info">Приоритет: {{ notification.priority }}</span>
+                            
+                            {% if notification.show_until %}
+                                <span class="badge bg-warning text-dark">
+                                    До: {{ notification.show_until.strftime('%d.%m.%Y') }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="card-text notification-preview-content">
+                            {{ notification.content|truncate(200) }}
+                        </div>
+                        {% if '[SLIDE]' in notification.content %}
+                            <small class="text-info d-block mb-2">
+                                <i class="fas fa-layer-group me-1"></i>
+                                {{ notification.content.split('[SLIDE]')|length }} слайдов в карусели
+                            </small>
+                        {% endif %}
+                        
+                        <div class="text-muted small">
+                            <i class="fas fa-user me-1"></i> {{ notification.created_by.full_name or notification.created_by.username }}
+                            <span class="ms-3">
+                                <i class="fas fa-calendar me-1"></i> {{ notification.created_at|moscow_time }}
+                            </span>
+                            {% if notification.updated_at != notification.created_at %}
+                                <span class="ms-3">
+                                    <i class="fas fa-edit me-1"></i> Изменено: {{ notification.updated_at|moscow_time }}
+                                </span>
+                            {% endif %}
+                            
+                            <!-- Статистика просмотров -->
+                            <span class="ms-3">
+                                <i class="fas fa-eye me-1"></i> 
+                                Просмотрели: {{ notification.user_statuses|length }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-rocket fa-3x text-muted mb-3"></i>
+    <h4 class="text-muted">Пока нет уведомлений об обновлениях</h4>
+    <p class="text-muted">Создайте первое уведомление, чтобы информировать пользователей о новых возможностях системы.</p>
+    <a href="{{ url_for('updates.create_update') }}" class="btn btn-accent">
+        <i class="fas fa-plus me-1"></i> Создать уведомление
+    </a>
+</div>
+{% endif %}
+
+<!-- Модальное окно для подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы действительно хотите удалить уведомление <strong id="deleteItemName"></strong>?</p>
+                <p class="text-muted small">Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(id, name) {
+    document.getElementById('deleteItemName').textContent = name;
+    document.getElementById('deleteForm').action = '{{ url_for("updates.delete_update", id=0) }}'.replace('0', id);
+    
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Обрабатываем содержимое уведомлений в preview
+    const contentElements = document.querySelectorAll('.notification-preview-content');
+    contentElements.forEach(element => {
+        let content = element.innerHTML;
+        
+        // Удаляем разделители слайдов из preview
+        content = content.replace(/\[SLIDE\]/g, '<span class="badge bg-info me-1">Слайд</span>');
+        
+        // Заменяем изображения на иконки
+        content = content.replace(/\[IMG:([^:\]]+):?([^\]]*)\]/g, (match, filename, caption) => {
+            return `<span class="text-primary"><i class="fas fa-image me-1"></i><small>${filename}</small></span>`;
+        });
+        
+        element.innerHTML = content;
+    });
+});
+</script>
+{% endblock %}

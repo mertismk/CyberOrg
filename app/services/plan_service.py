@@ -71,6 +71,189 @@ def create_webinar_sort_key(webinar):
 
 # --- Новые вспомогательные функции ---
 
+def analyze_webinar_blocks(webinars, watched_webinar_ids, hours_per_week=9, needs_python_basics=False, is_first_plan=True, needs_task_26=False, include_2025_webinars=False):
+    """
+    Анализирует вебинары и группирует их по блокам с учетом новых требований.
+    
+    Args:
+        webinars: список вебинаров
+        watched_webinar_ids: множество ID просмотренных вебинаров
+        hours_per_week: количество часов в неделю
+        needs_python_basics: нужен ли Python с нуля
+        is_first_plan: является ли это первым планом
+        needs_task_26: нужно ли задание 26
+        include_2025_webinars: включать ли вебинары 2024-2025 года
+    
+    Returns:
+        dict: Словарь с информацией о блоках вебинаров
+    """
+    blocks = {
+        'beginners': {'count': 0, 'hours': 0, 'recommended_per_week': 0},
+        'basic': {'count': 0, 'hours': 0, 'recommended_per_week': 0},
+        'advanced': {'count': 0, 'hours': 0, 'recommended_per_week': 0},
+        'mocks': {'count': 0, 'hours': 0, 'recommended_per_week': 0},
+        'practice': {'count': 0, 'hours': 0, 'recommended_per_week': 0},
+        'minisnap': {'count': 0, 'hours': 0, 'recommended_per_week': 0},
+    }
+    
+    for webinar in webinars:
+        if webinar.id in watched_webinar_ids:
+            continue
+            
+        # Исключаем мини-щелчок для вебинаров 2024-2025 года
+        if webinar.for_minisnap and not include_2025_webinars and webinar.academic_year == 2025:
+            continue
+            
+        webinar_hours = get_webinar_hours(webinar)
+        
+        if webinar.for_beginners:
+            blocks['beginners']['count'] += 1
+            blocks['beginners']['hours'] += webinar_hours
+        elif webinar.for_basic or webinar.for_expert:  # T27 теперь входит в основной курс
+            blocks['basic']['count'] += 1
+            blocks['basic']['hours'] += webinar_hours
+        elif webinar.for_advanced:  # T26
+            blocks['advanced']['count'] += 1
+            blocks['advanced']['hours'] += webinar_hours
+        elif webinar.for_mocks:
+            blocks['mocks']['count'] += 1
+            blocks['mocks']['hours'] += webinar_hours
+        elif webinar.for_practice:
+            blocks['practice']['count'] += 1
+            blocks['practice']['hours'] += webinar_hours
+        elif webinar.for_minisnap:
+            blocks['minisnap']['count'] += 1
+            blocks['minisnap']['hours'] += webinar_hours
+    
+    # Рассчитываем рекомендуемые значения на неделю согласно новым требованиям
+    for block_key, block_data in blocks.items():
+        if block_data['count'] > 0:
+            avg_hours_per_webinar = block_data['hours'] / block_data['count']
+            
+            # Определяем процент времени для блока
+            time_percentage = 0.0
+            
+            if block_key == 'beginners' and needs_python_basics:
+                time_percentage = 0.66  # 66% времени на Python с нуля
+            elif block_key == 'basic':
+                if needs_python_basics:
+                    time_percentage = 0.34  # 34% времени на основной курс (если есть Python)
+                elif needs_task_26 and not is_first_plan:
+                    time_percentage = 0.66  # 66% времени на основной курс (если есть T26)
+                else:
+                    time_percentage = 1.0   # 100% времени на основной курс
+            elif block_key == 'advanced' and needs_task_26 and not is_first_plan:
+                time_percentage = 0.34  # 34% времени на T26 (если не первый план)
+            else:
+                # Для остальных блоков (mocks, practice, minisnap) - минимальное время
+                time_percentage = 0.1
+            
+            # Рассчитываем количество вебинаров на основе процента времени
+            max_webinars_by_hours = int(hours_per_week * time_percentage / avg_hours_per_webinar)
+            
+            # Берем минимум из расчета по часам и общего количества вебинаров
+            block_data['recommended_per_week'] = min(max_webinars_by_hours, block_data['count'])
+            
+            # Минимум 1 вебинар в неделю, если есть вебинары в блоке и он нужен
+            if block_data['recommended_per_week'] == 0 and block_data['count'] > 0:
+                if (block_key == 'beginners' and needs_python_basics) or \
+                   (block_key == 'basic') or \
+                   (block_key == 'advanced' and needs_task_26 and not is_first_plan):
+                    block_data['recommended_per_week'] = 1
+        else:
+            block_data['recommended_per_week'] = 0
+    
+    return blocks
+
+
+def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids):
+    """
+    Фильтрует вебинары по квотам блоков и распределяет их по неделям.
+    
+    Args:
+        webinars: список всех вебинаров
+        block_quotas: словарь с квотами блоков {'beginners': 3, 'basic': 1, ...}
+        watched_webinar_ids: множество ID просмотренных вебинаров
+    
+    Returns:
+        tuple: (filtered_webinars, webinar_weeks)
+    """
+    filtered_webinars = []
+    webinar_weeks = {}
+    
+    # Группируем вебинары по блокам
+    webinars_by_block = {
+        'beginners': [],
+        'basic': [],
+        'advanced': [],
+        'mocks': [],
+        'practice': [],
+        'minisnap': []
+    }
+    
+    for webinar in webinars:
+        if webinar.id in watched_webinar_ids:
+            continue
+            
+        # Определяем к какому блоку относится вебинар
+        block_key = None
+        if webinar.for_beginners:
+            block_key = 'beginners'
+        elif webinar.for_basic or webinar.for_expert:  # T27 теперь входит в основной курс
+            block_key = 'basic'
+        elif webinar.for_advanced:  # T26
+            block_key = 'advanced'
+        elif webinar.for_mocks:
+            block_key = 'mocks'
+        elif webinar.for_practice:
+            block_key = 'practice'
+        elif webinar.for_minisnap:
+            block_key = 'minisnap'
+        
+        if block_key:
+            webinars_by_block[block_key].append(webinar)
+    
+    # Сортируем вебинары в каждом блоке по дате
+    for block_key, block_webinars in webinars_by_block.items():
+        block_webinars.sort(key=lambda w: w.date if w.date else datetime.min.date())
+    
+    # Распределяем вебинары по неделям согласно квотам (каждую неделю)
+    print(f"Block quotas applied - distributing webinars (per week):")
+    
+    for week in range(1, 5):  # 4 недели
+        for block_key, quota_per_week in block_quotas.items():
+            if quota_per_week <= 0:
+                continue
+                
+            block_webinars = webinars_by_block[block_key]
+            selected_count = 0
+            
+            # Выбираем нужное количество вебинаров для этой недели
+            for webinar in block_webinars:
+                if webinar.id in webinar_weeks:  # Уже назначен
+                    continue
+                    
+                if selected_count >= quota_per_week:
+                    break
+                    
+                filtered_webinars.append(webinar)
+                webinar_weeks[webinar.id] = week
+                selected_count += 1
+            
+            if selected_count > 0:
+                print(f"  Week {week}, {block_key}: {selected_count} webinars selected")
+    
+    # Подсчитываем общее количество по блокам
+    block_totals = {}
+    for webinar in filtered_webinars:
+        for block_key, block_webinars in webinars_by_block.items():
+            if webinar in block_webinars:
+                block_totals[block_key] = block_totals.get(block_key, 0) + 1
+                break
+    
+    print(f"Total webinars selected by block: {block_totals}")
+    return filtered_webinars, webinar_weeks
+
 
 def _handle_beginner_webinars(
     student, all_webinars, watched_webinar_ids, hours_per_week
@@ -116,81 +299,68 @@ def _handle_beginner_webinars(
 
 
 def _determine_required_tasks(
-    student, known_task_numbers, is_first_plan, quota_t26=0, quota_t27=0
+    student, known_task_numbers, is_first_plan
 ):
     """Определяет необходимые задания с учетом балла, известных и логики откладывания."""
     required_tasks = set()
-    # Определяем базовый набор заданий по целевому баллу
+    # Определяем базовый набор заданий по целевому баллу/оценке
     target_score = (
         student.target_score or 85
     )  # Используем 85 как дефолт, если не указано
-    tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
-    tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))  # 1-12, 14, 16-23
-    tasks_80_85 = set(range(1, 24)) | {25}  # 1-23, 25
-    tasks_85_90 = set(range(1, 26))  # 1-25
-    tasks_90_95 = set(range(1, 26)) | {27}  # 1-25, 27
-    tasks_95_100 = set(range(1, 28))  # 1-27
-
-    if target_score <= 70:
-        required_tasks = tasks_60_70.copy()
-    elif target_score <= 80:
-        required_tasks = tasks_70_80.copy()
-    elif target_score <= 85:
-        required_tasks = tasks_80_85.copy()
-    elif target_score <= 90:
-        required_tasks = tasks_85_90.copy()
-    elif target_score <= 95:
-        required_tasks = tasks_90_95.copy()
+    
+    if student.exam_type == 'oge':
+        # Для ОГЭ только задания 1-16, логика по оценкам (3-5)
+        if target_score <= 3:
+            required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+        elif target_score <= 4:
+            required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+        else:  # target_score == 5
+            required_tasks = set(range(1, 17))  # Все задания 1-16
     else:
-        required_tasks = tasks_95_100.copy()
+        # Для ЕГЭ логика по баллам (60-100)
+        tasks_60_70 = {1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22}
+        tasks_70_80 = set(range(1, 13)) | {14} | set(range(16, 24))  # 1-12, 14, 16-23
+        tasks_80_85 = set(range(1, 24)) | {25}  # 1-23, 25
+        tasks_85_90 = set(range(1, 26))  # 1-25
+        tasks_90_95 = set(range(1, 26)) | {27}  # 1-25, 27
+        tasks_95_100 = set(range(1, 28))  # 1-27
 
-    # Логика откладывания T26/T27 для первого плана с низким баллом/прогрессом
-    score_is_high = student.initial_score is not None and student.initial_score >= 60
-    tasks_1_to_25 = set(range(1, 26))
-    known_tasks_1_to_25 = known_task_numbers.intersection(tasks_1_to_25)
-    percentage_known_1_to_25 = (
-        (len(known_tasks_1_to_25) / 25) * 100 if tasks_1_to_25 else 0
-    )
-    core_tasks_learned_enough = percentage_known_1_to_25 >= 50
-    should_defer = is_first_plan and not score_is_high and not core_tasks_learned_enough
+        if target_score <= 70:
+            required_tasks = tasks_60_70.copy()
+        elif target_score <= 80:
+            required_tasks = tasks_70_80.copy()
+        elif target_score <= 85:
+            required_tasks = tasks_80_85.copy()
+        elif target_score <= 90:
+            required_tasks = tasks_85_90.copy()
+        elif target_score <= 95:
+            required_tasks = tasks_90_95.copy()
+        else:
+            required_tasks = tasks_95_100.copy()
 
-    if should_defer:
-        print("Откладываем T26/T27 для первого плана")
-        required_tasks.discard(26)
-        required_tasks.discard(27)
-
-    # --- ДОБАВЛЕНО: Принудительное включение T26/T27 при установленных квотах ---
-    if quota_t26 > 0 and not should_defer:
-        required_tasks.add(26)
-        print(
-            f"Задание 26 добавлено в required_tasks из-за установленной квоты ({quota_t26})"
+    # Логика откладывания T26/T27 для первого плана с низким баллом/прогрессом (только для ЕГЭ)
+    if student.exam_type == 'ege':
+        score_is_high = student.initial_score is not None and student.initial_score >= 60
+        tasks_1_to_25 = set(range(1, 26))
+        known_tasks_1_to_25 = known_task_numbers.intersection(tasks_1_to_25)
+        percentage_known_1_to_25 = (
+            (len(known_tasks_1_to_25) / 25) * 100 if tasks_1_to_25 else 0
         )
+        core_tasks_learned_enough = percentage_known_1_to_25 >= 50
+        should_defer = is_first_plan and not score_is_high and not core_tasks_learned_enough
 
-    if quota_t27 > 0 and not should_defer:
-        required_tasks.add(27)
-        print(
-            f"Задание 27 добавлено в required_tasks из-за установленной квоты ({quota_t27})"
-        )
-    # --- КОНЕЦ ДОБАВЛЕННОГО КОДА ---
+        if should_defer:
+            print("Откладываем T26/T27 для первого плана")
+            required_tasks.discard(26)
+            required_tasks.discard(27)
+
+    # Квоты T26 и T27 теперь распределяются в предыдущем окне
 
     # Удаляем уже известные задания
     print(f"Required tasks before known removal: {len(required_tasks)}")
 
-    # --- МОДИФИЦИРОВАНО: Не удаляем T26/T27 при установленных квотах ---
-    if quota_t26 > 0 and 26 in known_task_numbers:
-        known_task_numbers_copy = known_task_numbers.copy()
-        known_task_numbers_copy.discard(26)
-        print(f"Задание 26 не будет исключено из-за установленной квоты ({quota_t26})")
-    else:
-        known_task_numbers_copy = known_task_numbers
-
-    if quota_t27 > 0 and 27 in known_task_numbers_copy:
-        known_task_numbers_copy = known_task_numbers_copy.copy()
-        known_task_numbers_copy.discard(27)
-        print(f"Задание 27 не будет исключено из-за установленной квоты ({quota_t27})")
-
-    required_tasks.difference_update(known_task_numbers_copy)
-    # --- КОНЕЦ МОДИФИКАЦИИ ---
+    # Удаляем уже известные задания
+    required_tasks.difference_update(known_task_numbers)
 
     print(
         f"Required tasks after known removal: {len(required_tasks)} -> {sorted(list(required_tasks))}"
@@ -205,17 +375,13 @@ def _filter_regular_webinars(
     known_task_numbers,
     watched_webinar_ids,
     assigned_webinar_ids,
-    quota_t26=0,
-    quota_t27=0,
+    exam_type='ege',  # Добавляем параметр типа экзамена
 ):
     """Фильтрует обычные вебинары по релевантности задач и статусу просмотра."""
     available_regular = []
-    needs_task_26 = (
-        26 in required_tasks or quota_t26 > 0
-    )  # МОДИФИЦИРОВАНО: учитываем квоту
-    needs_task_27 = (
-        27 in required_tasks or quota_t27 > 0
-    )  # МОДИФИЦИРОВАНО: учитываем квоту
+    # Для ОГЭ задания 26 и 27 не существуют
+    needs_task_26 = 26 in required_tasks if exam_type == 'ege' else False
+    needs_task_27 = 27 in required_tasks if exam_type == 'ege' else False
 
     print(f"\nФильтрация {len(regular_webinars)} регулярных вебинаров:")
     for w in regular_webinars:
@@ -251,22 +417,13 @@ def _filter_regular_webinars(
 
         # Пропускаем, если все задачи вебинара уже известны
         if known_task_numbers and webinar_tasks.issubset(known_task_numbers):
-            # МОДИФИЦИРОВАНО: Не пропускаем T26/T27 вебинары при установленных квотах
-            has_t26 = 26 in webinar_tasks and quota_t26 > 0
-            has_t27 = 27 in webinar_tasks and quota_t27 > 0
-            if has_t26 or has_t27:
-                pass  # Не пропускаем вебинары с T26/T27 если установлены квоты
-            else:
-                # print(f"  - Skip {w.id}: all tasks ({webinar_tasks}) are known")
-                continue
+            # print(f"  - Skip {w.id}: all tasks ({webinar_tasks}) are known")
+            continue
 
         # Пропускаем, если ни одна задача вебинара не пересекается с необходимыми
         has_needed_tasks = webinar_tasks.intersection(required_tasks)
-        # МОДИФИЦИРОВАНО: Дополнительно проверяем на T26/T27 при установленных квотах
-        has_t26_with_quota = 26 in webinar_tasks and quota_t26 > 0
-        has_t27_with_quota = 27 in webinar_tasks and quota_t27 > 0
 
-        if not has_needed_tasks and not has_t26_with_quota and not has_t27_with_quota:
+        if not has_needed_tasks:
             # print(f"  - Skip {w.id}: tasks ({webinar_tasks}) do not intersect with required ({required_tasks})")
             continue
 
@@ -365,20 +522,17 @@ def _distribute_webinars_to_weeks(
     task_deques,
     remaining_beginner_overflow,
     hours_per_week,
-    quota_t26,
-    quota_t27,
     assigned_webinar_ids,  # Модифицируется
     weekly_hours_summary,  # Модифицируется
 ):
     """
-    Распределяет вебинары по неделям с учетом квот и приоритетов.
+    Распределяет вебинары по неделям с учетом приоритетов.
+    Квоты T26 и T27 теперь распределяются в предыдущем окне.
     
     Args:
         task_deques: словарь с очередями вебинаров по типам ('regular', 't26', 't27')
         remaining_beginner_overflow: очередь вебинаров для начинающих, не вошедшие в первую неделю
         hours_per_week: доступные часы в неделю
-        quota_t26: квота вебинаров для задания 26 (количество вебинаров)
-        quota_t27: квота вебинаров для задания 27 (количество вебинаров)
         assigned_webinar_ids: множество уже назначенных ID вебинаров (модифицируется)
         weekly_hours_summary: словарь часов по неделям (модифицируется)
     
@@ -403,11 +557,8 @@ def _distribute_webinars_to_weeks(
     # Счетчики добавленных вебинаров
     total_added = {'t26': 0, 't27': 0, 'regular': 0}
     
-    # Расчет квот по часам для каждого типа вебинаров
-    max_t26_hours = hours_per_week * 0.35 if quota_t26 > 0 else 0  # 35% на T26
-    max_t27_hours = hours_per_week * 0.35 if quota_t27 > 0 else 0  # 35% на T27
-    
-    print(f"\nРасчет квот: T26 = {max_t26_hours:.1f}ч, T27 = {max_t27_hours:.1f}ч из {hours_per_week}ч")
+    # Квоты T26 и T27 теперь распределяются в предыдущем окне
+    print(f"\nРаспределение вебинаров по неделям (часов в неделю: {hours_per_week})")
     
     # Шаг 1: Распределение beginner overflow на вторую неделю
     if remaining_beginner_overflow:
@@ -440,15 +591,6 @@ def _distribute_webinars_to_weeks(
         
         # Проверяем, поместится ли вебинар в неделю
         if weekly_stats[week_number]['total'] + webinar_hours <= hours_per_week:
-            # Для T26/T27 проверяем квоты
-            if webinar_type == 't26':
-                max_hours = hours_per_week * 0.35  # 35% от недельного времени
-                if weekly_stats[week_number]['t26'] + webinar_hours > max_hours:
-                    return False
-            elif webinar_type == 't27':
-                max_hours = hours_per_week * 0.35  # 35% от недельного времени
-                if weekly_stats[week_number]['t27'] + webinar_hours > max_hours:
-                    return False
                 
             # Добавляем вебинар
             webinar_weeks[webinar.id] = week_number
@@ -468,15 +610,12 @@ def _distribute_webinars_to_weeks(
         
         return False
     
-    # Шаг 2: Распределение T26/T27
+    # Шаг 2: Распределение T26/T27 (квоты теперь распределяются в предыдущем окне)
     for task_type in ['t26', 't27']:
         if task_type not in task_deques or not task_deques[task_type]:
             continue
             
         print(f"\n--- Распределение {task_type} вебинаров ---")
-        quota = quota_t26 if task_type == 't26' else quota_t27
-        if quota <= 0:
-            continue
             
         # Преобразуем очередь в список, чтобы работать с индексами
         webinar_list = list(task_deques[task_type])
@@ -487,14 +626,6 @@ def _distribute_webinars_to_weeks(
         added_per_week = {1: 0, 2: 0, 3: 0, 4: 0}  # Сколько добавлено в каждую неделю
         
         for webinar in webinar_list:
-            # Если в текущей неделе достигнута квота или добавлено максимальное количество
-            if added_per_week[current_week] >= quota:
-                # Переходим к следующей неделе
-                current_week += 1
-                if current_week > 4:
-                    # Все недели заполнены до квоты
-                    break
-            
             # Проверяем, не был ли вебинар уже добавлен
             if webinar.id in assigned_webinar_ids:
                 continue
@@ -502,17 +633,32 @@ def _distribute_webinars_to_weeks(
             # Пробуем добавить в текущую неделю
             webinar_hours = get_webinar_hours(webinar)
             if weekly_stats[current_week]['total'] + webinar_hours <= hours_per_week:
-                # Проверяем квоту по часам (35% от недельных часов)
-                max_hours = hours_per_week * 0.35
-                type_hours = weekly_stats[current_week][task_type]
+                # Добавляем вебинар
+                webinar_weeks[webinar.id] = current_week
+                selected_regular_webinars.append(webinar)
+                assigned_webinar_ids.add(webinar.id)
                 
-                if type_hours + webinar_hours <= max_hours:
-                    # Добавляем вебинар
+                # Обновляем статистику
+                weekly_stats[current_week]['total'] += webinar_hours
+                weekly_stats[current_week][task_type] += webinar_hours
+                weekly_hours_summary[current_week] = weekly_stats[current_week]['total']
+                added_per_week[current_week] += 1
+                total_added[task_type] += 1
+                
+                print(f"  + Добавлен {task_type} ID: {webinar.id} ({webinar_hours:.1f}ч) на неделю {current_week}. " 
+                      f"Всего на неделе: {weekly_stats[current_week]['total']:.1f}ч")
+            else:
+                # Не хватает часов в текущей неделе, переходим к следующей
+                current_week += 1
+                if current_week > 4:
+                    # Все недели заполнены
+                    break
+                # Пробуем добавить в следующую неделю
+                if weekly_stats[current_week]['total'] + webinar_hours <= hours_per_week:
                     webinar_weeks[webinar.id] = current_week
                     selected_regular_webinars.append(webinar)
                     assigned_webinar_ids.add(webinar.id)
                     
-                    # Обновляем статистику
                     weekly_stats[current_week]['total'] += webinar_hours
                     weekly_stats[current_week][task_type] += webinar_hours
                     weekly_hours_summary[current_week] = weekly_stats[current_week]['total']
@@ -521,10 +667,8 @@ def _distribute_webinars_to_weeks(
                     
                     print(f"  + Добавлен {task_type} ID: {webinar.id} ({webinar_hours:.1f}ч) на неделю {current_week}. " 
                           f"Всего на неделе: {weekly_stats[current_week]['total']:.1f}ч")
-            else:
-                # Не хватает часов в текущей неделе
-                print(f"  - Пропущен {task_type} ID: {webinar.id} - не хватает часов в неделе {current_week}")
-                # НЕ переходим к следующей неделе здесь
+                else:
+                    print(f"  - Пропущен {task_type} ID: {webinar.id} - не хватает часов")
             
         # Очищаем очередь, так как мы уже обработали все вебинары
         task_deques[task_type].clear()
@@ -612,10 +756,9 @@ def recommend_webinars(
     known_task_numbers,
     watched_webinar_ids,
     is_first_plan=True,
-    quota_t26=0,
-    quota_t27=0,
     selected_task_numbers=None,
     include_2025_webinars=False,
+    block_quotas=None,
 ):
     """Подбирает вебинары для плана обучения студента."""
     print("\n=== recommend_webinars START ===")
@@ -623,7 +766,7 @@ def recommend_webinars(
         f"Student ID: {student.id}, First Plan: {is_first_plan}, Target: {student.target_score}, Hours: {student.hours_per_week}"
     )
     print(f"Known: {known_task_numbers}, Watched: {watched_webinar_ids}")
-    print(f"Quotas: T26={quota_t26}, T27={quota_t27}")
+    print(f"Block quotas: {block_quotas}")
 
     # --- 1. Параметры и инициализация ---
     hours_per_week = student.hours_per_week or 9
@@ -631,32 +774,59 @@ def recommend_webinars(
     weekly_hours_summary = {w: 0.0 for w in range(1, 5)}
     assigned_webinar_ids = set()
     
-    # Получение всех вебинаров с фильтрацией по академическому году
+    # Получение всех вебинаров с фильтрацией по академическому году и типу экзамена
     webinars_query = Webinar.query.options(db.joinedload(Webinar.task_numbers))
     
+    # Фильтруем по типу экзамена студента
+    webinars_query = webinars_query.filter(Webinar.exam_type == student.exam_type)
+    
     # Если не нужно включать вебинары 2025 года, фильтруем их
-    if not include_2025_webinars and hasattr(Webinar, 'academic_year'):
+    if not include_2025_webinars:
         webinars_query = webinars_query.filter(Webinar.academic_year == 2026)
     
     all_webinars = webinars_query.all()
     print(f"Total webinars in DB: {len(all_webinars)}")
     print(f"Academic Year Filter: {'Both 2025 and 2026' if include_2025_webinars else 'Only 2026'}")
 
-    # --- 2. Обработка вебинаров "Python с нуля" ---
-    (
-        selected_beginner_webinars,
-        remaining_beginner_overflow,
-        beginner_assigned_ids,
-        week1_hours,
-    ) = _handle_beginner_webinars(
-        student, all_webinars, watched_webinar_ids, hours_per_week
+    # --- 1.5. Анализ блоков вебинаров ---
+    # Определяем нужны ли задания 26
+    needs_task_26 = False
+    if selected_task_numbers:
+        needs_task_26 = 26 in selected_task_numbers
+    else:
+        # Если не переданы выбранные задания, определяем по required_tasks
+        required_tasks = _determine_required_tasks(student, known_task_numbers, is_first_plan)
+        needs_task_26 = 26 in required_tasks
+    
+    webinar_blocks = analyze_webinar_blocks(
+        all_webinars, 
+        watched_webinar_ids, 
+        hours_per_week, 
+        student.needs_python_basics, 
+        is_first_plan, 
+        needs_task_26,
+        include_2025_webinars
     )
-
-    assigned_webinar_ids.update(beginner_assigned_ids)
-    # Назначаем недели для beginner вебинаров сразу
-    for w in selected_beginner_webinars:
-        webinar_weeks[w.id] = 1
-    weekly_hours_summary[1] = week1_hours
+    print(f"Webinar blocks analysis: {[(block, data['count']) for block, data in webinar_blocks.items() if data['count'] > 0]}")
+    
+    # Применяем недельные квоты блоков если они заданы
+    if block_quotas:
+        print(f"Applying weekly block quotas: {block_quotas}")
+        # Фильтруем вебинары по квотам блоков и сразу распределяем по неделям
+        suitable_webinars, webinar_weeks = _filter_webinars_by_block_quotas(all_webinars, block_quotas, watched_webinar_ids)
+        print(f"Webinars after block quotas filtering: {len(suitable_webinars)}")
+        
+        # Рассчитываем часы по неделям
+        for webinar in suitable_webinars:
+            week = webinar_weeks[webinar.id]
+            webinar_hours = get_webinar_hours(webinar)
+            weekly_hours_summary[week] += webinar_hours
+        
+        print(f"Final weekly hours summary: {weekly_hours_summary}")
+        print(f"Final webinar weeks assignment: {webinar_weeks}")
+        print("=== recommend_webinars END ===")
+        
+        return suitable_webinars, webinar_weeks, weekly_hours_summary, webinar_blocks
 
     # --- 3. Определение необходимых заданий ---
     # Если заданы выбранные задания, используем их вместо определения на основе целевого балла
@@ -665,19 +835,22 @@ def recommend_webinars(
         print(f"Используем явно выбранные задания ({len(required_tasks)}): {sorted(list(required_tasks))}")
     else:
         required_tasks = _determine_required_tasks(
-            student, known_task_numbers, is_first_plan, quota_t26, quota_t27
+            student, known_task_numbers, is_first_plan
         )
 
     # --- 4. Фильтрация обычных вебинаров ---
     regular_webinars = [w for w in all_webinars if not w.for_beginners]
+    
+    # Исключаем мини-щелчок для вебинаров 2024-2025 года
+    if not include_2025_webinars:
+        regular_webinars = [w for w in regular_webinars if not (w.for_minisnap and w.academic_year == 2025)]
     available_regular = _filter_regular_webinars(
         regular_webinars,
         required_tasks,
         known_task_numbers,
         watched_webinar_ids,
         assigned_webinar_ids,
-        quota_t26,
-        quota_t27,
+        student.exam_type,  # Передаем тип экзамена
     )
 
     # --- 5. Проверки на невозможность составить план ---
@@ -708,8 +881,6 @@ def recommend_webinars(
         task_deques,
         remaining_beginner_overflow,
         hours_per_week,
-        quota_t26,
-        quota_t27,
         assigned_webinar_ids,  # Модифицируется
         weekly_hours_summary,  # Модифицируется
     )
@@ -732,4 +903,4 @@ def recommend_webinars(
     print(f"Final weekly hours summary: {weekly_hours_summary}")
     print(f"Final webinar weeks assignment: {final_webinar_weeks}")
     print("=== recommend_webinars END ===\n")
-    return all_selected_webinars, final_webinar_weeks, weekly_hours_summary
+    return all_selected_webinars, final_webinar_weeks, weekly_hours_summary, webinar_blocks

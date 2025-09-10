@@ -10,6 +10,9 @@
             {% if webinar.for_practice %}for_practice{% endif %}
             {% if webinar.for_minisnap %}for_minisnap{% endif %}
             {% if webinar.for_summer %}for_summer{% endif %}
+            {% if webinar.for_oge_part1 %}for_oge_part1{% endif %}
+            {% if webinar.for_oge_part2 %}for_oge_part2{% endif %}
+            {% if webinar.for_oge_hard %}for_oge_hard{% endif %}
             {% if webinar.is_programming %} is_programming{% endif %}
             {% if webinar.is_manual %} is_manual{% endif %}
             {% if webinar.is_excel %} is_excel{% endif %}
@@ -30,6 +33,15 @@
                     <!-- Градиентный оверлей для лучшей читаемости -->
                     <div class="position-absolute bottom-0 start-0 w-100 p-2" style="background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 75%, transparent 100%); height: 80px; display: flex; align-items: flex-end;">
                         <h6 class="card-title text-white mb-0 px-2" style="font-weight: 600; line-height: 1.3; max-height: 2.6em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); width: 100%;">{{ webinar.title }}</h6>
+                    </div>
+                    
+                    <!-- Бейдж типа экзамена -->
+                    <div class="position-absolute top-0 start-0 m-2">
+                        {% if webinar.exam_type == 'ege' %}
+                            <span class="badge rounded-pill bg-primary" style="font-size: 0.7rem;"><i class="fas fa-graduation-cap"></i> ЕГЭ</span>
+                        {% else %}
+                            <span class="badge rounded-pill bg-secondary" style="font-size: 0.7rem;"><i class="fas fa-certificate"></i> ОГЭ</span>
+                        {% endif %}
                     </div>
                     
                     <!-- Бейдж категории (если есть) -->
@@ -68,47 +80,112 @@
                     </div>
                     {% endif %}
                     
+                    <!-- Темы ОГЭ (только для ОГЭ вебинаров) -->
+                    {% if webinar.exam_type == 'oge' and webinar.oge_topics %}
+                    <div class="oge-topics-container mb-2" style="line-height: 1.2;">
+                        {% for topic in webinar.oge_topics %}
+                            <span class="badge rounded-pill bg-info me-1 mb-1" style="font-size: 0.7rem;" title="{{ topic.description or '' }}">
+                                <i class="fas fa-book me-1"></i>{{ topic.name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
                     <!-- Типы курсов в виде компактных чипов -->
                     <div class="course-types mb-2" style="line-height: 1.2;">
-                        {% if webinar.for_beginners %}
-                            <span class="badge bg-info me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-baby me-1"></i> Python с нуля
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_basic %}
-                            <span class="badge bg-success me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-graduation-cap me-1"></i> Основной курс
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_advanced %}
-                            <span class="badge bg-warning text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-brain me-1"></i> Задание 26
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_expert %}
-                            <span class="badge bg-accent me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-crown me-1"></i> Задание 27
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_mocks %}
-                            <span class="badge bg-secondary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-file-alt me-1"></i> Разбор пробников
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_practice %}
-                            <span class="badge bg-primary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-dumbbell me-1"></i> Нарешка
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_minisnap %}
-                            <span class="badge bg-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-bolt me-1"></i> Мини-щелчок
-                            </span>
-                        {% endif %}
-                        {% if webinar.for_summer %}
-                            <span class="badge bg-pink me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
-                                <i class="fas fa-sun me-1"></i> Летний курс
-                            </span>
+                        {% if webinar.exam_type == 'oge' %}
+                            <!-- Категория важности для ОГЭ -->
+                            {% if webinar.category %}
+                                {% if webinar.category == 1 %}
+                                    <span class="badge bg-success me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                        <i class="fas fa-key me-1"></i> Обязательный
+                                    </span>
+                                {% elif webinar.category == 2 %}
+                                    <span class="badge bg-warning text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                        <i class="fas fa-redo me-1"></i> Повторение
+                                    </span>
+                                {% elif webinar.category == 3 %}
+                                    <span class="badge bg-danger me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                        <i class="fas fa-pencil-alt me-1"></i> Необязательный
+                                    </span>
+                                {% elif webinar.category == 4 %}
+                                    <span class="badge bg-pink text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                        <i class="fas fa-rocket me-1"></i> Для продвинутых
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                        <i class="fas fa-question me-1"></i> Категория {{ webinar.category }}
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-light text-muted me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-minus me-1"></i> Без категории
+                                </span>
+                            {% endif %}
+                            
+                            <!-- Категории для ОГЭ -->
+                            {% if webinar.for_oge_part1 %}
+                                <span class="badge bg-info me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-list-ol me-1"></i> Первая часть (1-12)
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_oge_part2 %}
+                                <span class="badge bg-warning text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-list me-1"></i> Вторая часть (13-16)
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_oge_hard %}
+                                <span class="badge bg-accent me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-fire me-1"></i> Хард-вебинары
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_mocks %}
+                                <span class="badge bg-secondary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-file-alt me-1"></i> Разборы пробников
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <!-- Категории для ЕГЭ -->
+                            {% if webinar.for_beginners %}
+                                <span class="badge bg-info me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-baby me-1"></i> Python с нуля
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_basic %}
+                                <span class="badge bg-success me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-graduation-cap me-1"></i> Основной курс
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_advanced %}
+                                <span class="badge bg-warning text-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-brain me-1"></i> Задание 26
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_expert %}
+                                <span class="badge bg-accent me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-crown me-1"></i> Задание 27
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_mocks %}
+                                <span class="badge bg-secondary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-file-alt me-1"></i> Разбор пробников
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_practice %}
+                                <span class="badge bg-primary me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-dumbbell me-1"></i> Нарешка
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_minisnap %}
+                                <span class="badge bg-dark me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-bolt me-1"></i> Мини-щелчок
+                                </span>
+                            {% endif %}
+                            {% if webinar.for_summer %}
+                                <span class="badge bg-pink me-1 mb-1" style="font-size: 0.7rem; border-radius: 4px;">
+                                    <i class="fas fa-sun me-1"></i> Летний курс
+                                </span>
+                            {% endif %}
                         {% endif %}
                     </div>
                     
@@ -243,7 +320,7 @@
             <ul class="pagination pagination-sm justify-content-center">
                 {# Кнопка "Предыдущая" #}
                 <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                    <a class="page-link page-nav" href="javascript:void(0);" data-page="{{ pagination.prev_num }}" aria-label="Предыдущая">
+                    <a class="page-link page-nav" href="javascript:void(0);" data-page="{% if pagination.has_prev %}{{ pagination.prev_num }}{% endif %}" aria-label="Предыдущая">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
@@ -277,7 +354,7 @@
                 
                 {# Кнопка "Следующая" #}
                 <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                    <a class="page-link page-nav" href="javascript:void(0);" data-page="{{ pagination.next_num }}" aria-label="Следующая">
+                    <a class="page-link page-nav" href="javascript:void(0);" data-page="{% if pagination.has_next %}{{ pagination.next_num }}{% endif %}" aria-label="Следующая">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>

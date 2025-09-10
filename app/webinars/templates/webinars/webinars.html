@@ -12,49 +12,86 @@
             </a>
         {% endif %}
         {% if current_user.is_admin %}
-            <a href="{{ url_for('webinars.batch_create_webinars') }}" class="btn btn-primary px-3 py-2" style="border-radius: 20px; border: none; font-weight: 500;">
-                <i class="fas fa-upload me-2"></i> Загрузить вебинары
+            <a href="{{ url_for('webinars.create_webinars') }}" class="btn btn-primary px-4 py-2" style="border-radius: 25px; border: none; font-weight: 500; box-shadow: 0 4px 15px rgba(0, 113, 227, 0.3);">
+                <i class="fas fa-plus me-2"></i> Создать вебинар
             </a>
         {% endif %}
     </div>
 </div>
 
-<!-- Переключатель учебного года -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="mb-0 fw-bold">
-        <i class="fas fa-calendar-alt me-2 text-primary"></i> Учебный год
-    </h5>
-    <div class="dropdown">
-        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="yearDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
-            <i class="fas fa-{% if current_year == 2026 %}user-graduate{% else %}graduation-cap{% endif %} me-2"></i>
-            {{ current_year }} год
-            <span class="badge bg-{% if current_year == 2026 %}success{% else %}secondary{% endif %} ms-2">
-                {% if current_year == 2026 %}текущие{% else %}прошлогодние{% endif %}
-            </span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="yearDropdown" style="z-index: 1050;">
-            <li>
-                <a class="dropdown-item d-flex align-items-center {% if current_year == 2026 %}active{% endif %}" 
-                   href="{{ url_for('webinars.webinars_list', year=2026, q=search_query) }}">
-                    <i class="fas fa-user-graduate me-2 text-success"></i>
-                    <div>
-                        <div class="fw-bold">2026 год</div>
-                        <small class="text-muted">Текущие вебинары</small>
-                    </div>
-                </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-                <a class="dropdown-item d-flex align-items-center {% if current_year == 2025 %}active{% endif %}" 
-                   href="{{ url_for('webinars.webinars_list', year=2025, q=search_query) }}">
-                    <i class="fas fa-graduation-cap me-2 text-secondary"></i>
-                    <div>
-                        <div class="fw-bold">2025 год</div>
-                        <small class="text-muted">Прошлогодние вебинары</small>
-                    </div>
-                </a>
-            </li>
-        </ul>
+<!-- Переключатели учебного года и типа экзамена -->
+<div class="mb-4">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-calendar-alt me-2 text-primary"></i> Учебный год
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="yearDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
+                        <i class="fas fa-{% if current_year == 2026 %}user-graduate{% else %}graduation-cap{% endif %} me-2"></i>
+                        {{ current_year }} год
+                        <span class="badge bg-{% if current_year == 2026 %}success{% else %}secondary{% endif %} ms-2">
+                            {% if current_year == 2026 %}текущие{% else %}прошлогодние{% endif %}
+                        </span>
+                    </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="yearDropdown" style="z-index: 1050;">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center {% if current_year == 2026 %}active{% endif %}" 
+                           href="{{ url_for('webinars.webinars_list', year=2026, exam_type=current_exam_type, q=search_query) }}">
+                            <i class="fas fa-user-graduate me-2 text-success"></i>
+                            <div>
+                                <div class="fw-bold">2026 год</div>
+                                <small class="text-muted">Текущие вебинары</small>
+                            </div>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center {% if current_year == 2025 %}active{% endif %}" 
+                           href="{{ url_for('webinars.webinars_list', year=2025, exam_type=current_exam_type, q=search_query) }}">
+                            <i class="fas fa-graduation-cap me-2 text-secondary"></i>
+                            <div>
+                                <div class="fw-bold">2025 год</div>
+                                <small class="text-muted">Прошлогодние вебинары</small>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-graduation-cap me-2 text-secondary"></i> Тип экзамена
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="examTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
+                        <i class="fas fa-{% if current_exam_type == 'ege' %}graduation-cap{% else %}certificate{% endif %} me-2"></i>
+                        {% if current_exam_type == 'ege' %}ЕГЭ{% else %}ОГЭ{% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="examTypeDropdown" style="z-index: 1050;">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center {% if current_exam_type == 'ege' %}active{% endif %}" 
+                               href="{{ url_for('webinars.webinars_list', year=current_year, exam_type='ege', q=search_query) }}">
+                                <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                                <div class="fw-bold">ЕГЭ</div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center {% if current_exam_type == 'oge' %}active{% endif %}" 
+                               href="{{ url_for('webinars.webinars_list', year=current_year, exam_type='oge', q=search_query) }}">
+                                <i class="fas fa-certificate me-2 text-secondary"></i>
+                                <div class="fw-bold">ОГЭ</div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -72,19 +109,31 @@
                 <div class="filter-buttons" style="background-color: #f5f5f7; border-radius: 16px; padding: 6px; display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch;">
                     <button type="button" class="filter-btn active" data-filter="all" style="flex: 0 0 auto;">Все</button>
                     
-                    {% if current_year == 2026 %}
-                        <button type="button" class="filter-btn" data-filter="for_summer" style="flex: 0 0 auto; background-color: #ff2d55; color: white; border-color: #ff2d55;">Летний курс</button>
-                    {% endif %}
-                    
-                    <button type="button" class="filter-btn" data-filter="for_beginners" style="flex: 0 0 auto; background-color: #5ac8fa; color: white; border-color: #5ac8fa;">Python с нуля</button>
-                    <button type="button" class="filter-btn" data-filter="for_basic" style="flex: 0 0 auto; background-color: #34c759; color: white; border-color: #34c759;">Основной курс</button>
-                    <button type="button" class="filter-btn" data-filter="for_advanced" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Задание 26</button>
-                    <button type="button" class="filter-btn" data-filter="for_expert" style="flex: 0 0 auto; background-color: #af52de; color: white; border-color: #af52de;">Задание 27</button>
-                    <button type="button" class="filter-btn" data-filter="for_mocks" style="flex: 0 0 auto; background-color: #6c757d; color: white; border-color: #6c757d;">Разбор пробников</button>
-                    <button type="button" class="filter-btn" data-filter="for_practice" style="flex: 0 0 auto; background-color: #0071e3; color: white; border-color: #0071e3;">Нарешка</button>
-                    
-                    {% if current_year == 2025 %}
-                    <button type="button" class="filter-btn" data-filter="for_minisnap" style="flex: 0 0 auto; background-color: #1d1d1f; color: white; border-color: #1d1d1f;">Мини-щелчок</button>
+                    {% if current_exam_type == 'oge' %}
+                        <!-- Категории для ОГЭ -->
+                        <button type="button" class="filter-btn" data-filter="for_oge_part1" style="flex: 0 0 auto; background-color: #34c759; color: white; border-color: #34c759;">Первая часть (1-12)</button>
+                        <button type="button" class="filter-btn" data-filter="for_oge_part2" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Вторая часть (13-16)</button>
+                        <button type="button" class="filter-btn" data-filter="is_programming" style="flex: 0 0 auto; background-color: #0071e3; color: white; border-color: #0071e3;">Программирование</button>
+                        <button type="button" class="filter-btn" data-filter="for_oge_hard" style="flex: 0 0 auto; background-color: #af52de; color: white; border-color: #af52de;">Хард-вебинары</button>
+                        <button type="button" class="filter-btn" data-filter="for_mocks" style="flex: 0 0 auto; background-color: #6c757d; color: white; border-color: #6c757d;">Разборы пробников</button>
+                    {% else %}
+                        <!-- Категории для ЕГЭ -->
+                        {% if current_year == 2026 %}
+                            <button type="button" class="filter-btn" data-filter="for_summer" style="flex: 0 0 auto; background-color: #ff2d55; color: white; border-color: #ff2d55;">Летний курс</button>
+                        {% endif %}
+                        
+                        <button type="button" class="filter-btn" data-filter="for_beginners" style="flex: 0 0 auto; background-color: #5ac8fa; color: white; border-color: #5ac8fa;">Python с нуля</button>
+                        <button type="button" class="filter-btn" data-filter="for_basic" style="flex: 0 0 auto; background-color: #34c759; color: white; border-color: #34c759;">Основной курс</button>
+                        <button type="button" class="filter-btn" data-filter="for_advanced" style="flex: 0 0 auto; background-color: #ff9500; color: white; border-color: #ff9500;">Задание 26</button>
+                        {% if current_year != 2026 %}
+                            <button type="button" class="filter-btn" data-filter="for_expert" style="flex: 0 0 auto; background-color: #af52de; color: white; border-color: #af52de;">Задание 27</button>
+                        {% endif %}
+                        <button type="button" class="filter-btn" data-filter="for_mocks" style="flex: 0 0 auto; background-color: #6c757d; color: white; border-color: #6c757d;">Разбор пробников</button>
+                        <button type="button" class="filter-btn" data-filter="for_practice" style="flex: 0 0 auto; background-color: #0071e3; color: white; border-color: #0071e3;">Нарешка</button>
+                        
+                        {% if current_year == 2025 %}
+                        <button type="button" class="filter-btn" data-filter="for_minisnap" style="flex: 0 0 auto; background-color: #1d1d1f; color: white; border-color: #1d1d1f;">Мини-щелчок</button>
+                        {% endif %}
                     {% endif %}
                 </div>
                 </div>
@@ -134,12 +183,29 @@
                             </div>
                             </div>
                             
+                            <!-- Фильтр по темам ОГЭ (только для ОГЭ) -->
+                            {% if current_exam_type == 'oge' and oge_topics %}
+                            <div class="col-md-6">
+                                <label for="ogeTopicFilterSelect" class="form-label" style="font-weight: 500; color: #1d1d1f;"><i class="fas fa-book-open me-1" style="color: #0071e3;"></i> Тема ОГЭ</label>
+                                <select class="form-select" id="ogeTopicFilterSelect" style="border-radius: 20px; border-color: #d2d2d7; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                    <option value="all" selected>Все темы</option>
+                                    {% for topic in oge_topics %}
+                                        <option value="{{ topic.id }}" {% if oge_topic == topic.id|string %}selected{% endif %}>
+                                            {{ topic.name }}
+                                            {% if topic.task_numbers_str %}({{ topic.task_numbers_str }}){% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                            
                             <!-- Фильтр по номерам заданий -->
                             <div class="col-md-6">
                                 <label for="taskFilterSelect" class="form-label" style="font-weight: 500; color: #1d1d1f;"><i class="fas fa-hashtag me-1" style="color: #0071e3;"></i> Номер задания</label>
                                 <select class="form-select" id="taskFilterSelect" style="border-radius: 20px; border-color: #d2d2d7; padding: 0.5rem 1rem; font-size: 0.9rem;">
                                     <option value="all" selected>Все задания</option>
-                                    {% for i in range(1, 28) %}
+                                    {% set max_task = 16 if current_exam_type == 'oge' else 27 %}
+                                    {% for i in range(1, max_task + 1) %}
                                         <option value="task-{{ i }}">№{{ i }}</option>
                                     {% endfor %}
                                 </select>
@@ -167,7 +233,7 @@
     <div class="alert alert-info text-center" style="background-color: #f5f5f7; border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06); padding: 3rem 2rem;">
         <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-4" style="max-height: 180px;">
         <h5 class="mt-2 mb-3" style="font-weight: 600; color: #1d1d1f;"><i class="fas fa-info-circle me-2" style="color: #0071e3;"></i> В базе данных нет вебинаров</h5>
-        <p class="mb-0" style="color: #86868b;">Импортируйте их из Excel-файла, нажав на кнопку выше.</p>
+        <p class="mb-0" style="color: #86868b;">Добавьте их, нажав на кнопку выше.</p>
     </div>
 {% endif %}
 {% endblock %}
@@ -175,22 +241,83 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// Функция для обновления переключателя типа экзамена
+function updateExamTypeDropdown(examType) {
+    const examTypeDropdown = document.getElementById('examTypeDropdown');
+    if (examTypeDropdown) {
+        examTypeDropdown.innerHTML = ''; // Очищаем содержимое кнопки
+        const icon = document.createElement('i');
+        const text = document.createTextNode(examType === 'ege' ? 'ЕГЭ' : 'ОГЭ');
+        if (examType === 'ege') {
+            icon.className = 'fas fa-graduation-cap me-2';
+        } else {
+            icon.className = 'fas fa-certificate me-2';
+        }
+        examTypeDropdown.appendChild(icon);
+        examTypeDropdown.appendChild(text);
+        examTypeDropdown.classList.add('dropdown-toggle');
+    }
+}
+
+// Функция для получения параметра из URL
+function getUrlParameter(name) {
+    name = name.replace(/[\[\]]/g, '\\$&');
+    const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+    const results = regex.exec(window.location.href);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, ' '));
+}
+
+// Вспомогательная функция для обновления URL и перезагрузки вебинаров
+function updateFilterAndReload(paramName, paramValue, resetPage = true) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set(paramName, paramValue);
+    if (resetPage) {
+        currentUrl.searchParams.set('page', 1);
+    }
+    window.location.href = currentUrl.toString();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация переключателя типа экзамена при загрузке страницы
+    const initialExamType = getUrlParameter('exam_type') || 'ege';
+    console.log('DOMContentLoaded: Initial exam type from URL:', initialExamType);
+    updateExamTypeDropdown(initialExamType);
+
     // Инициализация копирования ссылок
     initCopyLinks();
-    
+
     // Инициализация AJAX-поиска
     initAjaxSearch();
-    
+
     // Инициализация фильтров
     initFilters();
-    
+
     // Инициализация пагинации
     initPagination();
+
+    // Обновляем exam_type в URL при клике на ссылки в dropdown (для года)
+    document.querySelectorAll('#yearDropdown + .dropdown-menu a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const year = this.getAttribute('href').split('year=')[1].split('&')[0];
+            updateFilterAndReload('year', year);
+        });
+    });
+
+    // Обновляем exam_type в URL при клике на ссылки в dropdown (для типа экзамена)
+    document.querySelectorAll('#examTypeDropdown + .dropdown-menu a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const examType = this.getAttribute('href').split('exam_type=')[1].split('&')[0];
+            updateFilterAndReload('exam_type', examType);
+        });
+    });
 });
 
 function initCopyLinks() {
-    // Делегирование событий для кнопок копирования (работает и для динамически добавленных элементов)
+    // Делегирование событий для кнопок копирования
     document.body.addEventListener('click', function(e) {
         if (e.target.closest('.copy-link-btn')) {
             const btn = e.target.closest('.copy-link-btn');
@@ -221,164 +348,260 @@ function initCopyLinks() {
 
 function initAjaxSearch() {
     const searchInput = document.getElementById('webinarFilter');
-    if (!searchInput) return;
-    
-    let debounceTimer;
-    
-    searchInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            const query = this.value.trim();
-            performSearch(query);
-        }, 300); // Задержка 300мс для дебаунсинга
-    });
-}
-
-function initFilters() {
-    // Обработчики для всех фильтров
-    const courseFilterBtns = document.querySelectorAll('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter)');
-    const dateFilterBtns = document.querySelectorAll('.date-filter');
-    const solutionFilterBtns = document.querySelectorAll('.solution-filter');
-    const categoryFilterBtns = document.querySelectorAll('.category-filter');
+    const container = document.getElementById('webinar-results-container');
+    const resetButton = document.getElementById('resetAllFilters');
     const taskFilterSelect = document.getElementById('taskFilterSelect');
-    const resetBtn = document.getElementById('resetAllFilters');
-    
-    // Функция для обработки клика по кнопке фильтра
-    function handleFilterClick(btns, clickedBtn) {
-        btns.forEach(btn => btn.classList.remove('active'));
-        clickedBtn.classList.add('active');
-        const query = document.getElementById('webinarFilter').value.trim();
-        performSearch(query);
+
+    if (!container) {
+        console.warn("Контейнер для вебинаров не найден. AJAX-поиск не будет работать.");
+        return;
+    }
+
+    // Глобальные переменные для текущих фильтров
+    window.currentFilters = {
+        query: searchInput ? searchInput.value : '',
+        course_category: 'all',
+        date_filter: 'all',
+        solution: 'all',
+        category: 'all',
+        task_num: 'all',
+        oge_topic: 'all'
+    };
+
+    // Функция для применения фильтров
+    function applyFilters() {
+        const currentExamType = getUrlParameter('exam_type') || 'ege';
+        const currentYear = getUrlParameter('year') || '{{ current_year }}';
+        
+        const params = new URLSearchParams({
+            q: window.currentFilters.query,
+            year: currentYear,
+            exam_type: currentExamType,
+            course_category: window.currentFilters.course_category,
+            date_filter: window.currentFilters.date_filter,
+            solution: window.currentFilters.solution,
+            category: window.currentFilters.category,
+            task_num: window.currentFilters.task_num,
+            oge_topic: window.currentFilters.oge_topic,
+            page: 1
+        });
+
+        const ajaxUrl = `/webinars/ajax_search?${params.toString()}`;
+        
+        // Показываем спиннер
+        container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Загрузка...</span></div></div>`;
+
+        fetch(ajaxUrl)
+            .then(response => response.text())
+            .then(html => {
+                container.innerHTML = html;
+                initPagination();
+                
+                // Обновляем URL страницы без перезагрузки
+                const fullUrl = `/webinars/?${params.toString()}`;
+                history.pushState({}, '', fullUrl);
+            })
+            .catch(error => {
+                console.error('Ошибка при выполнении поиска:', error);
+                container.innerHTML = `<div class="text-center py-5"><div class="alert alert-danger">Ошибка при выполнении поиска: ${error.message}</div></div>`;
+            });
+    }
+
+    // Обработчик для поиска по тексту (с задержкой)
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                window.currentFilters.query = this.value;
+                applyFilters();
+            }, 500);
+        });
+        
+        // Обработчик для события изменения фильтра
+        searchInput.addEventListener('filterChanged', function() {
+            applyFilters();
+        });
     }
     
-    // Обработчики для кнопок фильтров
-    courseFilterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            handleFilterClick(courseFilterBtns, this);
-        });
-    });
-    
-    dateFilterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            handleFilterClick(dateFilterBtns, this);
-        });
-    });
-    
-    solutionFilterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            handleFilterClick(solutionFilterBtns, this);
-        });
-    });
-    
-    categoryFilterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            handleFilterClick(categoryFilterBtns, this);
-        });
-    });
-    
-    // Обработчик для селекта с номерами заданий
-    if (taskFilterSelect) {
-        taskFilterSelect.addEventListener('change', function() {
-            const query = document.getElementById('webinarFilter').value.trim();
-            performSearch(query);
-        });
-    }
-    
+    // Делаем функцию applyFilters доступной глобально
+    window.applyFilters = applyFilters;
+
     // Обработчик для кнопки сброса фильтров
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
+    if (resetButton) {
+        resetButton.addEventListener('click', function() {
             // Сбрасываем все фильтры
+            window.currentFilters = {
+                query: '',
+                course_category: 'all',
+                date_filter: 'all',
+                solution: 'all',
+                category: 'all',
+                task_num: 'all',
+                oge_topic: 'all'
+            };
+            
+            // Очищаем поле поиска
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            
+            // Сбрасываем выбор задания
+            if (taskFilterSelect) {
+                taskFilterSelect.value = 'all';
+            }
+            
+            // Сбрасываем выбор темы ОГЭ
+            const ogeTopicSelect = document.getElementById('ogeTopicFilterSelect');
+            if (ogeTopicSelect) {
+                ogeTopicSelect.value = 'all';
+            }
+            
+            // Сбрасываем все активные кнопки фильтров
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                if (btn.dataset.filter === 'all') {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
+                btn.classList.remove('active');
             });
             
-            // Сбрасываем селект
-            if (taskFilterSelect) taskFilterSelect.value = 'all';
+            // Активируем кнопки "Все"
+            document.querySelectorAll('.filter-btn[data-filter="all"]').forEach(btn => {
+                btn.classList.add('active');
+            });
             
-            // Сбрасываем поле поиска
-            const searchInput = document.getElementById('webinarFilter');
-            if (searchInput) searchInput.value = '';
-            
-            // Выполняем поиск с пустым запросом
-            performSearch('');
+            applyFilters();
+        });
+    }
+
+    // Обработчик для выпадающего списка заданий
+    if (taskFilterSelect) {
+        taskFilterSelect.addEventListener('change', function() {
+            window.currentFilters.task_num = this.value;
+            applyFilters();
+        });
+    }
+    
+    // Обработчик для выпадающего списка тем ОГЭ
+    const ogeTopicFilterSelect = document.getElementById('ogeTopicFilterSelect');
+    if (ogeTopicFilterSelect) {
+        ogeTopicFilterSelect.addEventListener('change', function() {
+            window.currentFilters.oge_topic = this.value;
+            applyFilters();
         });
     }
 }
 
-function performSearch(query, page = 1) {
-    // Получаем значения всех фильтров
-    const courseFilter = document.querySelector('.filter-btn:not(.date-filter):not(.solution-filter):not(.category-filter).active').dataset.filter;
-    const dateFilter = document.querySelector('.date-filter.active').dataset.filter;
-    const solutionFilter = document.querySelector('.solution-filter.active').dataset.filter;
-    const categoryFilter = document.querySelector('.category-filter.active').dataset.filter;
-    const taskFilter = document.getElementById('taskFilterSelect').value;
-    
-    // Показываем индикатор загрузки
-    const container = document.getElementById('webinar-results-container');
-    if (container) {
-        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Загрузка...</p></div>';
-    }
-    
-    // Формируем URL для AJAX-запроса с учетом страницы
-    const url = `/webinars/ajax_search?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}&page=${page}`;
-    
-    // Выполняем AJAX-запрос
-    fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Ошибка сети');
-            }
-            return response.text();
-        })
-        .then(html => {
-            // Обновляем контейнер с карточками
-            document.getElementById('webinar-results-container').innerHTML = html;
+// Инициализация фильтров (переключателей)
+function initFilters() {
+    // Обработчики для всех кнопок фильтрации
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.filter-btn') || e.target.closest('.filter-btn')) {
+            const btn = e.target.matches('.filter-btn') ? e.target : e.target.closest('.filter-btn');
+            const filterValue = btn.getAttribute('data-filter');
             
-            // Инициализируем обработчики пагинации
-            initPagination();
+            // Определяем тип фильтра по родительскому контейнеру или классам кнопки
+            let filterType = 'course_category'; // По умолчанию
             
-            // Обновляем URL страницы без перезагрузки
-            const newUrl = `/webinars/?q=${encodeURIComponent(query)}&year={{ current_year }}&course_category=${courseFilter}&date_filter=${dateFilter}&solution=${solutionFilter}&category=${categoryFilter}&task_num=${taskFilter}&page=${page}`;
-            history.pushState({}, '', newUrl);
-        })
-        .catch(error => {
-            console.error('Ошибка при выполнении поиска:', error);
-            if (container) {
-                container.innerHTML = `<div class="text-center py-5"><div class="alert alert-danger">Ошибка при выполнении поиска: ${error.message}</div></div>`;
+            if (btn.matches('.date-filter')) {
+                filterType = 'date_filter';
+            } else if (btn.matches('.solution-filter')) {
+                filterType = 'solution';
+            } else if (btn.matches('.category-filter')) {
+                filterType = 'category';
+            } else if (btn.closest('.filter-buttons') && btn.closest('.filter-buttons').classList.contains('solution-filter')) {
+                filterType = 'solution';
+            } else {
+                // Для основных кнопок курсов
+                filterType = 'course_category';
             }
-        });
-}
-
-// Инициализация обработчиков для пагинации
-function initPagination() {
-    // Обработчик для номеров страниц
-    document.querySelectorAll('.page-num').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const page = this.getAttribute('data-page');
-            const query = document.getElementById('webinarFilter').value.trim();
-            performSearch(query, page);
-            // Прокрутка к началу контейнера
-            document.getElementById('webinar-results-container').scrollIntoView({behavior: 'smooth'});
-        });
+            
+            // Убираем активный класс у всех кнопок этого типа фильтра
+            const sameTypeButtons = filterType === 'course_category' 
+                ? document.querySelectorAll('.filter-buttons:not(.solution-filter):not([class*="filter"]) .filter-btn')
+                : document.querySelectorAll(`.${filterType}`);
+                
+            if (filterType === 'course_category') {
+                // Для основных кнопок курсов
+                document.querySelectorAll('.filter-buttons:first-of-type .filter-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+            } else {
+                // Для других типов фильтров
+                document.querySelectorAll(`.${filterType}`).forEach(b => {
+                    b.classList.remove('active');
+                });
+            }
+            
+            // Добавляем активный класс к нажатой кнопке
+            btn.classList.add('active');
+            
+            // Обновляем глобальные фильтры и применяем
+            if (window.currentFilters && window.applyFilters) {
+                window.currentFilters[filterType] = filterValue;
+                window.applyFilters();
+            }
+        }
     });
-    
-    // Обработчик для кнопок "Предыдущая" и "Следующая"
-    document.querySelectorAll('.page-nav').forEach(link => {
-        link.addEventListener('click', function(e) {
+}
+
+// Инициализация пагинации
+function initPagination() {
+    // Обработчик для номеров страниц и навигации (используем делегирование событий)
+    document.addEventListener('click', function(e) {
+        // Проверяем, что клик был по кнопке пагинации
+        if (e.target.matches('.page-num, .page-nav') || e.target.closest('.page-num, .page-nav')) {
             e.preventDefault();
-            if (!this.parentElement.classList.contains('disabled')) {
-                const page = this.getAttribute('data-page');
-                const query = document.getElementById('webinarFilter').value.trim();
-                performSearch(query, page);
-                // Прокрутка к началу контейнера
-                document.getElementById('webinar-results-container').scrollIntoView({behavior: 'smooth'});
+            
+            const link = e.target.matches('.page-num, .page-nav') ? e.target : e.target.closest('.page-num, .page-nav');
+            const page = link.getAttribute('data-page');
+            
+            // Проверяем, что кнопка не отключена
+            if (link.parentElement.classList.contains('disabled') || !page) {
+                return;
             }
-        });
+            
+            // Используем AJAX для смены страницы
+            if (window.currentFilters && window.applyFilters) {
+                const currentExamType = getUrlParameter('exam_type') || 'ege';
+                const currentYear = getUrlParameter('year') || '{{ current_year }}';
+                
+                const params = new URLSearchParams({
+                    q: window.currentFilters.query,
+                    year: currentYear,
+                    exam_type: currentExamType,
+                    course_category: window.currentFilters.course_category,
+                    date_filter: window.currentFilters.date_filter,
+                    solution: window.currentFilters.solution,
+                    category: window.currentFilters.category,
+                    task_num: window.currentFilters.task_num,
+                    oge_topic: window.currentFilters.oge_topic,
+                    page: page
+                });
+
+                const ajaxUrl = `/webinars/ajax_search?${params.toString()}`;
+                const container = document.getElementById('webinar-results-container');
+                
+                if (container) {
+                    // Показываем спиннер
+                    container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Загрузка...</span></div></div>`;
+
+                    fetch(ajaxUrl)
+                        .then(response => response.text())
+                        .then(html => {
+                            container.innerHTML = html;
+                            
+                            // Обновляем URL страницы без перезагрузки
+                            const fullUrl = `/webinars/?${params.toString()}`;
+                            history.pushState({}, '', fullUrl);
+                            
+                            // Прокручиваем к началу результатов
+                            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        })
+                        .catch(error => {
+                            console.error('Ошибка при загрузке страницы:', error);
+                            container.innerHTML = `<div class="text-center py-5"><div class="alert alert-danger">Ошибка при загрузке страницы: ${error.message}</div></div>`;
+                        });
+                }
+            }
+        }
     });
 }
 </script>
@@ -915,6 +1138,21 @@ function initPagination() {
     /* Убираем overflow hidden у родительских контейнеров */
     .card, .card-body, .container, .row, .col {
         overflow: visible !important;
+    }
+    
+    /* Адаптивность для переключателей */
+    @media (max-width: 768px) {
+        .row.g-3 .col-md-6 {
+            margin-bottom: 1rem;
+        }
+        .d-flex.align-items-center.gap-3 {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem !important;
+        }
+        .d-flex.align-items-center.gap-3 h5 {
+            margin-bottom: 0.5rem;
+        }
     }
 </style>
 {% endblock %} 

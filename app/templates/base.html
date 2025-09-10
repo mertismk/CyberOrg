@@ -135,7 +135,7 @@
             </li>
             
             <li class="nav-item">
-                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('webinars.') and request.endpoint != 'webinars.batch_create_webinars' %}active{% endif %}" href="{{ url_for('webinars.webinars_list') }}">
+                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('webinars.') %}active{% endif %}" href="{{ url_for('webinars.webinars_list') }}">
                     <i class="fas fa-video"></i> <span class="nav-text">Вебинары</span>
                 </a>
             </li>
@@ -160,13 +160,6 @@
                 </a>
                 <div class="collapse" id="adminSubmenu">
                     <ul class="dropdown-menu show">
-                        {% if current_user.is_admin %}
-                        <li>
-                            <a class="dropdown-item {% if request.endpoint == 'webinars.batch_create_webinars' %}active{% endif %}" href="{{ url_for('webinars.batch_create_webinars') }}">
-                                <i class="fas fa-upload me-2"></i> Загрузить вебинары
-                            </a>
-                        </li>
-                        {% endif %}
                         
                         {% if current_user.is_super_admin %}
                         <li>
@@ -174,7 +167,23 @@
                                 <i class="fas fa-users-cog me-2"></i> Пользователи
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('updates.manage_updates') }}">
+                                <i class="fas fa-rocket me-2"></i> Управление обновлениями
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('updates.notification_statistics') }}">
+                                <i class="fas fa-chart-bar me-2"></i> Статистика просмотров
+                            </a>
+                        </li>
                         {% endif %}
+                        
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('topics.topics_list') }}">
+                                <i class="fas fa-book-open me-2"></i> Темы ОГЭ
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </li>
@@ -214,6 +223,11 @@
                         <li>
                             <a class="dropdown-item" href="{{ url_for('main.guide') }}">
                                 <i class="fas fa-question-circle me-2"></i> Руководство
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('updates.updates_history') }}">
+                                <i class="fas fa-history me-2"></i> История обновлений
                             </a>
                         </li>
                         <li>
@@ -259,6 +273,10 @@
             </div>
         </footer>
     </div>
+    
+    {% if current_user.is_authenticated %}
+        {% include 'components/update_notifications.html' %}
+    {% endif %}
     
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

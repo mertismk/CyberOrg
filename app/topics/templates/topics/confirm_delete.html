@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Удаление темы - CyberOrg{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Подтверждение удаления
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-warning me-2"></i>
+                        Вы действительно хотите удалить тему <strong>"{{ topic.name }}"</strong>?
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Информация о теме:</h6>
+                        <ul class="list-unstyled">
+                            {% if topic.task_numbers_str %}
+                                <li><i class="fas fa-hashtag me-2"></i>Задания: {{ topic.task_numbers_str }}</li>
+                            {% endif %}
+                            {% if topic.description %}
+                                <li><i class="fas fa-info-circle me-2"></i>{{ topic.description }}</li>
+                            {% endif %}
+                            <li>
+                                <i class="fas fa-video me-2"></i>
+                                Связанных вебинаров: {{ topic.webinars | length }}
+                            </li>
+                            <li>
+                                <i class="fas fa-calendar me-2"></i>
+                                Создана: {{ topic.created_at.strftime('%d.%m.%Y %H:%M') if topic.created_at else 'Дата неизвестна' }}
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    {% if topic.webinars %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>Внимание!</strong> Эта тема используется в {{ topic.webinars | length }} вебинарах:
+                            <ul class="mt-2 mb-0">
+                                {% for webinar in topic.webinars[:5] %}
+                                    <li>{{ webinar.title }}</li>
+                                {% endfor %}
+                                {% if topic.webinars | length > 5 %}
+                                    <li>... и еще {{ topic.webinars | length - 5 }}</li>
+                                {% endif %}
+                            </ul>
+                            <p class="mt-2 mb-0">
+                                Перед удалением темы необходимо сначала отвязать её от всех вебинаров 
+                                или деактивировать тему.
+                            </p>
+                        </div>
+                    {% endif %}
+                    
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('topics.topics_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Отмена
+                            </a>
+                            {% if topic.webinars %}
+                                <button type="button" class="btn btn-danger" disabled>
+                                    <i class="fas fa-ban me-1"></i>Нельзя удалить
+                                </button>
+                            {% else %}
+                                {{ form.submit(class="btn btn-danger") }}
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if topic.webinars %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Что можно сделать?
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>
+                                <a href="{{ url_for('topics.edit_topic', topic_id=topic.id) }}">
+                                    Деактивировать тему
+                                </a> 
+                                - она перестанет показываться в списке, но связи с вебинарами сохранятся
+                            </li>
+                            <li>
+                                Вручную отвязать тему от всех вебинаров через редактирование каждого вебинара
+                            </li>
+                            <li>
+                                <a href="{{ url_for('topics.topic_detail', topic_id=topic.id) }}">
+                                    Посмотреть все связанные вебинары
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

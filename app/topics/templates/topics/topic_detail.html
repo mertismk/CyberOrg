@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic.name }} - CyberOrg{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-book-open me-2"></i>
+                    {{ topic.name }}
+                    {% if not topic.is_active %}
+                        <small class="text-warning">(неактивна)</small>
+                    {% endif %}
+                </h2>
+                <div>
+                    <a href="{{ url_for('topics.topics_list') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i>К списку тем
+                    </a>
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('topics.edit_topic', topic_id=topic.id) }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-1"></i>Редактировать
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Информация о теме -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Информация о теме
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if topic.task_numbers_str %}
+                                <div class="mb-3">
+                                    <strong>Номера заданий:</strong><br>
+                                    <span class="badge bg-primary">{{ topic.task_numbers_str }}</span>
+                                </div>
+                            {% endif %}
+                            
+                            {% if topic.description %}
+                                <div class="mb-3">
+                                    <strong>Описание:</strong><br>
+                                    <p class="text-muted mb-0">{{ topic.description }}</p>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <strong>Статус:</strong><br>
+                                {% if topic.is_active %}
+                                    <span class="badge bg-success">Активная</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Неактивная</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Дата создания:</strong><br>
+                                <span class="text-muted">
+                                    {{ topic.created_at.strftime('%d.%m.%Y %H:%M') if topic.created_at else 'Не указана' }}
+                                </span>
+                            </div>
+                            
+                            <div>
+                                <strong>Связанных вебинаров:</strong><br>
+                                <span class="badge bg-info">{{ topic.webinars | length }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Список связанных вебинаров -->
+                <div class="col-lg-8 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-video me-2"></i>
+                                Связанные вебинары ({{ topic.webinars | length }})
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if topic.webinars %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Название</th>
+                                                <th>Дата</th>
+                                                <th>Год</th>
+                                                <th>Тип</th>
+                                                <th>Задания</th>
+                                                <th width="100"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for webinar in topic.webinars %}
+                                                <tr>
+                                                    <td>
+                                                        <a href="{{ webinar.url }}" target="_blank" class="text-decoration-none">
+                                                            {{ webinar.title }}
+                                                            <i class="fas fa-external-link-alt ms-1 small"></i>
+                                                        </a>
+                                                    </td>
+                                                    <td>
+                                                        {% if webinar.date %}
+                                                            {{ webinar.date.strftime('%d.%m.%Y') }}
+                                                        {% else %}
+                                                            <span class="text-muted">Не указана</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">{{ webinar.academic_year }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {% if webinar.exam_type == 'oge' %}
+                                                            <span class="badge bg-info">ОГЭ</span>
+                                                        {% else %}
+                                                            <span class="badge bg-primary">ЕГЭ</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if webinar.task_numbers %}
+                                                            {% for task_num in webinar.task_numbers %}
+                                                                <span class="badge bg-light text-dark me-1">{{ task_num.number }}</span>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if current_user.is_admin %}
+                                                            <a href="{{ url_for('webinars.edit_webinar', webinar_id=webinar.id) }}" 
+                                                               class="btn btn-sm btn-outline-primary" 
+                                                               title="Редактировать вебинар">
+                                                                <i class="fas fa-edit"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                                    <h6 class="text-muted">Нет связанных вебинаров</h6>
+                                    <p class="text-muted mb-0">
+                                        Эта тема пока не используется ни в одном вебинаре.
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

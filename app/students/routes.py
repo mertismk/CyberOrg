@@ -35,8 +35,16 @@ def students_list():
     except ValueError:
         academic_year = 2026
     
-    # Базовый запрос к ученикам с фильтром по учебному году
-    students_query = Student.query.filter(Student.academic_year == academic_year)
+    # Получаем фильтр по типу экзамена (по умолчанию ege)
+    exam_type = request.args.get('exam_type', 'ege')
+    if exam_type not in ['ege', 'oge']:
+        exam_type = 'ege'
+    
+    # Базовый запрос к ученикам с фильтром по учебному году и типу экзамена
+    students_query = Student.query.filter(
+        Student.academic_year == academic_year,
+        Student.exam_type == exam_type
+    )
 
     # Если есть поисковый запрос, фильтруем
     if query:
@@ -78,7 +86,7 @@ def students_list():
         logger.info(f"Student: {s.first_name} {s.last_name}, Registration: {s.registration_date}")
 
     # Шаблон students/templates/students/students.html
-    return render_template("students/students.html", students=students, current_year=academic_year)
+    return render_template("students/students.html", students=students, current_year=academic_year, current_exam_type=exam_type)
 
 
 @bp.route("/<int:student_id>")
@@ -159,111 +167,37 @@ def student_detail(student_id):
     # Расчет необходимых заданий для отображения (как в view_study_plan)
     target_score = student.target_score or 80
     required_tasks = set()
-    if target_score <= 70:
-        required_tasks = {
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            9,
-            10,
-            11,
-            12,
-            14,
-            16,
-            18,
-            19,
-            20,
-            21,
-            22,
-        }
-    elif target_score <= 80:
-        required_tasks = {
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            14,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-        }
-    elif target_score <= 85:
-        required_tasks = {
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            25,
-        }
-    elif target_score <= 90:
-        required_tasks = set(range(1, 26))
-    elif target_score <= 95:
-        required_tasks = {
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            27,
-        }
+    
+    if student.exam_type == 'oge':
+        # Для ОГЭ только задания 1-16, логика по оценкам (3-5)
+        if target_score <= 3:
+            required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+        elif target_score <= 4:
+            required_tasks = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+        else:  # target_score == 5
+            required_tasks = set(range(1, 17))  # Все задания 1-16
     else:
-        required_tasks = set(range(1, 28))
+        # Для ЕГЭ логика по баллам (60-100)
+        if target_score <= 70:
+            required_tasks = {
+                1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 16, 18, 19, 20, 21, 22,
+            }
+        elif target_score <= 80:
+            required_tasks = {
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23,
+            }
+        elif target_score <= 85:
+            required_tasks = {
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25,
+            }
+        elif target_score <= 90:
+            required_tasks = set(range(1, 26))
+        elif target_score <= 95:
+            required_tasks = {
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27,
+            }
+        else:
+            required_tasks = set(range(1, 28))
 
     # Шаблон students/templates/students/student_detail.html
     return render_template(
@@ -286,6 +220,14 @@ def student_detail(student_id):
     )
 
 
+@bp.route("/select-exam-type")
+@login_required
+def select_exam_type():
+    if current_user.is_educational_curator:
+        abort(403)
+    return render_template("students/select_exam_type.html")
+
+
 @bp.route("/new", methods=["GET", "POST"])
 @login_required
 def student_new():
@@ -303,15 +245,19 @@ def student_new():
                 "students/student_form.html", title="Добавление ученика", form=form
             )
 
+        # Обрабатываем данные в зависимости от типа экзамена
+        initial_score = form.initial_score.data if form.exam_type.data == 'ege' else None
+        
         student = Student(
             first_name=form.first_name.data,
             last_name=form.last_name.data,
             platform_id=form.platform_id.data,
             academic_year=form.academic_year.data,
+            exam_type=form.exam_type.data,
             target_score=form.target_score.data,
             hours_per_week=form.hours_per_week.data,
-            needs_python_basics=form.needs_python_basics.data,
-            initial_score=form.initial_score.data,  # Будет None, если не введено
+            needs_python_basics=False,  # Всегда False, поле больше не используется
+            initial_score=initial_score,
             notes=form.notes.data,
             # created_by_id=current_user.id # Добавим позже, если нужно
         )
@@ -319,6 +265,11 @@ def student_new():
         db.session.commit()
         flash("Ученик успешно добавлен!", "success")
         return redirect(url_for("students.student_detail", student_id=student.id))
+
+    # Обрабатываем параметр exam_type из URL
+    exam_type = request.args.get('exam_type', 'ege')
+    if exam_type in ['ege', 'oge']:
+        form.exam_type.data = exam_type
 
     # Шаблон students/templates/students/student_form.html
     return render_template(
@@ -379,8 +330,24 @@ def student_edit(student_id):
                     student=student,
                 )
 
-        # Обновляем поля студента из формы
-        form.populate_obj(student)
+        # Обновляем поля студента из формы с учетом типа экзамена
+        student.first_name = form.first_name.data
+        student.last_name = form.last_name.data
+        student.platform_id = form.platform_id.data
+        student.academic_year = form.academic_year.data
+        student.exam_type = form.exam_type.data
+        student.target_score = form.target_score.data
+        student.hours_per_week = form.hours_per_week.data
+        student.notes = form.notes.data
+        
+        # Обрабатываем поля в зависимости от типа экзамена
+        if form.exam_type.data == 'ege':
+            student.initial_score = form.initial_score.data
+        else:  # ОГЭ
+            student.initial_score = None
+        
+        # Поле needs_python_basics больше не используется
+        student.needs_python_basics = False
 
         db.session.commit()
         flash("Данные ученика обновлены!", "success")

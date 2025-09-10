@@ -89,16 +89,27 @@
 
                     <div class="row mb-0">
                         <div class="col-md-6">
-                            {{ render_field(form.target_score, field_type='number', min=60, max=100, step=1) }} 
+                            {{ render_field(form.academic_year) }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ render_field(form.exam_type) }}
+                        </div>
+                    </div>
+
+                    <div class="row mb-0">
+                        <div class="col-md-6">
+                            <div id="target-score-field">
+                                {{ render_field(form.target_score, field_type='number', min=60, max=100, step=1) }} 
+                            </div>
                         </div>
                          <div class="col-md-6">
                             {{ render_field(form.hours_per_week, field_type='number', min=1) }}
                         </div>
                     </div>
 
-                    {{ render_field(form.initial_score, field_type='number', min=0, max=100, step=1, placeholder='Оставьте пустым, если неизвестно') }}
-                    
-                    {{ render_checkbox(form.needs_python_basics) }}
+                    <div id="initial-score-field">
+                        {{ render_field(form.initial_score, field_type='number', min=0, max=100, step=1, placeholder='Оставьте пустым, если неизвестно') }}
+                    </div>
                     
                     {{ render_field(form.notes, field_type='textarea', rows=3) }}
                     
@@ -129,4 +140,46 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const examTypeSelect = document.getElementById('exam_type');
+    const targetScoreField = document.getElementById('target-score-field');
+    const initialScoreField = document.getElementById('initial-score-field');
+    const targetScoreInput = targetScoreField.querySelector('input');
+    const targetScoreLabel = targetScoreField.querySelector('label');
+    
+    function updateFormForExamType() {
+        const examType = examTypeSelect.value;
+        
+        if (examType === 'oge') {
+            // Для ОГЭ
+            targetScoreLabel.textContent = 'Целевая оценка';
+            targetScoreInput.min = '3';
+            targetScoreInput.max = '5';
+            targetScoreInput.step = '1';
+            targetScoreInput.placeholder = 'Введите оценку от 3 до 5';
+            
+            // Скрываем поля для ОГЭ
+            initialScoreField.style.display = 'none';
+        } else {
+            // Для ЕГЭ
+            targetScoreLabel.textContent = 'Целевой балл';
+            targetScoreInput.min = '60';
+            targetScoreInput.max = '100';
+            targetScoreInput.step = '1';
+            targetScoreInput.placeholder = 'Введите балл от 60 до 100';
+            
+            // Показываем поля для ЕГЭ
+            initialScoreField.style.display = 'block';
+        }
+    }
+    
+    // Обновляем форму при загрузке страницы
+    updateFormForExamType();
+    
+    // Обновляем форму при изменении типа экзамена
+    examTypeSelect.addEventListener('change', updateFormForExamType);
+});
+</script>
 {% endblock %} 

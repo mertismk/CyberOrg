@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Анализ блоков вебинаров - {{ student.first_name }} {{ student.last_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('plans.select_tasks', student_id=student.id) }}" class="btn btn-outline-secondary mb-2">
+            <i class="fas fa-arrow-left me-2"></i> Назад к выбору заданий
+        </a>
+        <h1 class="fw-bold mb-0">Анализ блоков вебинаров</h1>
+        <p class="text-muted">{{ student.first_name }} {{ student.last_name }}</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-pie me-2"></i>Настройка недельных квот по блокам</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Ниже показано количество доступных вебинаров по каждому блоку. 
+                Укажите рекомендуемое количество вебинаров из каждого блока на каждую неделю.</p>
+                
+                <form action="{{ url_for('plans.create_study_plan', student_id=student.id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}"/>
+                    
+                    <!-- Передаем выбранные задания -->
+                    {% for task in selected_tasks %}
+                        <input type="hidden" name="selected_tasks" value="{{ task }}">
+                    {% endfor %}
+                    
+                    <!-- Передаем настройку вебинаров 2025 года -->
+                    <input type="hidden" name="include_2025_webinars" value="{{ 'yes' if include_2025_webinars else 'no' }}">
+                    
+                    <!-- Галочка для Python с нуля -->
+                    <div class="card border-primary mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fas fa-code me-2"></i>Настройки курса</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="needs_python_basics" name="needs_python_basics" value="yes" 
+                                       {% if student.needs_python_basics %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="needs_python_basics">
+                                    Нужен Python с нуля
+                                </label>
+                                <div class="form-text text-muted">
+                                    Если отмечено, то 66% времени будет выделено на Python с нуля, 34% на основной курс
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        {% set block_names = {
+                            'beginners': 'Python с нуля',
+                            'basic': 'Основной курс (включая задание 27)', 
+                            'advanced': 'Задание 26',
+                            'mocks': 'Разбор пробников',
+                            'practice': 'Нарешка'
+                        } %}
+                        
+                        {% for block_key, block_name in block_names.items() %}
+                            {% set block_data = webinar_blocks.get(block_key, {'count': 0, 'hours': 0}) %}
+                            {% if block_data.count > 0 %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-0 bg-light h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="card-title mb-0">{{ block_name }}</h6>
+                                            <span class="badge bg-primary">{{ block_data.count }} веб.</span>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <p class="small text-muted mb-1">Общее количество часов:</p>
+                                            <p class="fw-bold text-primary mb-0">{{ block_data.hours|round(1) }} ч</p>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <p class="small text-muted mb-1">Среднее время на вебинар:</p>
+                                            <p class="small mb-0">
+                                                {% if block_data.count > 0 %}
+                                                    {{ (block_data.hours / block_data.count)|round(1) }} ч
+                                                {% else %}
+                                                    0 ч
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="weekly_block_quota_{{ block_key }}" class="form-label fw-bold">
+                                                Вебинаров в неделю:
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="number" 
+                                                       class="form-control" 
+                                                       id="weekly_block_quota_{{ block_key }}" 
+                                                       name="weekly_block_quota_{{ block_key }}"
+                                                       value="{{ block_data.recommended_per_week }}"
+                                                       min="0" 
+                                                       max="{{ block_data.count }}"
+                                                       title="Количество вебинаров из блока {{ block_name }} на каждую неделю">
+                                                <span class="input-group-text">из {{ block_data.count }}</span>
+                                            </div>
+                                            <div class="form-text">
+                                                Рекомендуется: {{ block_data.recommended_per_week }} вебинаров в неделю
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    
+                    {% if webinar_blocks.values()|selectattr('count', 'gt', 0)|list|length == 0 %}
+                        <div class="alert alert-warning mb-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Нет доступных вебинаров для анализа блоков.
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Информация о выбранных заданиях -->
+                    <div class="card border-primary mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fas fa-tasks me-2"></i>Выбранные задания</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for task in selected_tasks %}
+                                    <span class="badge bg-primary fs-6">{{ task }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('plans.select_tasks', student_id=student.id) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i> Назад к выбору заданий
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-chevron-right me-2"></i> Перейти к составлению плана
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle me-2"></i>Информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-user me-2"></i>Студент</h6>
+                    <p class="mb-0">{{ student.first_name }} {{ student.last_name }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-bullseye me-2"></i>
+                        Целевой {% if student.exam_type == 'oge' %}оценка{% else %}балл{% endif %}: {{ student.target_score or 'Не указан' }}
+                    </h6>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-clock me-2"></i>Часов в неделю: {{ student.hours_per_week or 'Не указано' }}</h6>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold"><i class="fas fa-calendar me-2"></i>Курс</h6>
+                    <p class="mb-0">
+                        {% if include_2025_webinars %}
+                            Включены вебинары 2024-2025 и 2025-2026 годов
+                        {% else %}
+                            Только вебинары 2025-2026 года
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-lightbulb me-2"></i> <strong>Совет:</strong> 
+                    Настройте количество вебинаров по блокам в соответствии с потребностями студента и доступным временем.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const pythonBasicsCheckbox = document.getElementById('needs_python_basics');
+        const blockInputs = {};
+        
+        // Собираем все инпуты блоков
+        const blockKeys = ['beginners', 'basic', 'advanced', 'mocks', 'practice'];
+        blockKeys.forEach(blockKey => {
+            const input = document.getElementById(`weekly_block_quota_${blockKey}`);
+            if (input) {
+                blockInputs[blockKey] = input;
+            }
+        });
+        
+        // Функция для пересчета квот
+        function recalculateQuotas() {
+            const needsPythonBasics = pythonBasicsCheckbox.checked;
+            const hoursPerWeek = {{ student.hours_per_week or 9 }};
+            
+            // Данные о блоках из шаблона
+            const blockData = {
+                {% for block_key, block_data in webinar_blocks.items() %}
+                    '{{ block_key }}': {
+                        count: {{ block_data.count }},
+                        hours: {{ block_data.hours }},
+                        avgHours: {{ (block_data.hours / block_data.count) if block_data.count > 0 else 0 }}
+                    },
+                {% endfor %}
+            };
+            
+            // Определяем нужны ли задания 26
+            const selectedTasks = [{{ selected_tasks|join(', ') }}];
+            const needsTask26 = selectedTasks.includes(26);
+            const isFirstPlan = {{ 'true' if plan_count == 0 else 'false' }};
+            
+            // Пересчитываем квоты для каждого блока
+            Object.keys(blockData).forEach(blockKey => {
+                const data = blockData[blockKey];
+                const input = blockInputs[blockKey];
+                
+                if (!input || data.count === 0) return;
+                
+                let timePercentage = 0.0;
+                
+                // Определяем процент времени для блока
+                if (blockKey === 'beginners' && needsPythonBasics) {
+                    timePercentage = 0.66; // 66% времени на Python с нуля
+                } else if (blockKey === 'basic') {
+                    if (needsPythonBasics) {
+                        timePercentage = 0.34; // 34% времени на основной курс (если есть Python)
+                    } else if (needsTask26 && !isFirstPlan) {
+                        timePercentage = 0.66; // 66% времени на основной курс (если есть T26)
+                    } else {
+                        timePercentage = 1.0; // 100% времени на основной курс
+                    }
+                } else if (blockKey === 'advanced' && needsTask26 && !isFirstPlan) {
+                    timePercentage = 0.34; // 34% времени на T26 (если не первый план)
+                } else {
+                    // Для остальных блоков (mocks, practice) - минимальное время
+                    timePercentage = 0.1;
+                }
+                
+                // Рассчитываем количество вебинаров на основе процента времени
+                const maxWebinarsByHours = Math.floor(hoursPerWeek * timePercentage / data.avgHours);
+                
+                // Берем минимум из расчета по часам и общего количества вебинаров
+                let recommendedPerWeek = Math.min(maxWebinarsByHours, data.count);
+                
+                // Минимум 1 вебинар в неделю, если есть вебинары в блоке и он нужен
+                if (recommendedPerWeek === 0 && data.count > 0) {
+                    if ((blockKey === 'beginners' && needsPythonBasics) ||
+                        (blockKey === 'basic') ||
+                        (blockKey === 'advanced' && needsTask26 && !isFirstPlan)) {
+                        recommendedPerWeek = 1;
+                    }
+                }
+                
+                // Обновляем значение только для блоков, которые должны измениться при переключении галочки
+                if (blockKey === 'beginners' || blockKey === 'basic') {
+                    input.value = recommendedPerWeek;
+                    
+                    // Обновляем текст рекомендации
+                    const formText = input.parentNode.querySelector('.form-text');
+                    if (formText) {
+                        formText.textContent = `Рекомендуется: ${recommendedPerWeek} вебинаров в неделю`;
+                    }
+                }
+            });
+        }
+        
+        // Обработчик изменения галочки
+        pythonBasicsCheckbox.addEventListener('change', recalculateQuotas);
+        
+        // Добавляем валидацию для полей ввода
+        const quotaInputs = document.querySelectorAll('input[name^="weekly_block_quota_"]');
+        
+        quotaInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const max = parseInt(this.getAttribute('max'));
+                const value = parseInt(this.value);
+                
+                if (value > max) {
+                    this.value = max;
+                }
+                
+                if (value < 0) {
+                    this.value = 0;
+                }
+            });
+        });
+        
+        // Показываем предупреждение при превышении разумных лимитов
+        quotaInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const value = parseInt(this.value);
+                const max = parseInt(this.getAttribute('max'));
+                
+                if (value > max * 0.5) {
+                    const blockName = this.closest('.card-body').querySelector('.card-title').textContent;
+                    console.log(`Предупреждение: Выбрано ${value} вебинаров из блока "${blockName}", что составляет ${Math.round(value/max*100)}% от доступных`);
+                }
+            });
+        });
+        
+        // Инициализация при загрузке страницы - НЕ пересчитываем автоматически
+        // recalculateQuotas();
+    });
+</script>
+{% endblock %}

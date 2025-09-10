@@ -23,6 +23,7 @@ from app.models import (
     User,
     WatchedWebinar,
     WebinarTask,
+    OGETopic,
 )
 from app.webinars import bp
 from app.webinars.forms import WebinarForm, WebinarTaskForm
@@ -41,6 +42,11 @@ def webinars_list():
     except (ValueError, TypeError):
         selected_year = 2026  # Значение по умолчанию при ошибке
 
+    # Получаем тип экзамена из параметров запроса или используем значение по умолчанию
+    selected_exam_type = request.args.get("exam_type", "ege")
+    if selected_exam_type not in ['ege', 'oge']:
+        selected_exam_type = 'ege'
+
     # Получаем параметры фильтрации
     search_query = request.args.get("q", "").strip()
     course_category = request.args.get("course_category", "all")
@@ -48,6 +54,7 @@ def webinars_list():
     solution = request.args.get("solution", "all")
     category = request.args.get("category", "all")
     task_num_str = request.args.get("task_num", "all")
+    oge_topic_id = request.args.get("oge_topic", "all")
     
     # Получаем номер страницы из параметров запроса (по умолчанию 1)
     page = request.args.get('page', 1, type=int)
@@ -57,11 +64,13 @@ def webinars_list():
     query = _get_filtered_webinars_query(
         query=search_query,
         academic_year=selected_year,
+        exam_type=selected_exam_type,
         course_category=course_category,
         date_filter=date_filter,
         solution=solution,
         category=category,
         task_num_str=task_num_str,
+        oge_topic_id=oge_topic_id if oge_topic_id != "all" else None,
     )
     
     # Применяем сортировку
@@ -76,6 +85,11 @@ def webinars_list():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     webinars = pagination.items
     
+    # Отладочная информация о загруженных вебинарах
+    current_app.logger.debug(f"DEBUG: Loaded {len(webinars)} webinars")
+    for w in webinars[:3]:  # Показываем первые 3
+        current_app.logger.debug(f"DEBUG: Webinar ID={w.id}, title='{w.title[:30]}...', exam_type='{w.exam_type}', category={w.category}")
+    
     # Получаем список доступных годов для выбора
     available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
     available_years = [year[0] for year in available_years]
@@ -86,6 +100,11 @@ def webinars_list():
             available_years.append(selected_year)
             available_years.sort()
     
+    # Получаем список активных тем ОГЭ для фильтрации (только если это ОГЭ)
+    oge_topics = []
+    if selected_exam_type == 'oge':
+        oge_topics = OGETopic.query.filter_by(is_active=True).order_by(OGETopic.name).all()
+    
     # Для удобства отладки
     current_app.logger.debug(f"DEBUG: Found {pagination.total} webinars after filtering, showing page {page} of {pagination.pages}")
 
@@ -95,12 +114,15 @@ def webinars_list():
         pagination=pagination,
         available_years=available_years,
         current_year=selected_year,
+        current_exam_type=selected_exam_type,
         course_category=course_category,
         date_filter=date_filter,
         solution=solution,
         category=category,
         task_num=task_num_str,
+        oge_topic=oge_topic_id,
         search_query=search_query,
+        oge_topics=oge_topics,
     )
 
 
@@ -112,6 +134,7 @@ def filter_webinars():
     # Извлекаем все параметры из запроса
     query = request.args.get("q", "").strip()
     academic_year = request.args.get("year", "2026")
+    selected_exam_type = request.args.get("exam_type", "ege")
     course_category = request.args.get("course_category", "all")
     date_filter = request.args.get(
         "date_filter", "all"
@@ -121,6 +144,7 @@ def filter_webinars():
     task_num_str = request.args.get(
         "task_num", "all"
     )  # Получаем как строку (e.g., "task-5")
+    oge_topic_id = request.args.get("oge_topic", "all")
 
     try:
         academic_year = int(academic_year)
@@ -128,17 +152,19 @@ def filter_webinars():
         academic_year = 2026  # По умолчанию, если не удалось преобразовать
 
     current_app.logger.debug(
-        f"Received query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}"
+        f"Received query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}, oge_topic: {oge_topic_id}"
     )  # <--- Логгирование
 
     webinars_query = _get_filtered_webinars_query(
         query=query,
         academic_year=academic_year,
+        exam_type=selected_exam_type,
         course_category=course_category,
         date_filter=date_filter,
         solution=solution,
         category=category,
         task_num_str=task_num_str,
+        oge_topic_id=oge_topic_id if oge_topic_id != "all" else None,
     )
     
     # Применяем сортировку
@@ -166,6 +192,7 @@ def filter_webinars():
         available_years = [2026, 2025]  # Если нет данных, показываем по умолчанию
 
     current_app.logger.debug("--- filter_webinars route END ---")  # <--- Логгирование
+    
     # Возвращаем отрендеренный ОСНОВНОЙ шаблон с отфильтрованными данными
     return render_template(
         "webinars/webinars.html",
@@ -175,6 +202,7 @@ def filter_webinars():
         search_query=query,
         current_user=current_user,
         current_year=academic_year,
+        current_exam_type=selected_exam_type,
         available_years=available_years,
     )
 
@@ -183,11 +211,13 @@ def filter_webinars():
 def _get_filtered_webinars_query(
     query=None,
     academic_year=2026,
+    exam_type="ege",
     course_category="all",
     date_filter="all",
     solution="all",
     category="all",
     task_num_str="all",
+    oge_topic_id=None,
 ):
     # Базовый запрос с загрузкой связанных данных
     webinar_query = Webinar.query.options(
@@ -195,10 +225,17 @@ def _get_filtered_webinars_query(
         selectinload(Webinar.comments).joinedload(WebinarComment.user),
         selectinload(Webinar.task_numbers),
         selectinload(Webinar.tasks).joinedload(WebinarTask.created_by),
+        selectinload(Webinar.oge_topics),
     )
+    
+    # Добавляем отладочную информацию
+    current_app.logger.debug(f"DEBUG: Starting webinar query for exam_type={exam_type}, academic_year={academic_year}")
 
     # Применяем фильтр по учебному году
     webinar_query = webinar_query.filter(Webinar.academic_year == academic_year)
+    
+    # Применяем фильтр по типу экзамена
+    webinar_query = webinar_query.filter(Webinar.exam_type == exam_type)
 
     # Применяем фильтрацию по категории курса
     if course_category == "for_beginners":
@@ -217,6 +254,13 @@ def _get_filtered_webinars_query(
         webinar_query = webinar_query.filter(Webinar.for_minisnap == True)
     elif course_category == "for_summer":
         webinar_query = webinar_query.filter(Webinar.for_summer == True)
+    # Фильтры для категорий ОГЭ
+    elif course_category == "for_oge_part1":
+        webinar_query = webinar_query.filter(Webinar.for_oge_part1 == True)
+    elif course_category == "for_oge_part2":
+        webinar_query = webinar_query.filter(Webinar.for_oge_part2 == True)
+    elif course_category == "for_oge_hard":
+        webinar_query = webinar_query.filter(Webinar.for_oge_hard == True)
 
     # 1. Фильтр по текстовому запросу (q)
     if query and query.strip():
@@ -264,7 +308,16 @@ def _get_filtered_webinars_query(
         except (ValueError, IndexError):
             current_app.logger.warning(f"DEBUG: Invalid task_num_str value: {task_num_str}")
 
-    # 5. Фильтр по дате (date_filter)
+    # 5. Фильтр по теме ОГЭ (только для ОГЭ вебинаров)
+    if oge_topic_id and exam_type == 'oge':
+        try:
+            topic_id = int(oge_topic_id)
+            current_app.logger.debug(f"DEBUG: Applying OGE topic filter: {topic_id}")
+            webinar_query = webinar_query.filter(Webinar.oge_topics.any(OGETopic.id == topic_id))
+        except (ValueError, TypeError):
+            current_app.logger.warning(f"DEBUG: Invalid oge_topic_id value: {oge_topic_id}")
+
+    # 6. Фильтр по дате (date_filter)
     if date_filter != "all":
         today = datetime.now().date()
         if date_filter == "upcoming":
@@ -368,12 +421,16 @@ def import_webinars():
                     elif isinstance(date_str, pd.Timestamp):
                         date_value = date_str.date()
 
+                    # Получаем тип экзамена из формы (добавлено для поддержки ОГЭ)
+                    exam_type = request.form.get('exam_type', 'ege')  # По умолчанию ЕГЭ
+                    
                     # Создание вебинара с учебным годом
                     webinar = Webinar(
                         title=str(row["название вебинара"]),
                         url=str(row["ссылка на вебинар"]),
                         date=date_value,
                         academic_year=selected_year,  # Устанавливаем выбранный учебный год
+                        exam_type=exam_type,  # Устанавливаем тип экзамена
                         created_by_id=current_user.id,
                     )
 
@@ -386,7 +443,9 @@ def import_webinars():
                         task_nums = re.findall(r'\d+', task_nums_str)
                         for num_str in task_nums:
                             task_num = int(num_str)
-                            if 1 <= task_num <= 27:
+                            # Определяем максимальный номер в зависимости от типа экзамена
+                            max_task_num = 16 if exam_type == 'oge' else 27
+                            if 1 <= task_num <= max_task_num:
                                 task_number = TaskNumber.query.filter_by(number=task_num).first()
                                 if not task_number:
                                     task_number = TaskNumber(number=task_num)
@@ -455,7 +514,10 @@ def import_webinars():
                         elif course_category == "хард прога":
                             webinar.for_advanced = True
                         elif course_category == "задание 27":
-                            webinar.for_expert = True
+                            if selected_year != 2026:  # Проверяем, что год не 2026
+                                webinar.for_expert = True
+                            else:
+                                errors.append(f"Строка {index + 2}: Нельзя создавать вебинары категории 'Задание 27' для 2026 года")
                         elif course_category == "разбор пробников":
                             webinar.for_mocks = True
                         elif course_category == "нарешка":
@@ -541,27 +603,60 @@ def edit_webinar(webinar_id):
     if not current_user.is_admin:
         abort(403)  # Доступ запрещен
 
-    webinar = Webinar.query.get_or_404(webinar_id)
+    webinar = Webinar.query.options(selectinload(Webinar.oge_topics)).get_or_404(webinar_id)
     form = WebinarForm(obj=webinar)
+    
+    # Заполняем choices для тем ОГЭ, если редактируется вебинар ОГЭ
+    if webinar.exam_type == 'oge':
+        active_topics = OGETopic.query.filter_by(is_active=True).order_by(OGETopic.name).all()
+        form.oge_topics.choices = [(topic.id, topic.name) for topic in active_topics]
+        # Устанавливаем текущие выбранные темы
+        selected_topic_ids = [topic.id for topic in webinar.oge_topics]
+        form.oge_topics.data = selected_topic_ids
+        current_app.logger.debug(f"DEBUG (edit form): webinar has {len(webinar.oge_topics)} topics: {selected_topic_ids}")
+        current_app.logger.debug(f"DEBUG (edit form): form.oge_topics.data set to: {form.oge_topics.data}")
+        current_app.logger.debug(f"DEBUG (edit form): form.oge_topics.choices = {form.oge_topics.choices}")
+    else:
+        form.oge_topics.choices = []
 
     if form.validate_on_submit():
-        # Сохраняем данные из формы, но не task_numbers
+        # Проверка: нельзя редактировать вебинары с категорией "Задание 27" для 2026 года
+        if form.academic_year.data == 2026 and form.for_expert.data:
+            flash('Нельзя устанавливать категорию "Задание 27" для вебинаров 2026 года', 'danger')
+            return redirect(request.url)
+        
+        # Сохраняем данные из формы, но не task_numbers и oge_topics
         task_numbers_data = form.task_numbers.data
         category_data = form.category.data
+        oge_topics_data = form.oge_topics.data
+        current_app.logger.debug(f"DEBUG (edit submit): oge_topics_data = {oge_topics_data}, type = {type(oge_topics_data)}")
         
         # Удаляем поля, которые требуют специальной обработки
         delattr(form, 'task_numbers')
         delattr(form, 'category')
+        delattr(form, 'oge_topics')
+        
+        # Обработка обложки - автоскачивание если это новый URL
+        cover_url = form.cover_url.data
+        if cover_url and cover_url.startswith(('http://', 'https://')) and cover_url != webinar.cover_url:
+            cover_url = download_cover_image(cover_url)
+            form.cover_url.data = cover_url
         
         # Теперь безопасно заполняем объект
         form.populate_obj(webinar)
         
         # Обработка категории
-        if category_data and category_data.strip():
+        current_app.logger.debug(f"DEBUG: category_data = '{category_data}', type = {type(category_data)}")
+        if category_data and category_data.strip() and category_data != '':
             try:
                 webinar.category = int(category_data)
-            except (ValueError, TypeError):
+                current_app.logger.debug(f"DEBUG: webinar.category set to {webinar.category}")
+            except (ValueError, TypeError) as e:
+                current_app.logger.debug(f"DEBUG: Failed to convert category_data to int: {e}")
                 webinar.category = None
+        else:
+            current_app.logger.debug("DEBUG: category_data is empty, setting webinar.category to None")
+            webinar.category = None
         
         # Обработка номеров заданий
         webinar.task_numbers = []  # Очищаем существующие связи
@@ -575,6 +670,25 @@ def edit_webinar(webinar_id):
                     task_number = TaskNumber(number=num)
                     db.session.add(task_number)
                 webinar.task_numbers.append(task_number)
+        
+        # Обработка тем ОГЭ (только для ОГЭ вебинаров) - используем HTML чекбоксы
+        if webinar.exam_type == 'oge':
+            # Получаем выбранные темы из HTML чекбоксов
+            selected_topic_ids = request.form.getlist('oge_topics_simple')
+            selected_topic_ids = [int(topic_id) for topic_id in selected_topic_ids if topic_id.isdigit()]
+            current_app.logger.debug(f"DEBUG (edit): Selected topic IDs from HTML: {selected_topic_ids}")
+            
+            # Очищаем существующие связи
+            webinar.oge_topics = []
+            
+            # Добавляем новые
+            if selected_topic_ids:
+                selected_topics = OGETopic.query.filter(OGETopic.id.in_(selected_topic_ids)).all()
+                for topic in selected_topics:
+                    webinar.oge_topics.append(topic)
+                    current_app.logger.debug(f"DEBUG (edit): Added topic: {topic.name}")
+            else:
+                current_app.logger.debug("DEBUG (edit): No topics selected")
 
         try:
             db.session.commit()
@@ -591,7 +705,24 @@ def edit_webinar(webinar_id):
     else:
         form.task_numbers.data = ''
     
-    return render_template('webinars/edit_webinar.html', form=form, webinar=webinar)
+    # Заполняем поле category для отображения в форме
+    current_app.logger.debug(f"DEBUG (edit form): webinar.category = {webinar.category}, type = {type(webinar.category)}")
+    if webinar.category:
+        form.category.data = str(webinar.category)
+        current_app.logger.debug(f"DEBUG (edit form): form.category.data set to '{form.category.data}'")
+    else:
+        form.category.data = ''
+        current_app.logger.debug("DEBUG (edit form): form.category.data set to empty string")
+    
+    # Получаем все активные темы ОГЭ для шаблона
+    all_oge_topics = OGETopic.query.filter_by(is_active=True).order_by(OGETopic.name).all()
+    
+    return render_template('webinars/webinar_form.html', 
+                         form=form, 
+                         webinar=webinar, 
+                         exam_type=webinar.exam_type, 
+                         mode='edit',
+                         all_oge_topics=all_oge_topics)
 
 
 @bp.route("/<int:webinar_id>/delete", methods=["POST"])
@@ -832,85 +963,216 @@ def download_all_covers():
     return render_template("webinars/download_covers.html", count=count)
 
 
-@bp.route("/new", methods=["GET", "POST"])
+@bp.route("/create")
 @login_required
-def create_webinar():
+def create_webinars():
+    """Перенаправляет на страницу выбора типа экзамена"""
     if not current_user.is_admin:
-        abort(403)  # Доступ запрещен
+        abort(403)
+    return render_template("webinars/select_exam_type.html")
+
+
+@bp.route("/new/<exam_type>", methods=["GET", "POST"])
+@login_required
+def create_webinar_form(exam_type):
+    """Форма создания вебинара для конкретного типа экзамена"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    if exam_type not in ['ege', 'oge']:
+        abort(404)
     
     form = WebinarForm()
+    # Устанавливаем фиксированные значения
+    form.academic_year.data = 2026  # По умолчанию 2026
+    form.exam_type.data = exam_type
     
-    # Устанавливаем учебный год по умолчанию (2026)
-    if request.args.get("year"):
-        try:
-            selected_year = int(request.args.get("year"))
-            form.academic_year.data = selected_year
-        except (ValueError, TypeError):
-            form.academic_year.data = 2026
+    # Заполняем choices для тем ОГЭ, если создается вебинар ОГЭ
+    if exam_type == 'oge':
+        active_topics = OGETopic.query.filter_by(is_active=True).order_by(OGETopic.name).all()
+        form.oge_topics.choices = [(topic.id, topic.name) for topic in active_topics]
+        form.oge_topics.data = []  # Пустой список для нового вебинара
+        current_app.logger.debug(f"DEBUG (create form): form.oge_topics.choices = {form.oge_topics.choices}")
+        current_app.logger.debug(f"DEBUG (create form): form.oge_topics.data = {form.oge_topics.data}")
+    else:
+        form.oge_topics.choices = []
     
     if form.validate_on_submit():
-        # Сохраняем данные из формы, но не task_numbers
-        task_numbers_data = form.task_numbers.data
-        
-        new_webinar = Webinar(
-            title=form.title.data,
-            url=form.url.data,
-            date=form.date.data,
-            academic_year=form.academic_year.data,
-            is_programming=form.is_programming.data,
-            is_manual=form.is_manual.data,
-            is_excel=form.is_excel.data,
-            for_beginners=form.for_beginners.data,
-            for_basic=form.for_basic.data,
-            for_advanced=form.for_advanced.data,
-            for_expert=form.for_expert.data,
-            for_mocks=form.for_mocks.data,
-            for_practice=form.for_practice.data,
-            for_minisnap=form.for_minisnap.data,
-            for_summer=form.for_summer.data,
-            cover_url=form.cover_url.data,
-            created_by_id=current_user.id,
-        )
-        
-        # Обработка категории
-        if form.category.data and form.category.data.strip():
-            try:
-                new_webinar.category = int(form.category.data)
-            except (ValueError, TypeError):
-                new_webinar.category = None
-        else:
-            new_webinar.category = None
-        
-        # Обработка номеров заданий
-        if task_numbers_data and task_numbers_data.strip():
-            task_nums = [int(num.strip()) for num in task_numbers_data.split(',') if num.strip()]
-            for num in task_nums:
-                task_number = TaskNumber.query.filter_by(number=num).first()
-                if not task_number:
-                    task_number = TaskNumber(number=num)
-                    db.session.add(task_number)
-                new_webinar.task_numbers.append(task_number)
-        
+        # Обработка создания вебинара (перенесем логику из старой функции)
+        return handle_webinar_creation(form)
+    
+    # Получаем все активные темы ОГЭ для шаблона
+    all_oge_topics = OGETopic.query.filter_by(is_active=True).order_by(OGETopic.name).all()
+    
+    return render_template("webinars/webinar_form.html", 
+                         form=form, 
+                         exam_type=exam_type, 
+                         mode='create',
+                         all_oge_topics=all_oge_topics)
+
+
+def handle_webinar_creation(form):
+    """Общая функция для создания вебинара"""
+    # Проверка: нельзя создавать вебинары с категорией "Задание 27" для 2026 года
+    if form.academic_year.data == 2026 and form.for_expert.data:
+        flash('Нельзя создавать вебинары категории "Задание 27" для 2026 года', 'danger')
+        return redirect(request.url)
+    
+    # Сохраняем данные из формы, но не task_numbers
+    task_numbers_data = form.task_numbers.data
+    
+    # Обработка обложки - автоскачивание если это URL
+    cover_url = form.cover_url.data
+    if cover_url and cover_url.startswith(('http://', 'https://')):
+        cover_url = download_cover_image(cover_url)
+    
+    new_webinar = Webinar(
+        title=form.title.data,
+        url=form.url.data,
+        date=form.date.data,
+        academic_year=form.academic_year.data,
+        exam_type=form.exam_type.data,
+        is_programming=form.is_programming.data,
+        is_manual=form.is_manual.data,
+        is_excel=form.is_excel.data,
+        for_beginners=form.for_beginners.data,
+        for_basic=form.for_basic.data,
+        for_advanced=form.for_advanced.data,
+        for_expert=form.for_expert.data,
+        for_mocks=form.for_mocks.data,
+        for_practice=form.for_practice.data,
+        for_minisnap=form.for_minisnap.data,
+        for_summer=form.for_summer.data,
+        # Новые поля для ОГЭ
+        for_oge_part1=form.for_oge_part1.data,
+        for_oge_part2=form.for_oge_part2.data,
+        for_oge_hard=form.for_oge_hard.data,
+        cover_url=cover_url,
+        created_by_id=current_user.id,
+    )
+    
+    # Обработка категории
+    current_app.logger.debug(f"DEBUG (create): form.category.data = '{form.category.data}', type = {type(form.category.data)}")
+    if form.category.data and form.category.data.strip() and form.category.data != '':
         try:
-            db.session.add(new_webinar)
-            db.session.commit()
-            flash('Вебинар успешно создан!', 'success')
-            return redirect(url_for('webinars.webinars_list', year=new_webinar.academic_year))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Ошибка при создании вебинара: {str(e)}', 'danger')
+            new_webinar.category = int(form.category.data)
+            current_app.logger.debug(f"DEBUG (create): new_webinar.category set to {new_webinar.category}")
+        except (ValueError, TypeError) as e:
+            current_app.logger.debug(f"DEBUG (create): Failed to convert form.category.data to int: {e}")
+            new_webinar.category = None
+    else:
+        current_app.logger.debug("DEBUG (create): form.category.data is empty, setting new_webinar.category to None")
+        new_webinar.category = None
     
-    # Получаем список доступных годов для выбора
-    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
-    available_years = [year[0] for year in available_years]
-    if not available_years or 2026 not in available_years:
-        if not available_years:
-            available_years = [2026, 2025]
-        elif 2026 not in available_years:
-            available_years.append(2026)
-            available_years.sort()
+    # Обработка номеров заданий
+    if task_numbers_data and task_numbers_data.strip():
+        task_nums = [int(num.strip()) for num in task_numbers_data.split(',') if num.strip()]
+        for num in task_nums:
+            task_number = TaskNumber.query.filter_by(number=num).first()
+            if not task_number:
+                task_number = TaskNumber(number=num)
+                db.session.add(task_number)
+            new_webinar.task_numbers.append(task_number)
     
-    return render_template('webinars/create_webinar.html', form=form, available_years=available_years)
+    # Обработка тем ОГЭ (только для ОГЭ вебинаров) - используем HTML чекбоксы
+    if form.exam_type.data == 'oge':
+        # Получаем выбранные темы из HTML чекбоксов
+        selected_topic_ids = request.form.getlist('oge_topics_simple')
+        selected_topic_ids = [int(topic_id) for topic_id in selected_topic_ids if topic_id.isdigit()]
+        current_app.logger.debug(f"DEBUG (create): Selected topic IDs from HTML: {selected_topic_ids}")
+        
+        # Добавляем новые темы
+        if selected_topic_ids:
+            selected_topics = OGETopic.query.filter(OGETopic.id.in_(selected_topic_ids)).all()
+            current_app.logger.debug(f"DEBUG (create): Found {len(selected_topics)} topics in DB")
+            for topic in selected_topics:
+                new_webinar.oge_topics.append(topic)
+                current_app.logger.debug(f"DEBUG (create): Added topic: {topic.name}")
+        else:
+            current_app.logger.debug("DEBUG (create): No topics selected")
+    
+    try:
+        db.session.add(new_webinar)
+        db.session.commit()
+        flash('Вебинар успешно создан!', 'success')
+        return redirect(url_for('webinars.webinars_list', year=new_webinar.academic_year, exam_type=new_webinar.exam_type))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при создании вебинара: {str(e)}', 'danger')
+        return redirect(request.url)
+
+
+def download_cover_image(url):
+    """Скачивает изображение обложки и сохраняет на сервер"""
+    try:
+        upload_folder = os.path.join(current_app.static_folder, 'uploads', 'covers')
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+        
+        # Получаем расширение файла из URL
+        parsed_url = urlparse(url)
+        path = parsed_url.path
+        ext = os.path.splitext(path)[1].lower()
+        
+        if not ext or ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+            ext = '.jpg'  # По умолчанию .jpg если расширение не распознано
+        
+        # Создаем уникальное имя файла
+        filename = f"{uuid.uuid4().hex}{ext}"
+        filepath = os.path.join(upload_folder, filename)
+        
+        # Скачиваем изображение
+        response = requests.get(url, timeout=10, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        response.raise_for_status()
+        
+        # Сохраняем изображение
+        with open(filepath, 'wb') as f:
+            f.write(response.content)
+        
+        return f'/static/uploads/covers/{filename}'
+        
+    except Exception as e:
+        current_app.logger.error(f"Ошибка при скачивании обложки: {str(e)}")
+        return url  # Возвращаем оригинальный URL в случае ошибки
+
+
+@bp.route("/new", methods=["GET", "POST"])
+@login_required 
+def create_webinar():
+    """Deprecated - перенаправляет на новый интерфейс"""
+    exam_type = request.args.get('exam_type', 'ege')
+    return redirect(url_for('webinars.create_webinar_form', exam_type=exam_type))
+
+
+@bp.route("/preview-cover", methods=["POST"])
+@login_required
+def preview_cover():
+    """AJAX endpoint для предпросмотра обложки"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        data = request.get_json()
+        url = data.get('url')
+        
+        if not url or not url.startswith(('http://', 'https://')):
+            return jsonify({'success': False, 'error': 'Некорректный URL'})
+        
+        # Проверяем, что URL ведет на изображение
+        response = requests.head(url, timeout=5, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        
+        content_type = response.headers.get('content-type', '').lower()
+        if not content_type.startswith('image/'):
+            return jsonify({'success': False, 'error': 'URL не ведет на изображение'})
+        
+        return jsonify({'success': True, 'url': url})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 
 @bp.route("/ajax_search")
@@ -920,11 +1182,13 @@ def ajax_search():
     # Извлекаем все параметры из запроса
     query = request.args.get("q", "").strip()
     academic_year = request.args.get("year", "2026")
+    exam_type = request.args.get("exam_type", "ege")
     course_category = request.args.get("course_category", "all")
     date_filter = request.args.get("date_filter", "all")
     solution = request.args.get("solution", "all")
     category = request.args.get("category", "all")
     task_num_str = request.args.get("task_num", "all")
+    oge_topic_id = request.args.get("oge_topic", "all")
     page = request.args.get('page', 1, type=int)
     per_page = 18  # Количество вебинаров на странице
 
@@ -934,18 +1198,20 @@ def ajax_search():
         academic_year = 2026
 
     current_app.logger.debug(
-        f"AJAX search query: '{query}', year: {academic_year}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}, page: {page}"
+        f"AJAX search query: '{query}', year: {academic_year}, exam_type: {exam_type}, course: {course_category}, date: {date_filter}, solution: {solution}, category: {category}, task: {task_num_str}, oge_topic: {oge_topic_id}, page: {page}"
     )
 
     # Создаем запрос для фильтрации вебинаров
     webinars_query = _get_filtered_webinars_query(
         query=query,
         academic_year=academic_year,
+        exam_type=exam_type,
         course_category=course_category,
         date_filter=date_filter,
         solution=solution,
         category=category,
         task_num_str=task_num_str,
+        oge_topic_id=oge_topic_id if oge_topic_id != "all" else None,
     )
     
     # Применяем сортировку
@@ -965,166 +1231,8 @@ def ajax_search():
         webinars=webinars,
         pagination=pagination,
         current_user=current_user,
+        current_exam_type=exam_type,
         is_ajax=True
     )
 
 
-@bp.route("/batch-create", methods=["GET", "POST"])
-@login_required
-def batch_create_webinars():
-    if not current_user.is_admin:
-        abort(403)  # Доступ запрещен
-    
-    if request.method == "POST":
-        try:
-            data = request.get_json()
-            academic_year = int(data.get('academic_year', 2026))
-            webinars_data = data.get('webinars', [])
-            
-            created_count = 0
-            errors = []
-            
-            # Создаем директорию для сохранения обложек, если она не существует
-            upload_folder = os.path.join(current_app.static_folder, 'uploads', 'covers')
-            if not os.path.exists(upload_folder):
-                os.makedirs(upload_folder)
-            
-            for webinar_data in webinars_data:
-                try:
-                    # Проверка обязательных полей
-                    if not webinar_data.get('title') or not webinar_data.get('url'):
-                        errors.append(f"Отсутствуют обязательные поля у вебинара: {webinar_data.get('title', 'Без названия')}")
-                        continue
-                    
-                    # Проверка на дубликат по URL
-                    existing_webinar = Webinar.query.filter_by(
-                        url=webinar_data.get('url')
-                    ).first()
-                    if existing_webinar:
-                        errors.append(f"Вебинар с URL '{webinar_data.get('url')}' уже существует (ID: {existing_webinar.id})")
-                        continue
-                    
-                    # Обработка даты
-                    date_value = None
-                    if webinar_data.get('date'):
-                        try:
-                            date_value = datetime.strptime(webinar_data.get('date'), "%Y-%m-%d").date()
-                        except ValueError:
-                            errors.append(f"Неверный формат даты для вебинара: {webinar_data.get('title')}")
-                    
-                    # Создание вебинара
-                    webinar = Webinar(
-                        title=webinar_data.get('title'),
-                        url=webinar_data.get('url'),
-                        date=date_value,
-                        academic_year=academic_year,
-                        created_by_id=current_user.id,
-                        is_programming=webinar_data.get('is_programming', False),
-                        is_manual=webinar_data.get('is_manual', False),
-                        is_excel=webinar_data.get('is_excel', False)
-                    )
-                    
-                    # Обработка и скачивание обложки
-                    cover_url = webinar_data.get('cover_url', '')
-                    if cover_url:
-                        try:
-                            # Получаем расширение файла из URL
-                            parsed_url = urlparse(cover_url)
-                            path = parsed_url.path
-                            ext = os.path.splitext(path)[1].lower()
-                            
-                            if not ext or ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
-                                ext = '.jpg'  # По умолчанию .jpg если расширение не распознано
-                            
-                            # Создаем уникальное имя файла
-                            filename = f"{uuid.uuid4().hex}{ext}"
-                            filepath = os.path.join(upload_folder, filename)
-                            
-                            # Скачиваем изображение
-                            response = requests.get(cover_url, timeout=10)
-                            response.raise_for_status()  # Проверка на ошибки HTTP
-                            
-                            # Сохраняем изображение
-                            with open(filepath, 'wb') as f:
-                                f.write(response.content)
-                            
-                            # Устанавливаем локальный путь к обложке
-                            webinar.cover_url = f'/static/uploads/covers/{filename}'
-                            
-                        except Exception as e:
-                            # В случае ошибки просто сохраняем оригинальный URL
-                            webinar.cover_url = cover_url
-                            errors.append(f"Ошибка при скачивании обложки для '{webinar_data.get('title')}': {str(e)}")
-                    
-                    # Установка категории
-                    if webinar_data.get('category'):
-                        try:
-                            webinar.category = int(webinar_data.get('category'))
-                        except (ValueError, TypeError):
-                            errors.append(f"Неверное значение категории для вебинара: {webinar_data.get('title')}")
-                    
-                    # Установка типа курса
-                    course_type = webinar_data.get('course_type')
-                    if course_type:
-                        setattr(webinar, course_type, True)
-                    
-                    # Обработка номеров заданий
-                    task_nums_str = webinar_data.get('task_numbers', '')
-                    if task_nums_str:
-                        task_nums = re.findall(r'\d+', task_nums_str)
-                        for num_str in task_nums:
-                            task_num = int(num_str)
-                            if 1 <= task_num <= 27:
-                                task_number = TaskNumber.query.filter_by(number=task_num).first()
-                                if not task_number:
-                                    task_number = TaskNumber(number=task_num)
-                                    db.session.add(task_number)
-                                    db.session.flush()
-                                webinar.task_numbers.append(task_number)
-                    
-                    db.session.add(webinar)
-                    created_count += 1
-                
-                except Exception as e:
-                    db.session.rollback()
-                    errors.append(f"Ошибка при создании вебинара '{webinar_data.get('title', 'Без названия')}': {str(e)}")
-            
-            if created_count > 0:
-                db.session.commit()
-                flash(f"Успешно создано {created_count} вебинаров", "success")
-            
-            if errors:
-                for error in errors[:5]:  # Показываем только первые 5 ошибок
-                    flash(error, "danger")
-                if len(errors) > 5:
-                    flash(f"... и еще {len(errors) - 5} ошибок", "danger")
-            
-            return jsonify({"success": True, "created": created_count, "errors": len(errors)})
-            
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Batch create error: {str(e)}")
-            return jsonify({"success": False, "error": str(e)}), 500
-    
-    # При GET-запросе отображаем форму
-    # Получаем список доступных годов
-    available_years = db.session.query(Webinar.academic_year).distinct().order_by(Webinar.academic_year).all()
-    available_years = [year[0] for year in available_years]
-    
-    if not available_years:
-        available_years = [2026, 2025]
-    
-    # Добавляем 2026 если его нет в списке
-    if 2026 not in available_years:
-        available_years.append(2026)
-    
-    # Сортируем годы
-    available_years.sort()
-    
-    # Генерируем CSRF-токен
-    csrf_token = generate_csrf()
-    
-    return render_template("webinars/batch_create_webinars.html", 
-                          available_years=available_years, 
-                          current_year=2026,
-                          csrf_token=csrf_token)

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика: {{ notification.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4">
+        <i class="fas fa-chart-line me-2"></i>
+        Детальная статистика: {{ notification.title }}
+        {% if notification.version %}
+            <small class="text-muted">({{ notification.version }})</small>
+        {% endif %}
+    </h1>
+    <div>
+        <form method="POST" action="{{ url_for('updates.resend_notification', notification_id=notification.id) }}" style="display: inline;">
+            <button type="submit" class="btn btn-success me-2" title="Отправить всем еще раз">
+                <i class="fas fa-paper-plane me-1"></i>
+                Отправить повторно
+            </button>
+        </form>
+        <a href="{{ url_for('updates.notification_statistics') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Назад к статистике
+        </a>
+    </div>
+</div>
+
+<!-- Информация об уведомлении -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Информация об уведомлении</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="mb-2">
+                    {% if notification.is_active %}
+                        <span class="badge bg-success">Активно</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Неактивно</span>
+                    {% endif %}
+                    <span class="badge bg-info">Приоритет: {{ notification.priority }}</span>
+                    {% if notification.show_until %}
+                        <span class="badge bg-warning text-dark">
+                            До: {{ notification.show_until.strftime('%d.%m.%Y') }}
+                        </span>
+                    {% endif %}
+                </div>
+                <p class="mb-2">{{ notification.content }}</p>
+                <small class="text-muted">
+                    <i class="fas fa-user me-1"></i>
+                    {{ notification.created_by.full_name or notification.created_by.username }}
+                    <span class="ms-3">
+                        <i class="fas fa-calendar me-1"></i>
+                        {{ notification.created_at|moscow_time }}
+                    </span>
+                </small>
+            </div>
+            <div class="col-md-4 text-end">
+                <h2 class="text-primary">{{ viewed_users|length }}</h2>
+                <p class="text-muted mb-0">пользователей просмотрели</p>
+                <small class="text-muted">из {{ viewed_users|length + not_viewed_users|length }} всего</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Вкладки -->
+<ul class="nav nav-tabs mb-4" id="statisticsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="viewed-tab" data-bs-toggle="tab" data-bs-target="#viewed" type="button" role="tab" aria-controls="viewed" aria-selected="true">
+            <i class="fas fa-check-circle me-1"></i>
+            Просмотрели ({{ viewed_users|length }})
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="not-viewed-tab" data-bs-toggle="tab" data-bs-target="#not-viewed" type="button" role="tab" aria-controls="not-viewed" aria-selected="false">
+            <i class="fas fa-times-circle me-1"></i>
+            Не просмотрели ({{ not_viewed_users|length }})
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="statisticsTabsContent">
+    <!-- Пользователи, просмотревшие уведомление -->
+    <div class="tab-pane fade show active" id="viewed" role="tabpanel" aria-labelledby="viewed-tab">
+        {% if viewed_users %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>
+                    Пользователи, просмотревшие уведомление
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Пользователь</th>
+                                <th>Роль</th>
+                                <th>Время просмотра</th>
+                                <th>Последний вход</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for status, user in viewed_users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                            {{ (user.full_name or user.username)[0]|upper }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ user.full_name or user.username }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ user.username }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if user.is_super_admin %}
+                                        <span class="badge bg-danger">Супер-администратор</span>
+                                    {% elif user.is_admin %}
+                                        <span class="badge bg-warning text-dark">Администратор</span>
+                                    {% elif user.is_educational_curator %}
+                                        <span class="badge bg-success">Учебный куратор</span>
+                                    {% elif user.is_organizational_curator %}
+                                        <span class="badge bg-info">Организационный куратор</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ user.role }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ status.viewed_at|moscow_time }}</strong>
+                                </td>
+                                <td class="text-muted">
+                                    {{ user.last_login|moscow_time if user.last_login else 'Никогда' }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-eye-slash fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">Пока никто не просмотрел это уведомление</h5>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Пользователи, НЕ просмотревшие уведомление -->
+    <div class="tab-pane fade" id="not-viewed" role="tabpanel" aria-labelledby="not-viewed-tab">
+        {% if not_viewed_users %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users-slash me-2"></i>
+                    Пользователи, не просмотревшие уведомление
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Пользователь</th>
+                                <th>Роль</th>
+                                <th>Последний вход</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in not_viewed_users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                            {{ (user.full_name or user.username)[0]|upper }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ user.full_name or user.username }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ user.username }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if user.is_super_admin %}
+                                        <span class="badge bg-danger">Супер-администратор</span>
+                                    {% elif user.is_admin %}
+                                        <span class="badge bg-warning text-dark">Администратор</span>
+                                    {% elif user.is_educational_curator %}
+                                        <span class="badge bg-success">Учебный куратор</span>
+                                    {% elif user.is_organizational_curator %}
+                                        <span class="badge bg-info">Организационный куратор</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ user.role }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted">
+                                    {{ user.last_login|moscow_time if user.last_login else 'Никогда' }}
+                                </td>
+                                <td>
+                                    {% if user.last_login %}
+                                        {% set days_ago = (now - user.last_login).days %}
+                                        {% if days_ago < 1 %}
+                                            <span class="badge bg-success">Онлайн недавно</span>
+                                        {% elif days_ago < 7 %}
+                                            <span class="badge bg-warning text-dark">{{ days_ago }} дн. назад</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Долго не был</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">Неизвестно</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-check-double fa-3x text-success mb-3"></i>
+            <h5 class="text-success">Все пользователи просмотрели это уведомление!</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link {
+    border-radius: 8px 8px 0 0;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: var(--primary-purple);
+    border-color: var(--primary-purple);
+    color: white;
+}
+</style>
+
+{% endblock %}

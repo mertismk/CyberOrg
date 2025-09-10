@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import render_field, render_checkbox_field %}
+
+{% block title %}
+    {% if mode == 'create' %}
+        Создать вебинар - {{ 'ЕГЭ' if exam_type == 'ege' else 'ОГЭ' }}
+    {% else %}
+        Редактировать вебинар - {{ webinar.title if webinar else '' }}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('webinars.webinars_list') }}" class="text-decoration-none">
+                    <i class="fas fa-video me-1"></i> Вебинары
+                </a>
+            </li>
+            {% if mode == 'create' %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('webinars.create_webinars') }}" class="text-decoration-none">Новый вебинар</a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    {{ 'ЕГЭ' if exam_type == 'ege' else 'ОГЭ' }}
+                </li>
+            {% else %}
+                <li class="breadcrumb-item active" aria-current="page">
+                    Редактирование: {{ webinar.title[:50] + '...' if webinar.title|length > 50 else webinar.title }}
+                </li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-9">
+            <!-- Заголовок -->
+            <div class="d-flex align-items-center mb-4">
+                <div class="me-3">
+                    {% if mode == 'create' %}
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle p-2" 
+                             style="background: linear-gradient(135deg, {{ '#667eea, #764ba2' if exam_type == 'ege' else '#f093fb, #f5576c' }});">
+                            <i class="fas fa-{{ 'graduation-cap' if exam_type == 'ege' else 'certificate' }} text-white" style="font-size: 1.5rem;"></i>
+                        </div>
+                    {% else %}
+                        <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle p-2">
+                            <i class="fas fa-edit text-warning" style="font-size: 1.5rem;"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <h1 class="mb-1 fw-bold">
+                        {% if mode == 'create' %}
+                            Создание вебинара для {{ 'ЕГЭ' if exam_type == 'ege' else 'ОГЭ' }}
+                        {% else %}
+                            Редактирование вебинара
+                        {% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if mode == 'create' %}
+                            Заполните информацию о новом вебинаре по {{ 'ЕГЭ' if exam_type == 'ege' else 'ОГЭ' }}
+                        {% else %}
+                            Внесите необходимые изменения в данные вебинара
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Форма -->
+            <div class="card shadow-sm border-0" style="border-radius: 16px;">
+                <div class="card-body p-4 p-md-5">
+                    <form method="POST" novalidate id="webinar-form">
+                        {{ form.hidden_tag() }}
+                        {{ form.academic_year() }}
+                        
+                        <!-- Индикатор типа экзамена -->
+                        <div class="alert alert-{{ 'primary' if exam_type == 'ege' else 'info' }} border-0 mb-4" 
+                             style="background: linear-gradient(135deg, {{ 'rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)' if exam_type == 'ege' else 'rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1)' }}); border-radius: 12px;">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-{{ 'graduation-cap' if exam_type == 'ege' else 'certificate' }} me-2"></i>
+                                <span class="fw-semibold">Тип экзамена: {{ 'ЕГЭ (задания 1-27)' if exam_type == 'ege' else 'ОГЭ (задания 1-16)' }}</span>
+                                {{ form.exam_type(readonly=True, style='display: none;') }}
+                            </div>
+                        </div>
+
+                        <!-- Основная информация -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12">
+                                <h5 class="section-title">
+                                    <i class="fas fa-info-circle me-2"></i> Основная информация
+                                </h5>
+                            </div>
+                            <div class="col-12">
+                                {{ render_field(form.title, class='form-control form-control-lg', label_visible=True, placeholder='Например: Решение задач по программированию') }}
+                            </div>
+                            <div class="col-md-8">
+                                {{ render_field(form.url, class='form-control', label_visible=True, placeholder='https://example.com/webinar') }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ render_field(form.date, class='form-control', type='date', label_visible=True) }}
+                            </div>
+                        </div>
+
+                        <!-- Обложка с предпросмотром -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12">
+                                <h5 class="section-title">
+                                    <i class="fas fa-image me-2"></i> Обложка вебинара
+                                </h5>
+                            </div>
+                            <div class="col-md-8">
+                                {{ render_field(form.cover_url, class='form-control', label_visible=True, placeholder='https://example.com/cover.jpg') }}
+                <script>
+                    // Устанавливаем ID для поля обложки после рендеринга
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const coverField = document.querySelector('input[name="cover_url"]');
+                        if (coverField) {
+                            coverField.id = 'cover_url_input';
+                        }
+                    });
+                </script>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Вставьте ссылку на изображение. Оно будет автоматически скачано и сохранено на сервер.
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div id="cover-preview" class="border rounded" style="min-height: 120px; background-color: #f8f9fa;">
+                                    <div id="cover-placeholder" class="d-flex align-items-center justify-content-center h-100 text-muted" style="min-height: 120px;">
+                                        <div class="text-center">
+                                            <i class="fas fa-image fa-2x mb-2"></i>
+                                            <div>Предпросмотр обложки</div>
+                                        </div>
+                                    </div>
+                                    <img id="cover-image" class="img-fluid rounded" style="display: none; max-height: 120px; width: 100%; object-fit: cover;" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Задания и категория -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12">
+                                <h5 class="section-title">
+                                    <i class="fas fa-tasks me-2"></i> Задания и категория
+                                </h5>
+                            </div>
+                            <div class="col-md-6">
+                                {{ render_field(form.task_numbers, class='form-control', label_visible=True, 
+                                   placeholder=('1, 5, 17 (от 1 до 27)' if exam_type == 'ege' else '1, 5, 10 (от 1 до 16)')) }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ render_field(form.category, class='form-select', label_visible=True) }}
+                            </div>
+                        </div>
+
+                        <!-- Тип решения -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12">
+                                <h5 class="section-title">
+                                    <i class="fas fa-tools me-2"></i> Способ решения
+                                </h5>
+                            </div>
+                            <div class="col-12">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="form-check-card">
+                                            {{ render_checkbox_field(form.is_programming) }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check-card">
+                                            {{ render_checkbox_field(form.is_manual) }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check-card">
+                                            {{ render_checkbox_field(form.is_excel) }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Категории курса -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12">
+                                <h5 class="section-title">
+                                    <i class="fas fa-tags me-2"></i> Категории курса
+                                </h5>
+                            </div>
+                            <div class="col-12">
+                                <!-- Категории для ЕГЭ -->
+                                <div class="ege-categories" style="{% if exam_type == 'oge' %}display: none;{% endif %}">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_beginners) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_basic) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_advanced) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 expert-option">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_expert) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_mocks) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_practice) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 minisnap-option">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_minisnap) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 summer-option">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_summer) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Категории для ОГЭ -->
+                                <div class="oge-categories" style="{% if exam_type == 'ege' %}display: none;{% endif %}">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_oge_part1) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_oge_part2) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_oge_hard) }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check-card">
+                                                {{ render_checkbox_field(form.for_mocks) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Темы ОГЭ (только для ОГЭ вебинаров) -->
+                        <div class="form-section" id="oge-topics-section" style="{% if exam_type == 'ege' %}display: none;{% endif %}">
+                            <h6 class="form-section-title">
+                                <i class="fas fa-book-open me-2"></i> Темы ОГЭ
+                            </h6>
+                            <div class="bg-light rounded-3 p-4">
+                                {% if webinar and webinar.exam_type == 'oge' %}
+                                    {% if all_oge_topics %}
+                                        <!-- Простые HTML чекбоксы как везде в форме -->
+                                        <div class="row g-3">
+                                            {% for topic in all_oge_topics %}
+                                                {% set is_selected = webinar and topic in webinar.oge_topics %}
+                                                <div class="col-md-6 col-lg-4">
+                                                    <div class="form-check-card">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   name="oge_topics_simple" 
+                                                                   value="{{ topic.id }}" 
+                                                                   id="oge_topic_simple_{{ topic.id }}"
+                                                                   {% if is_selected %}checked{% endif %}>
+                                                            <label class="form-check-label fw-bold" for="oge_topic_simple_{{ topic.id }}">
+                                                                {{ topic.name }}
+                                                            </label>
+                                                            <div class="form-check-description">
+                                                                <small class="text-muted">{{ topic.description or '' }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="text-muted text-center py-3">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Темы ОГЭ не настроены. Обратитесь к администратору для добавления тем.
+                                        </div>
+                                    {% endif %}
+                                {% elif exam_type == 'oge' %}
+                                    <!-- Для создания нового вебинара -->
+                                    {% if all_oge_topics %}
+                                        <div class="row g-3">
+                                            {% for topic in all_oge_topics %}
+                                                <div class="col-md-6 col-lg-4">
+                                                    <div class="form-check-card">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   name="oge_topics_simple" 
+                                                                   value="{{ topic.id }}" 
+                                                                   id="oge_topic_simple_{{ topic.id }}">
+                                                            <label class="form-check-label fw-bold" for="oge_topic_simple_{{ topic.id }}">
+                                                                {{ topic.name }}
+                                                            </label>
+                                                            <div class="form-check-description">
+                                                                <small class="text-muted">{{ topic.description or '' }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="text-muted text-center py-3">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Темы ОГЭ доступны только для вебинаров ОГЭ.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Кнопки действий -->
+                        <div class="d-flex justify-content-between align-items-center pt-4 mt-4 border-top">
+                            <a href="{{ url_for('webinars.webinars_list') }}" class="btn btn-outline-secondary btn-lg px-4">
+                                <i class="fas fa-times me-2"></i> Отмена
+                            </a>
+                            <button type="submit" class="btn btn-{{ 'primary' if exam_type == 'ege' else 'info' }} btn-lg px-4">
+                                <i class="fas fa-{{ 'plus' if mode == 'create' else 'save' }} me-2"></i> 
+                                {{ 'Создать вебинар' if mode == 'create' else 'Сохранить изменения' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const coverInput = document.getElementById('cover_url_input');
+    const coverImage = document.getElementById('cover-image');
+    const coverPlaceholder = document.getElementById('cover-placeholder');
+    
+    // Загрузка превью обложки
+    function loadCoverPreview(url) {
+        if (!url || !url.startsWith('http')) {
+            coverImage.style.display = 'none';
+            coverPlaceholder.style.display = 'flex';
+            return;
+        }
+        
+        // Создаем временное изображение для проверки
+        const tempImg = new Image();
+        tempImg.onload = function() {
+            coverImage.src = url;
+            coverImage.style.display = 'block';
+            coverPlaceholder.style.display = 'none';
+        };
+        tempImg.onerror = function() {
+            coverImage.style.display = 'none';
+            coverPlaceholder.style.display = 'flex';
+        };
+        tempImg.src = url;
+    }
+    
+    // Обработчик изменения URL обложки
+    if (coverInput) {
+        // Загрузить превью при загрузке страницы, если есть значение
+        if (coverInput.value) {
+            loadCoverPreview(coverInput.value);
+        }
+        
+        let debounceTimer;
+        coverInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                loadCoverPreview(this.value);
+            }, 500); // Задержка 500мс для избежания частых запросов
+        });
+    }
+    
+    // Логика показа/скрытия категорий в зависимости от типа экзамена и года
+    const examType = '{{ exam_type }}';
+    
+    function updateCategoryVisibility() {
+        // Для ЕГЭ 2026 года скрываем "Задание 27" и "Мини-щелчок", показываем "Летний курс"
+        if (examType === 'ege') {
+            document.querySelector('.expert-option').style.display = 'none';
+            document.querySelector('.minisnap-option').style.display = 'none';
+            document.querySelector('.summer-option').style.display = 'block';
+            
+            // Снимаем галочки с скрытых полей
+            const expertCheckbox = document.querySelector('#for_expert');
+            const minisnapCheckbox = document.querySelector('#for_minisnap');
+            if (expertCheckbox) expertCheckbox.checked = false;
+            if (minisnapCheckbox) minisnapCheckbox.checked = false;
+        }
+    }
+    
+    updateCategoryVisibility();
+    
+    // Валидация формы
+    const form = document.getElementById('webinar-form');
+    form.addEventListener('submit', function(e) {
+        const titleField = form.querySelector('#title');
+        const urlField = form.querySelector('#url');
+        
+        if (!titleField.value.trim()) {
+            e.preventDefault();
+            titleField.focus();
+            alert('Пожалуйста, введите название вебинара');
+            return false;
+        }
+        
+        if (!urlField.value.trim()) {
+            e.preventDefault();
+            urlField.focus();
+            alert('Пожалуйста, введите ссылку на вебинар');
+            return false;
+        }
+    });
+    
+    // Отладка простых HTML чекбоксов тем ОГЭ
+    const ogeTopicCheckboxes = document.querySelectorAll('input[name="oge_topics_simple"]');
+    console.log('Найдено чекбоксов тем ОГЭ:', ogeTopicCheckboxes.length);
+    
+    ogeTopicCheckboxes.forEach(function(checkbox) {
+        console.log('Чекбокс:', checkbox.id, 'value:', checkbox.value, 'checked:', checkbox.checked);
+    });
+});
+</script>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.section-title {
+    color: #1d1d1f;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f8f9fa;
+}
+
+/* Стили для подписей полей в светлой теме */
+.form-label {
+    color: #1d1d1f !important;
+    font-weight: 500;
+}
+
+.form-check-label {
+    color: #1d1d1f !important;
+    font-weight: 500;
+}
+
+.form-check-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.form-check-card:hover {
+    background: #e3f2fd;
+    border-color: #2196f3;
+    transform: translateY(-2px);
+}
+
+.form-check-card .form-check-input:checked + .form-check-label {
+    color: #1976d2;
+    font-weight: 500;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    border-color: #86b7fe;
+}
+
+.form-control-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 2rem;
+    border-radius: 50px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-lg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.card {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+#cover-preview {
+    transition: all 0.3s ease;
+}
+
+#cover-preview img {
+    border-radius: 8px;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+    .form-check-card {
+        background: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #f9fafb !important;
+    }
+    
+    .form-check-card:hover {
+        background: #4b5563 !important;
+        border-color: #6b7280 !important;
+    }
+    
+    .form-check-card .form-check-input:checked + .form-check-label {
+        color: #60a5fa !important;
+    }
+    
+    .form-check-card .form-check-label {
+        color: #f9fafb !important;
+    }
+    
+    .form-control, .form-select {
+        background-color: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #f9fafb !important;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background-color: #374151 !important;
+        border-color: #60a5fa !important;
+        box-shadow: 0 0 0 0.25rem rgba(96, 165, 250, 0.25) !important;
+        color: #f9fafb !important;
+    }
+    
+    .section-title {
+        color: #f9fafb !important;
+        border-bottom-color: #4b5563 !important;
+    }
+    
+    .form-label {
+        color: #f9fafb !important;
+    }
+    
+    .form-check-label {
+        color: #f9fafb !important;
+    }
+    
+    .text-dark {
+        color: #f9fafb !important;
+    }
+    
+    .text-muted {
+        color: #9ca3af !important;
+    }
+    
+    .card {
+        background-color: #1f2937 !important;
+        border-color: #374151 !important;
+    }
+    
+    #cover-preview {
+        background-color: #374151 !important;
+        border-color: #4b5563 !important;
+    }
+    
+    #cover-placeholder {
+        color: #9ca3af !important;
+    }
+    
+    .alert {
+        background-color: #374151 !important;
+        border-color: #4b5563 !important;
+        color: #f9fafb !important;
+    }
+    
+    .form-text {
+        color: #9ca3af !important;
+    }
+    
+    /* Стили для placeholder текста */
+    .form-control::placeholder,
+    .form-select::placeholder {
+        color: #9ca3af !important;
+    }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 1rem;
+    }
+    
+    .card-body {
+        padding: 2rem 1.5rem;
+    }
+    
+    .btn-lg {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column-reverse;
+    }
+}
+</style>
+{% endblock %}

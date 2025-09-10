@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}История обновлений{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3"><i class="fas fa-history me-2"></i>История обновлений системы</h1>
+</div>
+
+{% if notifications.items %}
+<div class="row">
+    {% for notification in notifications.items %}
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    {% if notification.image_url %}
+                    <div class="col-md-3">
+                        <img src="{{ url_for('static', filename=notification.image_url) }}" 
+                             alt="{{ notification.title }}" 
+                             class="img-fluid rounded" 
+                             style="max-height: 200px; object-fit: cover; width: 100%;">
+                    </div>
+                    <div class="col-md-9">
+                    {% else %}
+                    <div class="col-12">
+                    {% endif %}
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h4 class="card-title mb-0">
+                                {{ notification.title }}
+                                {% if notification.version %}
+                                    <span class="badge bg-primary ms-2">{{ notification.version }}</span>
+                                {% endif %}
+                            </h4>
+                            <small class="text-muted">
+                                {{ notification.created_at|moscow_time }}
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <span class="badge bg-info">Приоритет: {{ notification.priority }}</span>
+                            {% if notification.show_until %}
+                                <span class="badge bg-warning text-dark">
+                                    Актуально до: {{ notification.show_until.strftime('%d.%m.%Y') }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="card-text">
+                            <div class="notification-content">
+                                {{ notification.content|truncate(300) }}
+                            </div>
+                            {% if '[SLIDE]' in notification.content %}
+                                <small class="text-info">
+                                    <i class="fas fa-layer-group me-1"></i>
+                                    {{ notification.content.split('[SLIDE]')|length }} слайдов
+                                </small>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="text-muted small mt-3">
+                            <i class="fas fa-user me-1"></i> 
+                            {{ notification.created_by.full_name or notification.created_by.username }}
+                            
+                            {% if notification.updated_at != notification.created_at %}
+                                <span class="ms-3">
+                                    <i class="fas fa-edit me-1"></i> 
+                                    Обновлено: {{ notification.updated_at|moscow_time }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Пагинация -->
+{% if notifications.pages > 1 %}
+<nav aria-label="Навигация по страницам">
+    <ul class="pagination justify-content-center">
+        {% if notifications.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('updates.updates_history', page=notifications.prev_num) }}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        {% endif %}
+        
+        {% for page_num in notifications.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != notifications.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('updates.updates_history', page=page_num) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if notifications.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('updates.updates_history', page=notifications.next_num) }}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+    <h4 class="text-muted">История обновлений пуста</h4>
+    <p class="text-muted">Пока что не было создано ни одного уведомления об обновлениях.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обрабатываем содержимое уведомлений
+    const contentElements = document.querySelectorAll('.notification-content');
+    contentElements.forEach(element => {
+        let content = element.innerHTML;
+        
+        // Удаляем разделители слайдов из preview
+        content = content.replace(/\[SLIDE\]/g, '<span class="text-muted"><i class="fas fa-cut me-1"></i></span>');
+        
+        // Заменяем изображения на иконки
+        content = content.replace(/\[IMG:([^:\]]+):?([^\]]*)\]/g, (match, filename, caption) => {
+            return `<span class="text-info"><i class="fas fa-image me-1"></i>${filename}${caption ? ' (' + caption + ')' : ''}</span>`;
+        });
+        
+        // Заменяем переносы строк на <br>
+        content = content.replace(/\n/g, '<br>');
+        
+        element.innerHTML = content;
+    });
+});
+</script>
+{% endblock %}

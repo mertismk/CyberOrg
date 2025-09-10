@@ -1117,6 +1117,29 @@ body.sidebar-collapsed .sidebar-section:after {
     border-color: var(--accent-color);
 }
 
+/* Специальные стили для ползунков вебинаров в темной теме */
+[data-theme="dark"] .webinar-checkbox {
+    background-color: var(--bg-color) !important;
+    border-color: var(--border-color) !important;
+    border-width: 2px !important;
+}
+
+[data-theme="dark"] .webinar-checkbox:checked {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(247, 37, 133, 0.25) !important;
+}
+
+[data-theme="dark"] .webinar-checkbox:focus {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(247, 37, 133, 0.25) !important;
+}
+
+[data-theme="dark"] .webinar-checkbox:hover {
+    border-color: var(--accent-color) !important;
+    background-color: rgba(247, 37, 133, 0.1) !important;
+}
+
 /* ===== Вебинары: агрессивные переопределения инлайн-стилей ===== */
 [data-theme="dark"] h1,
 [data-theme="dark"] .display-4,

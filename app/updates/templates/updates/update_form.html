@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if notification %}Редактировать уведомление{% else %}Создать уведомление{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>
+                    {% if notification %}Редактировать уведомление об обновлении{% else %}Создать новое уведомление об обновлении{% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Заголовок *</label>
+                        <input type="text" class="form-control" id="title" name="title" 
+                               value="{{ notification.title if notification }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="version" class="form-label">Версия</label>
+                        <input type="text" class="form-control" id="version" name="version" 
+                               value="{{ notification.version if notification }}"
+                               placeholder="Например: 1.5.0">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Содержание *</label>
+                        
+                        <!-- Панель инструментов -->
+                        <div class="editor-toolbar mb-2 p-2 bg-light rounded">
+                            <div class="btn-toolbar" role="toolbar">
+                                <div class="btn-group me-2" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertSlideBreak()" title="Добавить разделитель слайда">
+                                        <i class="fas fa-cut me-1"></i> Новый слайд
+                                    </button>
+                                </div>
+                                <div class="btn-group me-2" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertImagePlaceholder()" title="Вставить изображение">
+                                        <i class="fas fa-image me-1"></i> Изображение
+                                    </button>
+                                </div>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="collapse" data-bs-target="#syntaxHelp" title="Справка по синтаксису">
+                                        <i class="fas fa-question-circle"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Свернутая справка -->
+                            <div class="collapse mt-2" id="syntaxHelp">
+                                <div class="small bg-white p-2 rounded border">
+                                    <strong>Синтаксис:</strong><br>
+                                    • <code>[SLIDE]</code> - разделитель слайдов (новая страница)<br>
+                                    • <code>[IMG:имя_файла.jpg:подпись]</code> - вставка изображения с подписью<br>
+                                    • <code>[IMG:имя_файла.jpg]</code> - изображение без подписи<br>
+                                    <strong>Пример:</strong><br>
+                                    <code>Первый слайд с текстом<br>[SLIDE]<br>Второй слайд<br>[IMG:screenshot.png:Скриншот новой функции]</code>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <textarea class="form-control font-monospace" id="content" name="content" rows="10" required 
+                                  placeholder="Введите содержание уведомления... 
+
+Используйте [SLIDE] для создания нового слайда
+Используйте [IMG:имя_файла.jpg:подпись] для вставки изображений">{{ notification.content if notification }}</textarea>
+                        
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            <strong>Совет:</strong> Используйте кнопки панели инструментов выше для быстрой вставки элементов.
+                        </div>
+                    </div>
+                    
+                    <!-- Настройки дизайна -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-palette me-1"></i> Настройки дизайна</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="background_color" class="form-label">Цвет фона</label>
+                                    <input type="color" class="form-control form-control-color" id="background_color" name="background_color" 
+                                           value="{{ notification.background_color if notification else '#667eea' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="text_color" class="form-label">Цвет текста</label>
+                                    <input type="color" class="form-control form-control-color" id="text_color" name="text_color" 
+                                           value="{{ notification.text_color if notification else '#ffffff' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="icon" class="form-label">Иконка</label>
+                                    <select class="form-select" id="icon" name="icon">
+                                        <option value="rocket" {% if notification and notification.icon == 'rocket' %}selected{% elif not notification %}selected{% endif %}>🚀 Ракета</option>
+                                        <option value="star" {% if notification and notification.icon == 'star' %}selected{% endif %}>⭐ Звезда</option>
+                                        <option value="bell" {% if notification and notification.icon == 'bell' %}selected{% endif %}>🔔 Колокольчик</option>
+                                        <option value="gift" {% if notification and notification.icon == 'gift' %}selected{% endif %}>🎁 Подарок</option>
+                                        <option value="magic" {% if notification and notification.icon == 'magic' %}selected{% endif %}>✨ Магия</option>
+                                        <option value="heart" {% if notification and notification.icon == 'heart' %}selected{% endif %}>❤️ Сердце</option>
+                                        <option value="sparkles" {% if notification and notification.icon == 'sparkles' %}selected{% endif %}>✨ Блёстки</option>
+                                        <option value="fire" {% if notification and notification.icon == 'fire' %}selected{% endif %}>🔥 Огонь</option>
+                                        <option value="lightning-bolt" {% if notification and notification.icon == 'lightning-bolt' %}selected{% endif %}>⚡ Молния</option>
+                                        <option value="crown" {% if notification and notification.icon == 'crown' %}selected{% endif %}>👑 Корона</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Загрузка изображений -->
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-images me-1"></i> Загрузка изображений</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="addImageBtn">
+                                <i class="fas fa-plus me-1"></i> Добавить изображение
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Как использовать:</strong><br>
+                                1. Загрузите изображения здесь<br>
+                                2. Скопируйте имя файла из списка загруженных<br>
+                                3. Вставьте в текст: <code>[IMG:имя_файла.jpg:подпись]</code>
+                            </div>
+                            
+                            <!-- Текущие изображения (при редактировании) -->
+                            {% if notification and notification.images %}
+                            <div class="mb-3">
+                                <label class="form-label">Загруженные изображения:</label>
+                                <div class="row" id="currentImages">
+                                    {% for image in notification.images %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="d-flex align-items-center p-2 border rounded">
+                                            <img src="{{ url_for('static', filename=image.image_url) }}" 
+                                                 class="me-2" 
+                                                 style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                            <div class="flex-grow-1">
+                                                <code class="text-success">{{ image.image_url.split('/')[-1] }}</code>
+                                                <button type="button" class="btn btn-xs btn-outline-primary ms-2" 
+                                                        onclick="insertImageToText('{{ image.image_url.split('/')[-1] }}', '{{ image.caption or '' }}')"
+                                                        title="Вставить в текст">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                {% if image.caption %}
+                                                    <br><small class="text-muted">{{ image.caption }}</small>
+                                                {% endif %}
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="delete_images" 
+                                                       value="{{ image.id }}" id="delete_{{ image.id }}">
+                                                <label class="form-check-label text-danger" for="delete_{{ image.id }}" title="Удалить">
+                                                    <i class="fas fa-trash"></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Новые изображения -->
+                            <div id="imageFields">
+                                <div class="image-field-group mb-3">
+                                    <div class="row">
+                                        <div class="col-md-9">
+                                            <label class="form-label">Изображение</label>
+                                            <input type="file" class="form-control image-upload" name="images" accept="image/*" onchange="handleImageUpload(this)">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Подпись</label>
+                                            <input type="text" class="form-control" name="image_captions" placeholder="Подпись">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-text">Поддерживаемые форматы: PNG, JPG, JPEG, GIF, WebP</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="priority" class="form-label">Приоритет</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="1" {% if notification and notification.priority == 1 %}selected{% endif %}>1 - Низкий</option>
+                                <option value="2" {% if notification and notification.priority == 2 %}selected{% endif %}>2 - Обычный</option>
+                                <option value="3" {% if notification and notification.priority == 3 %}selected{% elif not notification %}selected{% endif %}>3 - Средний</option>
+                                <option value="4" {% if notification and notification.priority == 4 %}selected{% endif %}>4 - Высокий</option>
+                                <option value="5" {% if notification and notification.priority == 5 %}selected{% endif %}>5 - Критический</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="show_until" class="form-label">Показывать до (дата)</label>
+                            <input type="date" class="form-control" id="show_until" name="show_until"
+                                   value="{{ notification.show_until.strftime('%Y-%m-%d') if notification and notification.show_until }}">
+                            <div class="form-text">Оставьте пустым, чтобы показывать всегда</div>
+                        </div>
+                    </div>
+                    
+                    {% if notification %}
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active"
+                                   {% if notification.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">
+                                Активно (показывать пользователям)
+                            </label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('updates.manage_updates') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Назад
+                        </a>
+                        <button type="submit" class="btn btn-accent">
+                            <i class="fas fa-save me-1"></i>
+                            {% if notification %}Обновить{% else %}Создать{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Предварительный просмотр -->
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-eye me-2"></i>Предварительный просмотр
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="preview" class="text-center">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Заполните форму, чтобы увидеть предварительный просмотр
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const titleInput = document.getElementById('title');
+    const versionInput = document.getElementById('version');
+    const contentTextarea = document.getElementById('content');
+    const backgroundColorInput = document.getElementById('background_color');
+    const textColorInput = document.getElementById('text_color');
+    const iconSelect = document.getElementById('icon');
+    const preview = document.getElementById('preview');
+    const addImageBtn = document.getElementById('addImageBtn');
+    const imageFields = document.getElementById('imageFields');
+    
+    // Счетчик для групп изображений
+    let imageFieldsCount = 1;
+    
+    function updatePreview() {
+        const title = titleInput.value;
+        const version = versionInput.value;
+        const content = contentTextarea.value;
+        const backgroundColor = backgroundColorInput.value;
+        const textColor = textColorInput.value;
+        const icon = iconSelect.value;
+        
+        if (!title && !content) {
+            preview.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Заполните форму, чтобы увидеть предварительный просмотр
+                </div>
+            `;
+            return;
+        }
+        
+        // Создаем градиент для предварительного просмотра
+        const gradientEnd = adjustBrightness(backgroundColor, -20);
+        
+        // Разбиваем контент на слайды
+        const slides = content.split('[SLIDE]').filter(slide => slide.trim());
+        
+        let previewHtml = '<div class="preview-carousel">';
+        
+        slides.forEach((slide, index) => {
+            previewHtml += `
+                <div class="preview-slide ${index === 0 ? 'active' : ''}" 
+                     style="display: ${index === 0 ? 'block' : 'none'}">
+                    <div class="apple-notification-preview rounded p-4 mb-3" 
+                         style="background: linear-gradient(135deg, ${backgroundColor} 0%, ${gradientEnd} 100%); color: ${textColor};">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="preview-icon me-3" style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-${icon}" style="font-size: 1.5rem; color: rgba(255,255,255,0.9);"></i>
+                            </div>
+                            <div>
+            `;
+            
+            if (title) {
+                previewHtml += `<h5 class="mb-0" style="color: ${textColor};">${title}`;
+                if (version) {
+                    previewHtml += ` <small style="opacity: 0.8;">(${version})</small>`;
+                }
+                previewHtml += '</h5>';
+            }
+            
+            previewHtml += `</div></div>`;
+            
+            if (slide.trim()) {
+                // Обрабатываем изображения в тексте
+                let processedContent = slide.trim()
+                    .replace(/\[IMG:([^:\]]+):?([^\]]*)\]/g, (match, filename, caption) => {
+                        return `<div class="text-center my-3">
+                            <div class="preview-image-placeholder bg-light rounded p-3">
+                                <i class="fas fa-image fa-2x text-muted mb-2"></i><br>
+                                <strong>${filename}</strong>
+                                ${caption ? `<br><small class="text-muted">${caption}</small>` : ''}
+                            </div>
+                        </div>`;
+                    })
+                    .replace(/\n/g, '<br>');
+                
+                previewHtml += `<div style="color: ${textColor}; opacity: 0.9;">${processedContent}</div>`;
+            }
+            
+            previewHtml += '</div></div>';
+        });
+        
+        previewHtml += '</div>';
+        
+        // Добавляем навигацию если несколько слайдов
+        if (slides.length > 1) {
+            previewHtml += `
+                <div class="d-flex justify-content-center align-items-center mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="prevSlide()">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span id="slideCounter">1 / ${slides.length}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="nextSlide()">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            `;
+        }
+        
+        preview.innerHTML = previewHtml;
+    }
+    
+    // Глобальные переменные для навигации по слайдам preview
+    let currentPreviewSlide = 0;
+    let totalPreviewSlides = 0;
+    
+    // Функции навигации по слайдам preview
+    window.nextSlide = function() {
+        const slides = document.querySelectorAll('.preview-slide');
+        if (slides.length === 0) return;
+        
+        slides[currentPreviewSlide].style.display = 'none';
+        currentPreviewSlide = (currentPreviewSlide + 1) % slides.length;
+        slides[currentPreviewSlide].style.display = 'block';
+        
+        const counter = document.getElementById('slideCounter');
+        if (counter) {
+            counter.textContent = `${currentPreviewSlide + 1} / ${slides.length}`;
+        }
+    }
+    
+    window.prevSlide = function() {
+        const slides = document.querySelectorAll('.preview-slide');
+        if (slides.length === 0) return;
+        
+        slides[currentPreviewSlide].style.display = 'none';
+        currentPreviewSlide = currentPreviewSlide === 0 ? slides.length - 1 : currentPreviewSlide - 1;
+        slides[currentPreviewSlide].style.display = 'block';
+        
+        const counter = document.getElementById('slideCounter');
+        if (counter) {
+            counter.textContent = `${currentPreviewSlide + 1} / ${slides.length}`;
+        }
+    }
+    
+    // Функция для изменения яркости цвета
+    function adjustBrightness(color, amount) {
+        const usePound = color[0] === '#';
+        const col = usePound ? color.slice(1) : color;
+        const num = parseInt(col, 16);
+        let r = (num >> 16) + amount;
+        let g = (num >> 8 & 0x00FF) + amount;
+        let b = (num & 0x0000FF) + amount;
+        r = r > 255 ? 255 : r < 0 ? 0 : r;
+        g = g > 255 ? 255 : g < 0 ? 0 : g;
+        b = b > 255 ? 255 : b < 0 ? 0 : b;
+        return (usePound ? '#' : '') + (r << 16 | g << 8 | b).toString(16).padStart(6, '0');
+    }
+    
+    // Функция добавления нового поля для изображения
+    function addImageField() {
+        const newField = document.createElement('div');
+        newField.className = 'image-field-group mb-3';
+        newField.innerHTML = `
+            <div class="row">
+                <div class="col-md-9">
+                    <label class="form-label">Изображение</label>
+                    <input type="file" class="form-control image-upload" name="images" accept="image/*" onchange="handleImageUpload(this)">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Подпись</label>
+                    <input type="text" class="form-control" name="image_captions" placeholder="Подпись">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger remove-image-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        imageFields.appendChild(newField);
+        imageFieldsCount++;
+        
+        // Добавляем обработчик удаления
+        newField.querySelector('.remove-image-btn').addEventListener('click', function() {
+            newField.remove();
+            imageFieldsCount--;
+        });
+    }
+    
+    // Функция обработки загрузки изображения
+    function handleImageUpload(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const fileName = file.name;
+            const captionInput = input.closest('.row').querySelector('input[name="image_captions"]');
+            
+            // Показываем предварительное имя файла
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'mt-2 p-2 bg-light rounded';
+            previewDiv.innerHTML = `
+                <small class="text-success">
+                    <i class="fas fa-file-image me-1"></i>
+                    <strong>Файл:</strong> <code>${fileName}</code>
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="copyToClipboard('${fileName}')">
+                        <i class="fas fa-copy"></i> Копировать имя
+                    </button>
+                </small>
+                <br>
+                <small class="text-muted">
+                    Используйте в тексте: <code>[IMG:${fileName}${captionInput.value ? ':' + captionInput.value : ''}]</code>
+                </small>
+            `;
+            
+            // Удаляем предыдущий preview если есть
+            const existingPreview = input.parentElement.querySelector('.mt-2.p-2.bg-light');
+            if (existingPreview) {
+                existingPreview.remove();
+            }
+            
+            input.parentElement.appendChild(previewDiv);
+            
+            // Обновляем preview при изменении подписи
+            captionInput.addEventListener('input', function() {
+                const codeElement = previewDiv.querySelector('code:last-child');
+                if (codeElement) {
+                    codeElement.textContent = `[IMG:${fileName}${this.value ? ':' + this.value : ''}]`;
+                }
+            });
+        }
+    }
+    
+    // Функция копирования в буфер обмена
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Показываем уведомление
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-success border-0';
+            toast.style = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check me-2"></i>Имя файла скопировано!
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        });
+    }
+    
+    // Функции для панели инструментов редактора
+    window.insertSlideBreak = function() {
+        const textarea = document.getElementById('content');
+        const cursorPos = textarea.selectionStart;
+        const textBefore = textarea.value.substring(0, cursorPos);
+        const textAfter = textarea.value.substring(cursorPos);
+        
+        let slideBreak = '[SLIDE]\n';
+        
+        // Если курсор не в начале строки, добавляем перенос строки перед
+        if (cursorPos > 0 && textBefore.slice(-1) !== '\n') {
+            slideBreak = '\n' + slideBreak;
+        }
+        
+        textarea.value = textBefore + slideBreak + textAfter;
+        textarea.focus();
+        textarea.setSelectionRange(cursorPos + slideBreak.length, cursorPos + slideBreak.length);
+        
+        // Обновляем предпросмотр
+        updatePreview();
+    }
+    
+    window.insertImagePlaceholder = function() {
+        const textarea = document.getElementById('content');
+        const cursorPos = textarea.selectionStart;
+        const textBefore = textarea.value.substring(0, cursorPos);
+        const textAfter = textarea.value.substring(cursorPos);
+        
+        let imagePlaceholder = '[IMG:имя_файла.jpg:подпись]';
+        
+        textarea.value = textBefore + imagePlaceholder + textAfter;
+        textarea.focus();
+        
+        // Выделяем "имя_файла.jpg" для быстрой замены
+        const startPos = cursorPos + 5; // после "[IMG:"
+        const endPos = startPos + 13; // длина "имя_файла.jpg"
+        textarea.setSelectionRange(startPos, endPos);
+        
+        // Обновляем предпросмотр
+        updatePreview();
+    }
+    
+    // Функция для вставки изображения из списка загруженных
+    window.insertImageToText = function(filename, caption) {
+        const textarea = document.getElementById('content');
+        const cursorPos = textarea.selectionStart;
+        const textBefore = textarea.value.substring(0, cursorPos);
+        const textAfter = textarea.value.substring(cursorPos);
+        
+        let imageTag = `[IMG:${filename}${caption ? ':' + caption : ''}]`;
+        
+        textarea.value = textBefore + imageTag + textAfter;
+        textarea.focus();
+        textarea.setSelectionRange(cursorPos + imageTag.length, cursorPos + imageTag.length);
+        
+        // Показываем уведомление
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-info border-0';
+        toast.style = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas fa-image me-2"></i>Изображение добавлено в текст!
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 2000);
+        
+        // Обновляем предпросмотр
+        updatePreview();
+    }
+    
+    // Обновляем предварительный просмотр при изменении полей
+    titleInput.addEventListener('input', updatePreview);
+    versionInput.addEventListener('input', updatePreview);
+    contentTextarea.addEventListener('input', updatePreview);
+    backgroundColorInput.addEventListener('input', updatePreview);
+    textColorInput.addEventListener('input', updatePreview);
+    iconSelect.addEventListener('change', updatePreview);
+    
+    // Добавление новых полей изображения
+    addImageBtn.addEventListener('click', addImageField);
+    
+    // Инициализируем предварительный просмотр
+    updatePreview();
+    
+    // Добавляем обработчики удаления для существующих полей (если есть)
+    document.querySelectorAll('.remove-image-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            btn.closest('.image-field-group').remove();
+            imageFieldsCount--;
+        });
+    });
+});
+</script>
+
+<style>
+.apple-notification-preview {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: none;
+}
+
+.form-control-color {
+    width: 100%;
+    height: 38px;
+}
+
+.editor-toolbar {
+    border-left: 4px solid var(--primary-purple);
+}
+
+.preview-image-placeholder {
+    border: 2px dashed #dee2e6;
+    background: #f8f9fa;
+    color: #6c757d;
+    max-width: 300px;
+    max-height: 200px;
+    margin: 0 auto;
+    display: inline-block;
+}
+
+[data-theme="dark"] .preview-image-placeholder {
+    border-color: #495057;
+    background: #343a40;
+    color: #adb5bd;
+}
+
+[data-theme="dark"] .editor-toolbar {
+    background: var(--dark-bg-secondary) !important;
+    border-left-color: var(--primary-light);
+}
+
+[data-theme="dark"] #syntaxHelp .bg-white {
+    background: var(--dark-bg-secondary) !important;
+    color: var(--dark-text);
+    border-color: #495057 !important;
+}
+</style>
+{% endblock %}

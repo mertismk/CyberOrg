@@ -1,0 +1,752 @@
+<!-- Компонент всплывающих уведомлений об обновлениях в стиле Apple -->
+<div class="modal fade" id="updateNotificationModal" tabindex="-1" aria-labelledby="updateNotificationModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content apple-style-modal">
+            <!-- Тело модального окна с каруселью -->
+            <div class="modal-body p-0">
+                <div id="updateNotificationCarousel" class="carousel slide apple-carousel" data-bs-ride="false">
+                    <!-- Слайды карусели -->
+                    <div class="carousel-inner" id="carouselInner">
+                        <!-- Слайды будут добавлены динамически через JavaScript -->
+                    </div>
+                    
+                    <!-- Кнопки навигации в стиле Apple -->
+                    <button class="carousel-control-prev apple-nav-btn" type="button" data-bs-target="#updateNotificationCarousel" data-bs-slide="prev" style="display: none;">
+                        <div class="apple-nav-icon">
+                            <i class="fas fa-chevron-left"></i>
+                        </div>
+                        <span class="visually-hidden">Предыдущий</span>
+                    </button>
+                    <button class="carousel-control-next apple-nav-btn" type="button" data-bs-target="#updateNotificationCarousel" data-bs-slide="next" style="display: none;">
+                        <div class="apple-nav-icon">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                        <span class="visually-hidden">Следующий</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Футер модального окна в стиле Apple -->
+            <div class="modal-footer apple-footer">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <!-- Индикаторы точек -->
+                    <div class="apple-dots-container" id="appleDots">
+                        <!-- Точки будут добавлены динамически -->
+                    </div>
+                    
+                    <!-- Кнопки управления -->
+                    <div class="apple-controls">
+                        <button type="button" class="apple-btn apple-btn-secondary me-2" onclick="window.open('{{ url_for('updates.updates_history') }}', '_blank')">
+                            <i class="fas fa-history me-1"></i>
+                            История
+                        </button>
+                        <button type="button" class="apple-btn apple-btn-primary" data-bs-dismiss="modal" id="finishButton" style="display: none;">
+                            <i class="fas fa-check me-1"></i>
+                            Готово
+                        </button>
+                        <div class="apple-next-hint" id="nextHint">
+                            <small style="color: var(--slide-text-color, #ffffff); opacity: 0.8;">
+                                <i class="fas fa-arrow-right me-1"></i>
+                                Листайте дальше, чтобы увидеть все изменения
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Кнопка закрытия (показывается только на последнем слайде) -->
+            <button type="button" class="apple-close-btn" data-bs-dismiss="modal" aria-label="Close" id="closeButton" style="display: none;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Стили для компонента уведомлений в стиле Apple v2.0 */
+
+/* Основное модальное окно */
+.apple-style-modal {
+    border: none;
+    border-radius: 24px;
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.98);
+    overflow: hidden;
+    max-height: 90vh;
+}
+
+[data-theme="dark"] .apple-style-modal {
+    background: rgba(40, 40, 45, 0.98);
+    box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Карусель */
+.apple-carousel {
+    position: relative;
+    min-height: 500px;
+}
+
+/* Слайд уведомления */
+.apple-notification-slide {
+    position: relative;
+    min-height: 500px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, var(--slide-bg-start, #667eea) 0%, var(--slide-bg-end, #764ba2) 100%);
+    color: var(--slide-text-color, #ffffff);
+}
+
+.apple-slide-content {
+    position: relative;
+    z-index: 2;
+    padding: 3rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Заголовок слайда */
+.apple-slide-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.apple-slide-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.apple-slide-icon i {
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.apple-slide-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    letter-spacing: -0.02em;
+}
+
+.apple-slide-version {
+    font-size: 1.1rem;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+}
+
+/* Контент слайда */
+.apple-slide-content-text {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin: 2rem 0;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Изображения */
+.apple-slide-images {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.apple-slide-image-container {
+    margin: 1.5rem 0;
+}
+
+.apple-notification-image {
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    max-height: 160px !important;
+    max-width: 280px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(5px);
+    display: block;
+    margin: 0 auto 1rem auto;
+}
+
+.apple-notification-image:hover {
+    transform: scale(1.05);
+}
+
+.apple-image-caption {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    text-align: center;
+}
+
+.image-placeholder {
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    padding: 2rem;
+    border-radius: 12px;
+}
+
+/* Адаптивность изображений */
+@media (max-width: 768px) {
+    .apple-notification-image {
+        max-height: 130px !important;
+        max-width: 250px !important;
+    }
+    
+    .apple-slide-content {
+        padding: 2rem 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .apple-notification-image {
+        max-height: 100px !important;
+        max-width: 200px !important;
+    }
+    
+    .apple-slide-content {
+        padding: 1.5rem 1rem;
+    }
+}
+
+/* Навигационные кнопки */
+.apple-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.apple-carousel:hover .apple-nav-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.apple-nav-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.apple-nav-btn.carousel-control-prev {
+    left: 20px;
+}
+
+.apple-nav-btn.carousel-control-next {
+    right: 20px;
+}
+
+.apple-nav-icon {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+[data-theme="dark"] .apple-nav-btn {
+    background: rgba(60, 60, 67, 0.9);
+}
+
+[data-theme="dark"] .apple-nav-btn:hover {
+    background: rgba(60, 60, 67, 1);
+}
+
+[data-theme="dark"] .apple-nav-icon {
+    color: #ffffff;
+}
+
+/* Футер */
+.apple-footer {
+    border: none;
+    padding: 1.5rem 2rem;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    min-height: 90px;
+}
+
+.apple-next-hint {
+    margin: 0 auto;
+    text-align: center;
+}
+
+[data-theme="dark"] .apple-footer {
+    background: rgba(40, 40, 45, 0.8);
+}
+
+/* Точки-индикаторы */
+.apple-dots-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.apple-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.apple-dot.active {
+    background: #007AFF;
+    transform: scale(1.2);
+}
+
+[data-theme="dark"] .apple-dot {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .apple-dot.active {
+    background: #0A84FF;
+}
+
+/* Кнопки в стиле Apple */
+.apple-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+}
+
+.apple-btn-primary {
+    background: #007AFF;
+    color: white;
+}
+
+.apple-btn-primary:hover {
+    background: #0051D0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+.apple-btn-secondary {
+    background: rgba(0, 0, 0, 0.1);
+    color: inherit;
+}
+
+.apple-btn-secondary:hover {
+    background: rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .apple-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .apple-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Кнопка закрытия */
+.apple-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.apple-close-btn:hover {
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Анимации */
+@keyframes appleSlideIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+#updateNotificationModal.show .modal-content {
+    animation: appleSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Приоритет (маленький индикатор) */
+.apple-priority-indicator {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    z-index: 10;
+}
+
+.priority-5 { background: #FF3B30; }
+.priority-4 { background: #FF9500; }
+.priority-3 { background: #FFCC00; }
+.priority-2 { background: #30D158; }
+.priority-1 { background: #8E8E93; }
+
+/* Респонсивность */
+@media (max-width: 768px) {
+    .modal-xl {
+        max-width: 95%;
+        margin: 1rem;
+    }
+    
+    .apple-slide-content {
+        padding: 2rem 1.5rem;
+    }
+    
+    .apple-slide-title {
+        font-size: 2rem;
+    }
+    
+    .apple-slide-content-text {
+        font-size: 1.1rem;
+    }
+    
+    .apple-notification-image {
+        max-height: 140px !important;
+        max-width: 260px !important;
+    }
+    
+    .apple-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
+
+<script>
+class AppleUpdateNotificationManager {
+    // v2.0 - Исправлена проблема с HTML экранированием
+    constructor() {
+        this.modal = null;
+        this.carousel = null;
+        this.currentNotifications = [];
+        this.currentSlide = 0;
+        this.init();
+    }
+    
+    async init() {
+        // Инициализируем элементы после загрузки DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            this.modal = document.getElementById('updateNotificationModal');
+            this.carousel = document.getElementById('updateNotificationCarousel');
+            
+            if (this.modal && this.carousel) {
+                this.checkForNotifications();
+            }
+        });
+    }
+    
+    async checkForNotifications() {
+        try {
+            const response = await fetch('/updates/api/unread');
+            if (response.ok) {
+                const notifications = await response.json();
+                
+                if (notifications.length > 0) {
+                    this.currentNotifications = notifications;
+                    this.buildCarousel(notifications);
+                    this.showModal();
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при получении уведомлений:', error);
+        }
+    }
+    
+    buildCarousel(notifications) {
+        const carouselInner = document.getElementById('carouselInner');
+        const dotsContainer = document.getElementById('appleDots');
+        const prevButton = this.carousel.querySelector('.carousel-control-prev');
+        const nextButton = this.carousel.querySelector('.carousel-control-next');
+        
+        // Очищаем предыдущие слайды
+        carouselInner.innerHTML = '';
+        dotsContainer.innerHTML = '';
+        
+        // Подсчитываем общее количество слайдов
+        let totalSlides = 0;
+        notifications.forEach(notification => {
+            const slideContents = notification.content.split('[SLIDE]').filter(content => content.trim());
+            totalSlides += slideContents.length > 0 ? slideContents.length : 1;
+        });
+        
+        // Показываем/скрываем элементы навигации
+        const hasMultiple = totalSlides > 1;
+        prevButton.style.display = hasMultiple ? 'block' : 'none';
+        nextButton.style.display = hasMultiple ? 'block' : 'none';
+        
+        // Создаем слайды для каждого уведомления
+        let totalSlideIndex = 0;
+        
+        notifications.forEach((notification, notificationIndex) => {
+            // Разбиваем контент уведомления на слайды
+            const slideContents = notification.content.split('[SLIDE]').filter(content => content.trim());
+            
+            // Если нет разделителей, используем весь контент как один слайд
+            if (slideContents.length === 0) {
+                slideContents.push(notification.content);
+            }
+            
+            slideContents.forEach((slideContent, slideIndex) => {
+                const slide = this.createSlide(
+                    notification, 
+                    slideContent, 
+                    slideIndex,
+                    totalSlideIndex === 0
+                );
+                carouselInner.appendChild(slide);
+                
+                // Создаем точку-индикатор
+                if (hasMultiple) {
+                    const dot = document.createElement('div');
+                    dot.className = `apple-dot ${totalSlideIndex === 0 ? 'active' : ''}`;
+                    dot.setAttribute('data-slide', totalSlideIndex.toString());
+                    dot.addEventListener('click', () => this.goToSlide(totalSlideIndex));
+                    dotsContainer.appendChild(dot);
+                }
+                
+                totalSlideIndex++;
+            });
+        });
+        
+        // Добавляем обработчик события смены слайда
+        if (hasMultiple) {
+            this.carousel.addEventListener('slid.bs.carousel', (event) => {
+                this.currentSlide = event.to;
+                this.updateDots();
+                this.updateCloseButton(totalSlides);
+            });
+        }
+        
+        // Устанавливаем видимость кнопки закрытия для первого показа
+        this.updateCloseButton(totalSlides);
+    }
+    
+    createSlide(notification, slideContent, slideIndex, isActive = false) {
+        const slide = document.createElement('div');
+        slide.className = `carousel-item ${isActive ? 'active' : ''}`;
+        
+        // Устанавливаем CSS переменные для кастомных цветов
+        const bgStart = notification.background_color || '#667eea';
+        const bgEnd = this.adjustBrightness(bgStart, -20);
+        const textColor = notification.text_color || '#ffffff';
+        const icon = notification.icon || 'rocket';
+        
+        slide.style.setProperty('--slide-bg-start', bgStart);
+        slide.style.setProperty('--slide-bg-end', bgEnd);
+        slide.style.setProperty('--slide-text-color', textColor);
+        
+        // Обрабатываем изображения в тексте
+        const processedContent = this.processContentWithImages(slideContent.trim(), notification);
+        
+        let slideHtml = `
+            <div class="apple-notification-slide">
+                <!-- Приоритет индикатор -->
+                <div class="apple-priority-indicator priority-${notification.priority}"></div>
+                
+                <div class="apple-slide-content">
+                    <!-- Заголовок с иконкой (только на первом слайде) -->
+                    ${slideIndex === 0 ? `
+                    <div class="apple-slide-header">
+                        <div class="apple-slide-icon">
+                            <i class="fas fa-${icon}"></i>
+                        </div>
+                        <div>
+                            <h1 class="apple-slide-title">${notification.title}</h1>
+                            ${notification.version ? `<div class="apple-slide-version">Версия ${notification.version}</div>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Контент слайда -->
+                    <div class="apple-slide-content-text ${slideIndex === 0 ? '' : 'mt-4'}">
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        slide.innerHTML = slideHtml;
+        
+        // Вставляем обработанный контент после создания HTML структуры
+        const contentDiv = slide.querySelector('.apple-slide-content-text');
+        if (contentDiv) {
+            contentDiv.innerHTML = processedContent;
+            console.log('Processed content:', processedContent); // Для отладки
+        }
+        
+        return slide;
+    }
+    
+    // Новый метод для обработки контента с изображениями
+    processContentWithImages(content, notification) {
+        const tempDiv = document.createElement('div');
+        
+        // Заменяем теги изображений на placeholder markers
+        const processedText = content.replace(/\[IMG:([^:\]]+):?([^\]]*)\]/g, (match, filename, caption) => {
+            return `__IMG_PLACEHOLDER_${filename}_${caption || ''}_END__`;
+        });
+        
+        // Обрабатываем переносы строк
+        tempDiv.innerHTML = processedText.replace(/\n/g, '<br>');
+        
+        // Теперь заменяем placeholders на реальные элементы изображений
+        let html = tempDiv.innerHTML;
+        
+        // Находим все placeholders и заменяем их
+        html = html.replace(/__IMG_PLACEHOLDER_([^_]+)_([^_]*)_END__/g, (match, filename, caption) => {
+            // Проверяем, есть ли такое изображение среди загруженных
+            const image = notification.images?.find(img => img.image_url.endsWith(filename));
+            
+            if (image) {
+                let imgHtml = '<div class="apple-slide-image-container text-center my-3">';
+                imgHtml += `<img src="/static/${image.image_url}" alt="${caption || filename}" class="apple-notification-image" loading="lazy">`;
+                if (caption) {
+                    imgHtml += `<div class="apple-image-caption">${caption}</div>`;
+                }
+                imgHtml += '</div>';
+                return imgHtml;
+            } else {
+                // Если изображение не найдено, показываем placeholder
+                let placeholderHtml = '<div class="apple-slide-image-container text-center my-3">';
+                placeholderHtml += '<div class="image-placeholder bg-light rounded p-3">';
+                placeholderHtml += '<i class="fas fa-image fa-2x text-muted mb-2"></i><br>';
+                placeholderHtml += `<small class="text-muted">Изображение: ${filename}</small>`;
+                if (caption) {
+                    placeholderHtml += `<br><small class="text-muted">${caption}</small>`;
+                }
+                placeholderHtml += '</div></div>';
+                return placeholderHtml;
+            }
+        });
+        
+        return html;
+    }
+    
+    goToSlide(index) {
+        const bootstrapCarousel = bootstrap.Carousel.getInstance(this.carousel);
+        bootstrapCarousel.to(index);
+    }
+    
+    updateDots() {
+        const dots = document.querySelectorAll('.apple-dot');
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === this.currentSlide);
+        });
+    }
+    
+    updateCloseButton(totalSlides) {
+        const closeButton = this.modal.querySelector('#closeButton');
+        const finishButton = this.modal.querySelector('#finishButton');
+        const nextHint = this.modal.querySelector('#nextHint');
+        
+        if (closeButton && finishButton && nextHint) {
+            // Показываем кнопку закрытия только на последнем слайде
+            const isLastSlide = this.currentSlide === totalSlides - 1;
+            
+            closeButton.style.display = isLastSlide ? 'block' : 'none';
+            finishButton.style.display = isLastSlide ? 'inline-block' : 'none';
+            nextHint.style.display = isLastSlide ? 'none' : 'block';
+        }
+    }
+    
+    showModal() {
+        if (this.modal) {
+            const bootstrapModal = new bootstrap.Modal(this.modal);
+            bootstrapModal.show();
+            
+            // Помечаем все уведомления как просмотренные при закрытии модального окна
+            this.modal.addEventListener('hidden.bs.modal', () => {
+                this.markAllAsViewed();
+            }, { once: true });
+        }
+    }
+    
+    async markAllAsViewed() {
+        try {
+            for (const notification of this.currentNotifications) {
+                await fetch(`/updates/api/mark_viewed/${notification.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Ошибка при отметке уведомлений как просмотренных:', error);
+        }
+    }
+    
+    // Утилита для изменения яркости цвета
+    adjustBrightness(color, amount) {
+        const usePound = color[0] === '#';
+        const col = usePound ? color.slice(1) : color;
+        const num = parseInt(col, 16);
+        let r = (num >> 16) + amount;
+        let g = (num >> 8 & 0x00FF) + amount;
+        let b = (num & 0x0000FF) + amount;
+        r = r > 255 ? 255 : r < 0 ? 0 : r;
+        g = g > 255 ? 255 : g < 0 ? 0 : g;
+        b = b > 255 ? 255 : b < 0 ? 0 : b;
+        return (usePound ? '#' : '') + (r << 16 | g << 8 | b).toString(16).padStart(6, '0');
+    }
+}
+
+// Инициализируем менеджер уведомлений
+const appleNotificationManager = new AppleUpdateNotificationManager();
+</script>

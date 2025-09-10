@@ -331,6 +331,7 @@
     <form method="post" id="create-plan-form" action="{{ url_for('plans.create_study_plan', student_id=student.id) }}"> {# Ensure form action is correct #}
         {# CSRF Token #}
         <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}"/>
+        <input type="hidden" name="final_create" value="1"/>
 
         {# Block with information and plan parameters - Merged from both templates #}
         <div class="card mb-4 shadow-sm">
@@ -342,27 +343,11 @@
                 <div class="row">
                     <div class="col-md-6">
                         <p><strong>Студент:</strong> {{ student.first_name }} {{ student.last_name }}</p>
-                        <p><strong>Целевой балл:</strong> {{ student.target_score or 'Не указан' }}</p>
+                        <p><strong>Целевой {% if student.exam_type == 'oge' %}оценка{% else %}балл{% endif %}:</strong> {{ student.target_score or 'Не указан' }}</p>
                         <p><strong>Часов в неделю:</strong> {{ student.hours_per_week or 'Не указано' }}</p>
-                        <p><strong>Уровень Python:</strong> {% if student.needs_python_basics %}Начинающий{% else %}Базовый{% endif %}</p>
                     </div>
                     <div class="col-md-6">
-                        {# Quotas for T26 and T27 #}
-                        <div class="mb-3">
-                            <label for="quota_t26" class="form-label">Квота вебинаров на Задание 26 на каждую неделю (0 - без квоты)</label>
-                            <input type="number" class="form-control" id="quota_t26" name="quota_t26" value="{{ request.args.get('quota_t26', 0) }}" min="0"> {# Use request.args if needed #}
-                        </div>
-                        <div class="mb-3">
-                            <label for="quota_t27" class="form-label">Квота вебинаров на Задание 27 на каждую неделю (0 - без квоты)</label>
-                            <input type="number" class="form-control" id="quota_t27" name="quota_t27" value="{{ request.args.get('quota_t27', 0) }}" min="0"> {# Use request.args if needed #}
-                        </div>
-                        <div class="alert alert-info" role="alert">
-                            <small><i class="fa-solid fa-circle-info"></i> <strong>Примечание:</strong> Квоты применяются отдельно для каждой недели. Например, если указана квота "2 вебинара на Задание 27", то система предложит максимум 2 вебинара на задание 27 в каждую из 4-х недель (всего до 8 вебинаров за весь период обучения).</small>
-                        </div>
-                        <button type="button" class="btn btn-secondary btn-sm" id="recalculate-recommendations">
-                            <i class="fas fa-redo me-1"></i> Пересчитать рекомендации
-                        </button>
-                        <div class="form-text">Нажмите, чтобы обновить список рекомендуемых вебинаров с учетом квот.</div>
+                        <!-- Квоты T26 и T27 теперь распределяются в предыдущем окне -->
                     </div>
                 </div>
                  <div class="mt-3">
@@ -380,6 +365,7 @@
                  </div>
             </div>
         </div>
+
 
         {# Containers for weeks - Using grid layout from the first template #}
         <div class="row">
@@ -479,7 +465,8 @@
                                 <label for="taskFilterSelect" class="form-label"><i class="fas fa-hashtag me-1"></i> Номер задания</label>
                                 <select class="form-select" id="taskFilterSelect">
                                     <option value="all" selected>Все задания</option>
-                                    {% for i in range(1, 28) %}
+                                    {% set max_task_filter = 27 if student.exam_type == 'ege' else 16 %}
+                                    {% for i in range(1, max_task_filter + 1) %}
                                         <option value="task-{{ i }}">№{{ i }}</option>
                                     {% endfor %}
                                 </select>
@@ -557,7 +544,8 @@
         {%- endfor %}
         {% endif %}
     ],
-    "webinarWeeks": {{ webinar_weeks | tojson | safe if webinar_weeks else '{}' }}
+    "webinarWeeks": {{ webinar_weeks | tojson | safe if webinar_weeks else '{}' }},
+    "webinarBlocks": {{ webinar_blocks | tojson | safe if webinar_blocks else '{}' }}
 }
 </script>
 
@@ -1047,157 +1035,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Recalculate Recommendations Button
-    if (recalculateBtn) {
-        recalculateBtn.addEventListener('click', async () => {
-            const quotaT26Input = document.getElementById('quota_t26');
-            const quotaT27Input = document.getElementById('quota_t27');
-            const quotaT26 = quotaT26Input ? quotaT26Input.value || 0 : 0;
-            const quotaT27 = quotaT27Input ? quotaT27Input.value || 0 : 0;
-            const studentIdForUrl = "{{ student.id }}"; // Get student ID from template
-            const url = `/plan/api/recommendations/${studentIdForUrl}?quota_t26=${quotaT26}&quota_t27=${quotaT27}`;
-
-            // console.log("Recalculating recommendations with URL:", url);
-            recalculateBtn.disabled = true;
-            recalculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Пересчет...';
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    let errorMsg = `HTTP error! status: ${response.status}`;
-                    try {
-                        const errorData = await response.json();
-                        errorMsg = errorData.error || `Ошибка сервера: ${response.statusText}`;
-                    } catch (e) { /* Ignore if response body is not JSON */ }
-                    throw new Error(errorMsg);
+    // Update block quotas display
+    function updateBlockQuotas(webinarBlocks) {
+        if (!webinarBlocks) return;
+        
+        for (const [blockKey, blockData] of Object.entries(webinarBlocks)) {
+            const input = document.getElementById(`block_quota_${blockKey}`);
+            if (input && blockData.count > 0) {
+                input.max = blockData.count;
+                // Не изменяем значение, если пользователь уже его поменял
+                if (input.value == input.defaultValue) {
+                    input.value = blockData.count;
                 }
-                const data = await response.json();
-                 // console.log("Received recommendations:", data);
-
-                 // --- [Recalculate] Process START ---
-                 console.log("--- [Recalculate] Start UI Update ---");
-
-                 // 1. Get New Data from API
-                 const newRecommendations = data.recommendations || [];
-                 const newWebinarWeeks = {};
-                 const newRecommendedIds = new Set();
-                 newRecommendations.forEach(rec => {
-                    if (rec.id && rec.week_number) {
-                        newWebinarWeeks[rec.id] = rec.week_number;
-                        newRecommendedIds.add(rec.id);
-                    }
-                 });
-                 console.log(`[Recalculate] Received ${newRecommendations.length} new recommendations. IDs:`, Array.from(newRecommendedIds));
-                 console.log("[Recalculate] New week assignments:", newWebinarWeeks);
-
-                 // 2. Gather ALL existing card elements FIRST (before moving)
-                 const allDomItemsMap = new Map();
-                 const itemsInWeeksToGather = document.querySelectorAll('.week-container .webinar-item');
-                 const itemsInAvailableToGather = document.querySelectorAll('#available-webinars-inner-container .webinar-item');
-                 const itemsInHiddenToGather = allWebinarsContainer.querySelectorAll('.webinar-item'); // Should be empty after first load, but capture just in case
-                 
-                 itemsInWeeksToGather.forEach(item => {
-                     const webinarId = parseInt(item.dataset.webinarId, 10);
-                     if (webinarId && !allDomItemsMap.has(webinarId)) { allDomItemsMap.set(webinarId, item); }
-                 });
-                 itemsInAvailableToGather.forEach(item => {
-                     const webinarId = parseInt(item.dataset.webinarId, 10);
-                     if (webinarId && !allDomItemsMap.has(webinarId)) { allDomItemsMap.set(webinarId, item); }
-                 });
-                 itemsInHiddenToGather.forEach(item => { // Add any remaining from hidden
-                     const webinarId = parseInt(item.dataset.webinarId, 10);
-                     if (webinarId && !allDomItemsMap.has(webinarId)) { allDomItemsMap.set(webinarId, item); }
-                 });
-                 console.log(`[Recalculate] Gathered ${allDomItemsMap.size} card elements from DOM before moving.`);
-
-                 // 3. Move items from visible containers back to hidden container (ensures clean slate)
-                 const itemsInWeeks = document.querySelectorAll('.week-container .webinar-item');
-                 const itemsInAvailable = document.querySelectorAll('#available-webinars-inner-container .webinar-item');
-                 itemsInWeeks.forEach(item => allWebinarsContainer.appendChild(item));
-                 itemsInAvailable.forEach(item => allWebinarsContainer.appendChild(item));
-                 console.log(`[Recalculate] Moved ${itemsInWeeks.length} from weeks, ${itemsInAvailable.length} from available back to hidden container.`);
-
-                 // 4. Clear visible containers
-                 if(availableContainer) availableContainer.innerHTML = '';
-                 for(let i = 1; i <= 4; i++) {
-                     if(weekContainers[i]) weekContainers[i].innerHTML = '';
-                 }
-                 console.log("[Recalculate] Cleared visible containers.");
-
-                 // <<<--- ДОБАВЛЕНО: Отключаем SortableJS перед распределением ---
-                 console.log("[Recalculate] Disabling SortableJS instances...");
-                 sortableInstances.forEach(instance => instance.option("disabled", true));
-
-                 // 5. Distribute items based on NEW recommendations (using the gathered map)
-                 allDomItemsMap.forEach((itemElement, webinarId) => {
-                    const isRecommended = newRecommendedIds.has(webinarId);
-                    console.log(`[Recalculate Distribute] Processing ID: ${webinarId}, IsRecommended: ${isRecommended}`); // Log item being processed
-
-                    if (isRecommended) {
-                        // This item IS recommended
-                        const targetWeek = newWebinarWeeks[webinarId];
-                        const targetContainer = weekContainers[targetWeek];
-                        console.log(`  -> Recommended. Target Week: ${targetWeek}, Target Container Found: ${!!targetContainer}`); // Log recommendation details
-
-                        if (targetContainer) {
-                            updateCardState(itemElement, targetContainer); // Update state FIRST
-                            console.log(`  -> Calling appendChild for ID ${webinarId} to Week ${targetWeek}`); // Log append
-                            targetContainer.appendChild(itemElement);     // Then move
-                        } else {
-                            console.warn(`  -> Week container ${targetWeek} not found for recommended ID: ${webinarId}. Placing in available.`);
-                            updateCardState(itemElement, availableContainer); // Reset state
-                            if (availableContainer) {
-                                console.log(`  -> Calling appendChild for ID ${webinarId} to Available (container fallback)`); // Log append fallback
-                                availableContainer.appendChild(itemElement);
-                            }
-                        }
-                    } else {
-                        // This item is NOT recommended
-                         console.log(`  -> Not Recommended. Placing in Available.`); // Log non-recommendation
-                        updateCardState(itemElement, availableContainer); // Reset state
-                        if (availableContainer) {
-                             console.log(`  -> Calling appendChild for ID ${webinarId} to Available`); // Log append available
-                            availableContainer.appendChild(itemElement);
-                        }
-                    }
-                 });
-                 console.log("[Recalculate] Finished distributing items based on new recommendations.");
-
-                 // <<<--- ДОБАВЛЕНО: Включаем SortableJS обратно ---
-                 console.log("[Recalculate] Re-enabling SortableJS instances...");
-                 sortableInstances.forEach(instance => instance.option("disabled", false));
-
-                 // 6. Update counters and placeholders
-                 updateCountersAndPlaceholders();
-                 console.log("--- [Recalculate] End UI Update ---");
-
-                 // --- NO LONGER NEEDED: Update initialData and call distributeInitialCards() ---
-                 /*
-                 // Update initialData - suitableWebinars needs { id, category, date }
-                 initialData.suitableWebinars = newRecommendations.map(rec => ({
-                     id: rec.id,
-                     category: rec.category,
-                     date: rec.date // JS Date can parse ISO format
-                 }));
-                 initialData.webinarWeeks = newWebinarWeeks;
-                 console.log("--- [Recalculate] Updated initialData: ---", JSON.parse(JSON.stringify(initialData))); // Log updated initialData
-
-                 // --- Re-distribute cards based on new data ---
-                 distributeInitialCards(); // Call the distribution function again
-                 */
-
-            } catch (error) {
-                console.error('Error recalculating recommendations:', error);
-                alert(`Не удалось получить новые рекомендации: ${error.message}`);
-                 // Restore UI to previous state might be complex, maybe just leave as is or prompt user?
-                 // For now, just re-enable the button.
-            } finally {
-                recalculateBtn.disabled = false;
-                recalculateBtn.innerHTML = '<i class="fas fa-redo me-1"></i> Пересчитать рекомендации';
-                 // console.log("Recalculation process finished.");
             }
-        });
+        }
     }
+
+    // Recalculate Recommendations Button (удален, так как квоты T26/T27 теперь распределяются в предыдущем окне)
+
 
     // --- Form Submission ---
     const form = document.getElementById('create-plan-form');

@@ -23,14 +23,17 @@
                 <p class="text-muted mb-4">Отметьте задания, которые вы хотите включить в план обучения. 
                 На основе вашего выбора будут предложены подходящие вебинары.</p>
                 
-                <form action="{{ url_for('plans.create_study_plan', student_id=student.id) }}" method="post">
+                <form action="{{ url_for('plans.analyze_blocks', student_id=student.id) }}" method="post">
                     {{ form.hidden_tag() }}
                     
                     <input type="hidden" name="is_tasks_selection" value="1">
                     
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold mb-0">Рекомендуемые задания для {{ student.target_score or 80 }} баллов</h6>
+                            <h6 class="fw-bold mb-0">
+                                Рекомендуемые задания для {{ student.target_score or 80 }} 
+                                {% if student.exam_type == 'oge' %}оценки{% else %}баллов{% endif %}
+                            </h6>
                             <div>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="select-all-btn">
                                     <i class="fas fa-check-square me-1"></i> Выбрать все
@@ -43,7 +46,8 @@
                         
                         <div class="bg-light p-3 rounded mb-3">
                             <div class="d-flex flex-wrap gap-2">
-                                {% for task_number in range(1, 28) %}
+                                {% set max_task = 27 if student.exam_type == 'ege' else 16 %}
+                                {% for task_number in range(1, max_task + 1) %}
                                     <div class="form-check form-check-inline">
                                         <input class="form-check-input task-checkbox" type="checkbox" 
                                                id="task{{ task_number }}" name="selected_tasks" value="{{ task_number }}"
@@ -71,7 +75,8 @@
                         {% endif %}
                     </div>
                     
-                    <!-- Переключатель для включения вебинаров 2025 года -->
+                    <!-- Переключатель для включения вебинаров 2025 года (только для ЕГЭ) -->
+                    {% if student.exam_type == 'ege' %}
                     <div class="mb-4">
                         <div class="card border-primary">
                             <div class="card-header bg-primary text-white">
@@ -98,13 +103,17 @@
                             </div>
                         </div>
                     </div>
+                    {% else %}
+                    <!-- Для ОГЭ скрытое поле с значением по умолчанию -->
+                    <input type="hidden" name="include_2025_webinars" value="no">
+                    {% endif %}
                     
                     <div class="d-flex justify-content-between align-items-center mt-4">
                         <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-outline-secondary">
                             <i class="fas fa-times me-2"></i> Отмена
                         </a>
                         <button type="submit" class="btn btn-accent">
-                            <i class="fas fa-chevron-right me-2"></i> Перейти к выбору вебинаров
+                            <i class="fas fa-chevron-right me-2"></i> Анализ блоков вебинаров
                         </button>
                     </div>
                 </form>
@@ -119,9 +128,11 @@
             </div>
             <div class="card-body">
                 <div class="mb-4">
-                    <h6 class="fw-bold"><i class="fas fa-bullseye me-2"></i>Целевой балл: {{ student.target_score or 'Не указан' }}</h6>
+                    <h6 class="fw-bold"><i class="fas fa-bullseye me-2"></i>
+                        Целевой {% if student.exam_type == 'oge' %}оценка{% else %}балл{% endif %}: {{ student.target_score or 'Не указан' }}
+                    </h6>
                     <p class="small text-muted mb-0">
-                        На основе целевого балла сформированы рекомендации по заданиям
+                        На основе целевой {% if student.exam_type == 'oge' %}оценки{% else %}балла{% endif %} сформированы рекомендации по заданиям
                     </p>
                 </div>
                 

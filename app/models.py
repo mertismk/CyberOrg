@@ -22,6 +22,10 @@ class Webinar(db.Model):
     task_numbers = db.relationship(
         "TaskNumber", secondary="webinar_task_association", back_populates="webinars"
     )
+    # Связь many-to-many с темами ОГЭ
+    oge_topics = db.relationship(
+        "OGETopic", secondary="webinar_oge_topic_association", back_populates="webinars"
+    )
     is_programming = db.Column(db.Boolean, default=False)  # Решение прогой
     is_manual = db.Column(db.Boolean, default=False)  # Решение руками
     is_excel = db.Column(db.Boolean, default=False)  # Решение в Excel
@@ -37,6 +41,11 @@ class Webinar(db.Model):
     for_practice = db.Column(db.Boolean, default=False)  # Нарешка
     for_minisnap = db.Column(db.Boolean, default=False)  # Мини-щелчок
     for_summer = db.Column(db.Boolean, default=False)  # Летний курс (только для 2026 года)
+    # Категории для ОГЭ (только для exam_type='oge')
+    for_oge_part1 = db.Column(db.Boolean, default=False)  # Первая часть (1-12)
+    for_oge_part2 = db.Column(db.Boolean, default=False)  # Вторая часть (13-16)
+    for_oge_hard = db.Column(db.Boolean, default=False)  # Хард-вебинары
+    exam_type = db.Column(db.String(10), nullable=False, default='ege')  # Тип экзамена: 'ege' или 'oge'
     created_by_id = db.Column(
         db.Integer, db.ForeignKey("users.id"), nullable=False
     )  # ID создателя
@@ -112,6 +121,7 @@ class Student(db.Model):
     needs_python_basics = db.Column(db.Boolean, default=False)
     task_26_deferred = db.Column(db.Boolean, default=False)
     task_27_deferred = db.Column(db.Boolean, default=False)
+    exam_type = db.Column(db.String(10), nullable=False, default='ege')  # Тип экзамена: 'ege' или 'oge'
 
     @property
     def full_name(self):
@@ -233,3 +243,93 @@ class WebinarComment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     user = db.relationship("User")
+
+
+# Модель для уведомлений об обновлениях
+class UpdateNotification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    version = db.Column(db.String(50))  # Версия обновления (например, "1.5.0")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)  # Активно ли уведомление
+    priority = db.Column(db.Integer, default=1)  # Приоритет (1-низкий, 5-высокий)
+    show_until = db.Column(db.DateTime)  # До какой даты показывать (опционально)
+    
+    # Новые поля для улучшенного дизайна
+    background_color = db.Column(db.String(20), default="#667eea")  # Цвет фона
+    text_color = db.Column(db.String(20), default="#ffffff")  # Цвет текста
+    icon = db.Column(db.String(50), default="rocket")  # Font Awesome иконка
+
+    created_by = db.relationship("User")
+    user_statuses = db.relationship("UserNotificationStatus", back_populates="notification")
+    images = db.relationship("UpdateNotificationImage", back_populates="notification", cascade="all, delete-orphan")
+
+    def __str__(self):
+        return f"Обновление {self.version}: {self.title}"
+
+
+# Модель для изображений уведомлений об обновлениях
+class UpdateNotificationImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    notification_id = db.Column(db.Integer, db.ForeignKey("update_notification.id"), nullable=False)
+    image_url = db.Column(db.String(500), nullable=False)
+    caption = db.Column(db.String(300))  # Подпись к изображению
+    position = db.Column(db.Integer, default=0)  # Позиция в порядке отображения
+    
+    notification = db.relationship("UpdateNotification", back_populates="images")
+
+
+# Модель для отслеживания статуса просмотра уведомлений пользователями
+class UserNotificationStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    notification_id = db.Column(db.Integer, db.ForeignKey("update_notification.id"), nullable=False)
+    viewed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_dismissed = db.Column(db.Boolean, default=False)  # Скрыл ли пользователь уведомление
+
+    user = db.relationship("User")
+    notification = db.relationship("UpdateNotification", back_populates="user_statuses")
+
+    # Уникальность: один пользователь может иметь только один статус для каждого уведомления
+    __table_args__ = (db.UniqueConstraint("user_id", "notification_id", name="uq_user_notification"),)
+
+
+# Модель для тем ОГЭ
+class OGETopic(db.Model):
+    __tablename__ = 'oge_topic'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # Название темы (например, "Системы счисления")
+    task_numbers_str = db.Column(db.String(100))  # Номера заданий в виде строки (например, "1, 2")
+    description = db.Column(db.Text)  # Описание темы (опционально)
+    is_active = db.Column(db.Boolean, default=True)  # Активна ли тема
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Связь many-to-many с вебинарами
+    webinars = db.relationship(
+        "Webinar", secondary="webinar_oge_topic_association", back_populates="oge_topics"
+    )
+    
+    @property
+    def task_numbers_list(self):
+        """Возвращает список номеров заданий как целые числа"""
+        if not self.task_numbers_str:
+            return []
+        try:
+            return [int(num.strip()) for num in self.task_numbers_str.split(',') if num.strip()]
+        except (ValueError, AttributeError):
+            return []
+    
+    def __str__(self):
+        return self.name
+
+
+# Ассоциативная таблица для связи вебинаров и тем ОГЭ
+webinar_oge_topic_association = db.Table(
+    "webinar_oge_topic_association",
+    db.Column("webinar_id", db.Integer, db.ForeignKey("webinar.id"), primary_key=True),
+    db.Column("oge_topic_id", db.Integer, db.ForeignKey("oge_topic.id"), primary_key=True),
+)

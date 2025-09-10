@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - CyberOrg{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-book-open me-2"></i>
+                            {{ title }}
+                        </h4>
+                        <a href="{{ url_for('topics.topics_list') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Назад к списку
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    {{ form.name.label(class="form-label required") }}
+                                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Например: "Системы счисления", "Алгебра логики"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.task_numbers_str.label(class="form-label") }}
+                                    {{ form.task_numbers_str(class="form-control" + (" is-invalid" if form.task_numbers_str.errors else "")) }}
+                                    {% if form.task_numbers_str.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.task_numbers_str.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Введите номера заданий через запятую (от 1 до 16 для ОГЭ)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Статус</label>
+                                    <div class="form-check">
+                                        {{ form.is_active(class="form-check-input") }}
+                                        {{ form.is_active.label(class="form-check-label") }}
+                                    </div>
+                                    <div class="form-text">
+                                        Неактивные темы не показываются в списке по умолчанию
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else "")) }}
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Краткое описание темы (не обязательно)
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('topics.topics_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Отмена
+                            </a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if mode == 'edit' and topic %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Дополнительная информация
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <strong>Дата создания:</strong><br>
+                                <span class="text-muted">{{ topic.created_at.strftime('%d.%m.%Y %H:%M') if topic.created_at else 'Не указана' }}</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Связанных вебинаров:</strong><br>
+                                <span class="text-muted">{{ topic.webinars | length }}</span>
+                                {% if topic.webinars %}
+                                    <a href="{{ url_for('topics.topic_detail', topic_id=topic.id) }}" class="ms-2">
+                                        <small>Посмотреть список</small>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.required::after {
+    content: " *";
+    color: #dc3545;
+}
+</style>
+{% endblock %}

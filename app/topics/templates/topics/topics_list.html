@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Темы ОГЭ - CyberOrg{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-book-open me-2"></i>
+                    {% if show_all %}
+                        Все темы ОГЭ
+                    {% else %}
+                        Темы ОГЭ
+                    {% endif %}
+                </h2>
+                <div>
+                    {% if current_user.is_admin %}
+                        {% if not show_all %}
+                            <a href="{{ url_for('topics.all_topics') }}" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-eye me-1"></i>Все темы
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('topics.topics_list') }}" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-eye me-1"></i>Только активные
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('topics.create_topic') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Добавить тему
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if topics %}
+                <div class="row">
+                    {% for topic in topics %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 {% if not topic.is_active %}border-warning{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title mb-0">
+                                            {{ topic.name }}
+                                            {% if not topic.is_active %}
+                                                <small class="text-warning">(неактивна)</small>
+                                            {% endif %}
+                                        </h5>
+                                        {% if current_user.is_admin %}
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ url_for('topics.edit_topic', topic_id=topic.id) }}">
+                                                            <i class="fas fa-edit me-2"></i>Редактировать
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ url_for('topics.topic_detail', topic_id=topic.id) }}">
+                                                            <i class="fas fa-info-circle me-2"></i>Подробнее
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" 
+                                                           href="{{ url_for('topics.delete_topic', topic_id=topic.id) }}">
+                                                            <i class="fas fa-trash me-2"></i>Удалить
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if topic.task_numbers_str %}
+                                        <div class="mb-2">
+                                            <span class="badge bg-primary me-1">
+                                                <i class="fas fa-hashtag me-1"></i>
+                                                Задания: {{ topic.task_numbers_str }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if topic.description %}
+                                        <p class="card-text text-muted">
+                                            {{ topic.description | truncate(120) }}
+                                        </p>
+                                    {% endif %}
+                                    
+                                    <div class="mt-auto">
+                                        {% if topic.webinars %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-video me-1"></i>
+                                                Вебинаров: {{ topic.webinars | length }}
+                                            </small>
+                                        {% else %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-video me-1"></i>
+                                                Нет связанных вебинаров
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">Темы не найдены</h4>
+                    <p class="text-muted">
+                        {% if show_all %}
+                            В базе данных пока нет ни одной темы ОГЭ.
+                        {% else %}
+                            Нет активных тем ОГЭ.
+                        {% endif %}
+                    </p>
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('topics.create_topic') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Добавить первую тему
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,7 +5,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="fw-bold">Список учеников</h1>
-    <a href="{{ url_for('students.student_new') }}" class="btn btn-accent">
+    <a href="{{ url_for('students.select_exam_type') }}" class="btn btn-accent">
         <i class="fas fa-user-plus me-2"></i> Добавить ученика
     </a>
 </div>
@@ -29,14 +29,17 @@
                     <option value="hours_asc" {% if request.args.get('sort') == 'hours_asc' %}selected{% endif %}>По часам ↑</option>
                 </select>
                 
-                <!-- Сохраняем year в hidden поле, если он установлен -->
+                <!-- Сохраняем year и exam_type в hidden полях, если они установлены -->
                 {% if request.args.get('year') %}
                     <input type="hidden" name="year" value="{{ request.args.get('year') }}">
+                {% endif %}
+                {% if request.args.get('exam_type') %}
+                    <input type="hidden" name="exam_type" value="{{ request.args.get('exam_type') }}">
                 {% endif %}
                 
                 <button class="btn btn-primary" type="submit">Найти</button>
                 {% if request.args.get('q') or request.args.get('sort') %}
-                    <a href="{{ url_for('students.students_list', year=current_year) }}" class="btn btn-outline-secondary" title="Сбросить фильтры">
+                    <a href="{{ url_for('students.students_list', year=current_year, exam_type=current_exam_type) }}" class="btn btn-outline-secondary" title="Сбросить фильтры">
                         <i class="fas fa-times"></i>
                     </a>
                 {% endif %}
@@ -53,43 +56,78 @@
     </div>
 </div>
 
-<!-- Переключатель между учебными годами -->
+<!-- Переключатели учебного года и типа экзамена -->
 <div class="mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-bold">
-            <i class="fas fa-calendar-alt me-2 text-primary"></i> Учебный год
-        </h5>
-                    <div class="dropdown">
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="yearDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper="static">
-                    <i class="fas fa-{% if current_year == 2026 %}user-graduate{% else %}graduation-cap{% endif %} me-2"></i>
-                    {{ current_year }} год
-                    <span class="badge bg-{% if current_year == 2026 %}success{% else %}secondary{% endif %} ms-2">
-                        {% if current_year == 2026 %}текущие{% else %}прошлогодние{% endif %}
-                    </span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="yearDropdown" style="z-index: 1050;">
-                <li>
-                    <a class="dropdown-item d-flex align-items-center {% if current_year == 2026 %}active{% endif %}" 
-                       href="{{ url_for('students.students_list', year=2026, q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}">
-                        <i class="fas fa-user-graduate me-2 text-success"></i>
-                        <div>
-                            <div class="fw-bold">2026 год</div>
-                            <small class="text-muted">Текущие ученики</small>
-                        </div>
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item d-flex align-items-center {% if current_year == 2025 %}active{% endif %}" 
-                       href="{{ url_for('students.students_list', year=2025, q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}">
-                        <i class="fas fa-graduation-cap me-2 text-secondary"></i>
-                        <div>
-                            <div class="fw-bold">2025 год</div>
-                            <small class="text-muted">Прошлогодние ученики</small>
-                        </div>
-                    </a>
-                </li>
-            </ul>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-calendar-alt me-2 text-primary"></i> Учебный год
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="yearDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper="static">
+                        <i class="fas fa-{% if current_year == 2026 %}user-graduate{% else %}graduation-cap{% endif %} me-2"></i>
+                        {{ current_year }} год
+                        <span class="badge bg-{% if current_year == 2026 %}success{% else %}secondary{% endif %} ms-2">
+                            {% if current_year == 2026 %}текущие{% else %}прошлогодние{% endif %}
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="yearDropdown" style="z-index: 1050;">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center {% if current_year == 2026 %}active{% endif %}" 
+                           href="{{ url_for('students.students_list', year=2026, exam_type=current_exam_type, q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}">
+                            <i class="fas fa-user-graduate me-2 text-success"></i>
+                            <div>
+                                <div class="fw-bold">2026 год</div>
+                                <small class="text-muted">Текущие ученики</small>
+                            </div>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center {% if current_year == 2025 %}active{% endif %}" 
+                           href="{{ url_for('students.students_list', year=2025, exam_type=current_exam_type, q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}">
+                            <i class="fas fa-graduation-cap me-2 text-secondary"></i>
+                            <div>
+                                <div class="fw-bold">2025 год</div>
+                                <small class="text-muted">Прошлогодние ученики</small>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-graduation-cap me-2 text-secondary"></i> Тип экзамена
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="examTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-boundary="viewport">
+                        <i class="fas fa-{% if current_exam_type == 'ege' %}graduation-cap{% else %}certificate{% endif %} me-2"></i>
+                        {% if current_exam_type == 'ege' %}ЕГЭ{% else %}ОГЭ{% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="examTypeDropdown" style="z-index: 1050;">
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center {% if current_exam_type == 'ege' %}active{% endif %}" 
+                               href="{{ url_for('students.students_list', year=current_year, exam_type='ege', q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}">
+                                <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                                <div class="fw-bold">ЕГЭ</div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center {% if current_exam_type == 'oge' %}active{% endif %}" 
+                               href="{{ url_for('students.students_list', year=current_year, exam_type='oge', q=request.args.get('q', ''), sort=request.args.get('sort', '')) }}">
+                                <i class="fas fa-certificate me-2 text-secondary"></i>
+                                <div class="fw-bold">ОГЭ</div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -132,12 +170,15 @@
                             </div>
 
                             <div class="mb-3 d-flex flex-wrap">
-                                 {% if student.is_beginner %}
-                                    <span class="badge bg-info me-1 mb-1"><i class="fas fa-baby me-1"></i>Начинающий</span>
+                                <!-- Тип экзамена -->
+                                {% if student.exam_type == 'ege' %}
+                                    <span class="badge bg-primary me-1 mb-1"><i class="fas fa-graduation-cap me-1"></i>ЕГЭ</span>
                                 {% else %}
-                                    <span class="badge bg-success me-1 mb-1"><i class="fas fa-graduation-cap me-1"></i>Базовый</span>
+                                    <span class="badge bg-secondary me-1 mb-1"><i class="fas fa-certificate me-1"></i>ОГЭ</span>
                                 {% endif %}
                                 
+                                
+                                <!-- Известные задания -->
                                 {% if 26 in student.known_tasks|map(attribute='task_number')|list %}
                                     <span class="badge bg-warning text-dark me-1 mb-1" title="Знает Задание 26"><i class="fas fa-star me-1"></i>26</span>
                                 {% endif %}
@@ -204,7 +245,7 @@
                                         {% endif %}
                                     </div>
                                 </th>
-                                <th class="py-3">Уровень</th>
+                                <th class="py-3">Тип экзамена</th>
                                 <th class="py-3">
                                     <div class="d-flex align-items-center">
                                         <span>Добавлен</span>
@@ -240,12 +281,13 @@
                                         </span>
                                     </td>
                                     <td class="py-3">
-                                        {% if student.is_beginner %}
-                                            <span class="badge bg-info me-1 mb-1"><i class="fas fa-baby me-1"></i>Начинающий</span>
+                                        {% if student.exam_type == 'ege' %}
+                                            <span class="badge bg-primary"><i class="fas fa-graduation-cap me-1"></i>ЕГЭ</span>
                                         {% else %}
-                                            <span class="badge bg-success me-1 mb-1"><i class="fas fa-graduation-cap me-1"></i>Базовый</span>
+                                            <span class="badge bg-secondary"><i class="fas fa-certificate me-1"></i>ОГЭ</span>
                                         {% endif %}
-
+                                    </td>
+                                    <td class="py-3">
                                         {% if 26 in student.known_tasks|map(attribute='task_number')|list %}
                                             <span class="badge bg-warning text-dark me-1 mb-1" title="Знает Задание 26"><i class="fas fa-star me-1"></i>26</span>
                                         {% endif %}
@@ -317,7 +359,7 @@
         </h5>
         <p class="mb-4">
         {% if request.args.get('q') %}
-            Попробуйте изменить поисковый запрос или <a href="{{ url_for('students.students_list') }}">сбросить поиск</a>.
+            Попробуйте изменить поисковый запрос или <a href="{{ url_for('students.students_list', year=current_year, exam_type=current_exam_type) }}">сбросить поиск</a>.
         {% else %}
              Добавьте первого ученика, нажав на кнопку выше.
         {% endif %}
@@ -438,6 +480,21 @@ thead th:hover i.fas {
     right: 0 !important;
     transform: none !important;
 }
+
+/* Адаптивность для переключателей */
+@media (max-width: 768px) {
+    .row.g-3 .col-md-6 {
+        margin-bottom: 1rem;
+    }
+    .d-flex.align-items-center.gap-3 {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    .d-flex.align-items-center.gap-3 h5 {
+        margin-bottom: 0.5rem;
+    }
+}
 </style>
 {% endblock %}
 
@@ -480,6 +537,27 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tableBtn) {
         tableBtn.addEventListener('click', () => setActiveView('table'));
     }
+
+    // Обработчики для переключения года и типа экзамена
+    document.querySelectorAll('#yearDropdown + .dropdown-menu a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const year = this.getAttribute('href').split('year=')[1].split('&')[0];
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('year', year);
+            window.location.href = currentUrl.toString();
+        });
+    });
+
+    document.querySelectorAll('#examTypeDropdown + .dropdown-menu a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const examType = this.getAttribute('href').split('exam_type=')[1].split('&')[0];
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('exam_type', examType);
+            window.location.href = currentUrl.toString();
+        });
+    });
 });
 </script>
 {% endblock %}

@@ -9,7 +9,14 @@
             <i class="fas fa-arrow-left me-2"></i> К списку учеников
         </a>
         <h1 class="fw-bold mb-0">{{ student.first_name }} {{ student.last_name }}</h1>
-        <p class="text-muted">ID на платформе: {{ student.platform_id }}</p>
+        <div class="d-flex align-items-center gap-3">
+            <p class="text-muted mb-0">ID на платформе: {{ student.platform_id }}</p>
+            {% if student.exam_type == 'ege' %}
+                <span class="badge bg-primary"><i class="fas fa-graduation-cap me-1"></i>ЕГЭ</span>
+            {% else %}
+                <span class="badge bg-secondary"><i class="fas fa-certificate me-1"></i>ОГЭ</span>
+            {% endif %}
+        </div>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ url_for('students.student_edit', student_id=student.id) }}" class="btn btn-primary">
@@ -84,20 +91,20 @@
                 
                 <div class="mb-3 p-3 rounded-3" style="background-color: rgba(114, 9, 183, 0.05);">
                     <div class="row mb-2">
-                        <div class="col-6 text-muted">Целевой балл:</div>
+                        <div class="col-6 text-muted">{% if student.exam_type == 'oge' %}Целевая оценка{% else %}Целевой балл{% endif %}:</div>
                         <div class="col-6 fw-bold text-end">{{ student.target_score or 'Не указан' }}</div>
                     </div>
                     <div class="row mb-2">
                         <div class="col-6 text-muted">Часов в неделю:</div>
                         <div class="col-6 fw-bold text-end">{{ student.hours_per_week or 'Не указано' }}</div>
                     </div>
-                    <div class="row">
-                        <div class="col-6 text-muted">Уровень:</div>
+                    <div class="row mb-2">
+                        <div class="col-6 text-muted">Тип экзамена:</div>
                         <div class="col-6 text-end">
-                            {% if student.is_beginner %}
-                                <span class="badge bg-info">Начинающий</span>
+                            {% if student.exam_type == 'ege' %}
+                                <span class="badge bg-primary"><i class="fas fa-graduation-cap me-1"></i>ЕГЭ</span>
                             {% else %}
-                                <span class="badge bg-success">Базовый</span>
+                                <span class="badge bg-secondary"><i class="fas fa-certificate me-1"></i>ОГЭ</span>
                             {% endif %}
                         </div>
                     </div>
@@ -142,7 +149,8 @@
                     <h6 class="fw-bold mb-3">Дополнительные задания</h6>
                     <div class="d-flex flex-wrap gap-2">
                         {% set has_other_tasks = false %}
-                        {% for i in range(1, 28) %}
+                        {% set max_task = 27 if student.exam_type == 'ege' else 16 %}
+                        {% for i in range(1, max_task + 1) %}
                             {% if i not in required_tasks %}
                                 {% set has_other_tasks = true %}
                                 <div class="form-check mb-0">
@@ -312,8 +320,9 @@
                             </div>
                             <div class="col-md-4 mb-3">
                                 <div class="border rounded p-3 text-center">
-                                    {% set known_percent = (known_task_numbers|length / 27 * 100)|int %}
-                                    <div class="h3 fw-bold text-success">{{ known_task_numbers|length }}/27</div>
+                                    {% set max_tasks = 27 if student.exam_type == 'ege' else 16 %}
+                                    {% set known_percent = (known_task_numbers|length / max_tasks * 100)|int %}
+                                    <div class="h3 fw-bold text-success">{{ known_task_numbers|length }}/{{ max_tasks }}</div>
                                     <div class="text-muted">Заданий изучено</div>
                                 </div>
                             </div>
@@ -323,7 +332,7 @@
                                     {% set task_count = 0 %}
                                     
                                     {% for task_num, stats in task_stats.items() %}
-                                        {% if stats.total > 0 %}
+                                        {% if stats.total > 0 and task_num <= max_tasks %}
                                             {% set task_count = task_count + 1 %}
                                             {% if task_num|string in known_task_numbers %}
                                                 {# Если задание отмечено как изученное, считаем его за 100% #}
@@ -360,7 +369,7 @@
                                                 {% set completed_count = 0 %}
                                                 
                                                 {% for task_num, stats in task_stats.items() %}
-                                                    {% if stats.total > 0 %}
+                                                    {% if stats.total > 0 and task_num <= max_tasks %}
                                                         {% set total_tasks = total_tasks + 1 %}
                                                         {% if stats.watched == stats.total or task_num|string in known_task_numbers %}
                                                             {% set completed_count = completed_count + 1 %}
@@ -412,8 +421,9 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {% set max_task = 27 if student.exam_type == 'ege' else 16 %}
                                             {% for task_num, stats in task_stats.items()|sort %}
-                                                {% if stats.total > 0 %}
+                                                {% if stats.total > 0 and task_num <= max_task %}
                                                     {% set percentage = (stats.watched / stats.total * 100)|int %}
                                                     <tr>
                                                         <td class="fw-bold">
@@ -480,14 +490,18 @@
             const partiallyWatched = [];
             const notWatched = [];
             
+            // Определяем максимальный номер задания в зависимости от типа экзамена
+            const maxTask = {{ 27 if student.exam_type == 'ege' else 16 }};
+            
             for (const [taskNum, stats] of Object.entries(taskStats)) {
                 // Приводим значения к числам для корректного сравнения
                 const total = parseInt(stats.total, 10);
                 const watched = parseInt(stats.watched, 10);
                 const isKnown = stats.isKnown;
+                const taskNumber = parseInt(taskNum, 10);
                 
-                // Пропускаем задания без вебинаров
-                if (total <= 0) continue;
+                // Пропускаем задания без вебинаров и задания выше максимального номера
+                if (total <= 0 || taskNumber > maxTask) continue;
                 
                 console.log(`Task ${taskNum}: watched=${watched}, total=${total}, isKnown=${isKnown}`);
                 
