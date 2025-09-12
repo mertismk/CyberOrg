@@ -73,7 +73,6 @@
                 <div class="card-body p-4 p-md-5">
                     <form method="POST" novalidate id="webinar-form">
                         {{ form.hidden_tag() }}
-                        {{ form.academic_year() }}
                         
                         <!-- Индикатор типа экзамена -->
                         <div class="alert alert-{{ 'primary' if exam_type == 'ege' else 'info' }} border-0 mb-4" 
@@ -95,11 +94,14 @@
                             <div class="col-12">
                                 {{ render_field(form.title, class='form-control form-control-lg', label_visible=True, placeholder='Например: Решение задач по программированию') }}
                             </div>
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 {{ render_field(form.url, class='form-control', label_visible=True, placeholder='https://example.com/webinar') }}
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 {{ render_field(form.date, class='form-control', type='date', label_visible=True) }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ render_field(form.academic_year, class='form-select', label_visible=True) }}
                             </div>
                         </div>
 

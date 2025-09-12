@@ -67,6 +67,11 @@
                             <i class="fas fa-calendar-alt me-1"></i> {{ webinar.date|moscow_time if webinar.date else 'Не указано' }}
                         </span>
                         <span class="text-muted">
+                            <i class="fas fa-graduation-cap me-1"></i> {{ webinar.academic_year }}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-end align-items-center mb-2" style="font-size: 0.75rem;">
+                        <span class="text-muted">
                             <i class="fas fa-hashtag"></i> {{ webinar.url[-5:] if webinar.url|length >= 5 else webinar.url }}
                         </span>
                     </div>

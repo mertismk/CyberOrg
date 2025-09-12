@@ -606,6 +606,10 @@ def edit_webinar(webinar_id):
     webinar = Webinar.query.options(selectinload(Webinar.oge_topics)).get_or_404(webinar_id)
     form = WebinarForm(obj=webinar)
     
+    # Отладочная информация при загрузке формы
+    current_app.logger.debug(f"DEBUG (form load): webinar.academic_year = {webinar.academic_year}")
+    current_app.logger.debug(f"DEBUG (form load): form.academic_year.data = {form.academic_year.data}")
+    
     # Заполняем choices для тем ОГЭ, если редактируется вебинар ОГЭ
     if webinar.exam_type == 'oge':
         active_topics = OGETopic.query.filter_by(is_active=True).order_by(OGETopic.name).all()
@@ -620,6 +624,10 @@ def edit_webinar(webinar_id):
         form.oge_topics.choices = []
 
     if form.validate_on_submit():
+        # Отладочная информация для academic_year
+        current_app.logger.debug(f"DEBUG: form.academic_year.data = {form.academic_year.data}, type = {type(form.academic_year.data)}")
+        current_app.logger.debug(f"DEBUG: webinar.academic_year before update = {webinar.academic_year}")
+        
         # Проверка: нельзя редактировать вебинары с категорией "Задание 27" для 2026 года
         if form.academic_year.data == 2026 and form.for_expert.data:
             flash('Нельзя устанавливать категорию "Задание 27" для вебинаров 2026 года', 'danger')
@@ -644,6 +652,9 @@ def edit_webinar(webinar_id):
         
         # Теперь безопасно заполняем объект
         form.populate_obj(webinar)
+        
+        # Отладочная информация после обновления
+        current_app.logger.debug(f"DEBUG: webinar.academic_year after populate_obj = {webinar.academic_year}")
         
         # Обработка категории
         current_app.logger.debug(f"DEBUG: category_data = '{category_data}', type = {type(category_data)}")

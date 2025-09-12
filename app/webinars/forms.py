@@ -16,7 +16,7 @@ CATEGORY_CHOICES = [
 
 # Choices для учебного года
 current_year = datetime.now().year
-ACADEMIC_YEAR_CHOICES = [(year, str(year)) for year in range(2026, current_year + 2)] + [(year, str(year)) for year in range(2025, 2026)]
+ACADEMIC_YEAR_CHOICES = [(year, str(year)) for year in range(2025, current_year + 2)]
 
 class MultiCheckboxField(SelectMultipleField):
     """Поле для множественного выбора с чекбоксами"""
@@ -45,7 +45,7 @@ class WebinarForm(FlaskForm):
     url = StringField('Ссылка на вебинар', validators=[DataRequired(), URL(message='Некорректный URL вебинара')])
     date = DateField('Дата вебинара (ГГГГ-ММ-ДД)', format='%Y-%m-%d', validators=[Optional()])
     task_numbers = StringField('Номера заданий (через запятую)', validators=[Optional(), validate_task_numbers])
-    academic_year = IntegerField('Учебный год', default=2026, render_kw={'type': 'hidden'})  # Скрытое поле
+    academic_year = SelectField('Учебный год', choices=ACADEMIC_YEAR_CHOICES, default=2026, coerce=int)
     exam_type = SelectField('Тип экзамена', choices=[('ege', 'ЕГЭ'), ('oge', 'ОГЭ')], default='ege', render_kw={'readonly': True})
 
     # Чекбоксы для типа решения (без изменений)
