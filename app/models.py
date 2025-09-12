@@ -422,3 +422,34 @@ class OGEParallelPlanTopicOrder(db.Model):
     topic = db.relationship("OGETopic")
     
     __table_args__ = (db.UniqueConstraint("plan_id", "topic_id", name="uq_oge_plan_topic_order_topic"),)
+
+
+# Модель для управления режимом технического обслуживания
+class MaintenanceMode(db.Model):
+    __tablename__ = 'maintenance_mode'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    is_enabled = db.Column(db.Boolean, default=False, nullable=False)  # Включен ли режим обслуживания
+    message = db.Column(db.Text, default="Готовим что-то интересное\nКиберОрг возобновит работу позднее")  # Сообщение для пользователей
+    enabled_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # Кто включил режим
+    enabled_at = db.Column(db.DateTime, default=datetime.utcnow)  # Когда был включен
+    disabled_at = db.Column(db.DateTime, nullable=True)  # Когда был отключен
+    
+    enabled_by = db.relationship("User")
+    
+    @property
+    def is_active(self):
+        """Проверяет, активен ли режим обслуживания"""
+        return self.is_enabled
+    
+    def enable(self, user_id):
+        """Включает режим обслуживания"""
+        self.is_enabled = True
+        self.enabled_by_id = user_id
+        self.enabled_at = datetime.utcnow()
+        self.disabled_at = None
+    
+    def disable(self):
+        """Отключает режим обслуживания"""
+        self.is_enabled = False
+        self.disabled_at = datetime.utcnow()

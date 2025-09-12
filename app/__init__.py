@@ -1,12 +1,12 @@
 import os
-from flask import Flask, flash, render_template, redirect, url_for
+from flask import Flask, flash, render_template, redirect, url_for, request
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from datetime import datetime, timedelta
 from functools import wraps
 
 from config import Config
-from .models import db, User
+from .models import db, User, MaintenanceMode
 
 # Инициализация расширений без привязки к приложению
 migrate = Migrate()
@@ -79,6 +79,23 @@ def create_app(config_class=Config):
     from .topics import bp as topics_bp
     app.register_blueprint(topics_bp, url_prefix='/topics')
 
+    from .admin import bp as admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+
+    # Проверка режима технического обслуживания
+    @app.before_request
+    def check_maintenance_mode():
+        # Исключения для статических файлов и API
+        if request.endpoint in ['static', 'auth.login', 'auth.logout']:
+            return
+        
+        # Проверяем режим обслуживания
+        maintenance = MaintenanceMode.query.first()
+        if maintenance and maintenance.is_active:
+            # Если пользователь не аутентифицирован или не является Макаром Коневым (ID=1)
+            if not current_user.is_authenticated or current_user.id != 1:
+                return render_template('maintenance.html', message=maintenance.message)
+    
     # Обновление времени последнего доступа
     @app.before_request
     def update_last_seen():

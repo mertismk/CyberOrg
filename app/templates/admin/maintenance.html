@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Управление техническим обслуживанием{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-tools text-warning"></i>
+                    Управление техническим обслуживанием
+                </h1>
+                <div class="btn-group">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Назад
+                    </a>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog"></i>
+                        Настройки режима обслуживания
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Статус режима обслуживания -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    {% if maintenance.is_enabled %}
+                                        <span class="badge bg-danger fs-6">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            ВКЛЮЧЕН
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success fs-6">
+                                            <i class="fas fa-check-circle"></i>
+                                            ОТКЛЮЧЕН
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Текущий статус</h6>
+                                    <small class="text-muted">
+                                        {% if maintenance.is_enabled %}
+                                            Режим обслуживания активен
+                                        {% else %}
+                                            Сайт работает в обычном режиме
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-end">
+                                <form method="POST" action="{{ url_for('admin.toggle_maintenance') }}" class="d-inline">
+                                    <button type="submit" class="btn {% if maintenance.is_enabled %}btn-success{% else %}btn-warning{% endif %} btn-lg">
+                                        <i class="fas {% if maintenance.is_enabled %}fa-play{% else %}fa-pause{% endif %}"></i>
+                                        {% if maintenance.is_enabled %}
+                                            Отключить режим
+                                        {% else %}
+                                            Включить режим
+                                        {% endif %}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Информация о режиме -->
+                    {% if maintenance.is_enabled %}
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-info-circle"></i> Информация о режиме обслуживания</h6>
+                        <ul class="mb-0">
+                            <li><strong>Включен:</strong> {{ maintenance.enabled_at.strftime('%d.%m.%Y %H:%M') if maintenance.enabled_at else 'Не указано' }}</li>
+                            {% if maintenance.enabled_by %}
+                            <li><strong>Включил:</strong> {{ maintenance.enabled_by.full_name or maintenance.enabled_by.username }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Настройка сообщения -->
+                    <form method="POST" action="{{ url_for('admin.update_maintenance_message') }}">
+                        <div class="mb-3">
+                            <label for="message" class="form-label">
+                                <i class="fas fa-comment"></i>
+                                Сообщение для пользователей
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="message" 
+                                name="message" 
+                                rows="4" 
+                                placeholder="Введите сообщение, которое будет показано пользователям во время обслуживания..."
+                            >{{ maintenance.message or '' }}</textarea>
+                            <div class="form-text">
+                                Это сообщение будет отображаться всем пользователям, кроме вас (Макар Конев)
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Сохранить сообщение
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Информация
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-shield-alt"></i> Как это работает</h6>
+                        <ul class="mb-0 small">
+                            <li>При включении режима обслуживания все пользователи, кроме вас, увидят страницу с сообщением</li>
+                            <li>Доступ к сайту будет заблокирован для всех, кроме супер-администратора (Макар Конев)</li>
+                            <li>Вы сможете нормально работать с сайтом в режиме обслуживания</li>
+                            <li>Статические файлы (CSS, JS, изображения) остаются доступными</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Важно</h6>
+                        <ul class="mb-0 small">
+                            <li>Не забудьте отключить режим обслуживания после завершения работ</li>
+                            <li>Пользователи не смогут войти в систему во время обслуживания</li>
+                            <li>Все функции сайта будут недоступны для обычных пользователей</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Подтверждение включения/отключения режима
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleForm = document.querySelector('form[action*="toggle_maintenance"]');
+    if (toggleForm) {
+        toggleForm.addEventListener('submit', function(e) {
+            const button = this.querySelector('button[type="submit"]');
+            const isEnabled = {{ 'true' if maintenance.is_enabled else 'false' }};
+            
+            if (isEnabled) {
+                // Отключение режима
+                if (!confirm('Вы уверены, что хотите отключить режим технического обслуживания?')) {
+                    e.preventDefault();
+                }
+            } else {
+                // Включение режима
+                if (!confirm('ВНИМАНИЕ! Включение режима технического обслуживания заблокирует доступ к сайту для всех пользователей, кроме вас. Продолжить?')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
