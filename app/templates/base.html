@@ -4,13 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}CyberOrg{% endblock %}</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Платформа для управления образовательными процессами, вебинарами и планами обучения">
+    <meta name="theme-color" content="#8a2be2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CyberOrg">
+    <meta name="msapplication-TileColor" content="#8a2be2">
+    <meta name="msapplication-config" content="/static/browserconfig.xml">
+    
+    <!-- Icons -->
     <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/icon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='images/icon-16x16.png') }}">
+    
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-enhancements.css') }}?v=1">
     {% block styles %}{% endblock %}
     <script>
         // Применяем тему ДО загрузки DOM, чтобы избежать моргания
@@ -126,6 +144,7 @@
                 </div>
             </form>
         </div>
+        
         
         <ul class="sidebar-nav">
             <li class="nav-item">
@@ -288,9 +307,43 @@
         {% include 'components/update_notifications.html' %}
     {% endif %}
     
+    <!-- Нижняя навигация для мобильных устройств -->
+    {% if current_user.is_authenticated %}
+    <nav class="bottom-nav">
+        <a href="{{ url_for('main.index') }}" class="bottom-nav-item {% if request.endpoint == 'main.index' %}active{% endif %}">
+            <i class="fas fa-home"></i>
+            <span>Главная</span>
+        </a>
+        <a href="{{ url_for('webinars.webinars_list') }}" class="bottom-nav-item {% if request.endpoint and request.endpoint.startswith('webinars.') %}active{% endif %}">
+            <i class="fas fa-video"></i>
+            <span>Вебинары</span>
+        </a>
+        {% if not current_user.is_educational_curator %}
+        <a href="{{ url_for('students.students_list') }}" class="bottom-nav-item {% if request.endpoint and request.endpoint.startswith('students.') %}active{% endif %}">
+            <i class="fas fa-user-graduate"></i>
+            <span>Ученики</span>
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+    
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Регистрация Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(function(registration) {
+                        console.log('Service Worker зарегистрирован успешно:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Ошибка регистрации Service Worker:', error);
+                    });
+            });
+        }
+        
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Переключатель темы (капсула на главной)
             const themeToggle = document.getElementById('themeToggle');
@@ -302,6 +355,12 @@
                     document.documentElement.setAttribute('data-theme', nextTheme);
                     try { localStorage.setItem('theme', nextTheme); } catch (e) {}
                 });
+            }
+            
+            // Инициализация нижней навигации
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav && window.innerWidth <= 768) {
+                document.body.classList.add('has-bottom-nav');
             }
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -385,7 +444,67 @@
                         overlay.classList.remove('show');
                     }
                 }
+                
+                // Обновляем состояние нижней навигации
+                const bottomNav = document.querySelector('.bottom-nav');
+                if (bottomNav) {
+                    if (window.innerWidth <= 768) {
+                        document.body.classList.add('has-bottom-nav');
+                    } else {
+                        document.body.classList.remove('has-bottom-nav');
+                    }
+                }
             });
+            
+            // Улучшения для мобильных устройств
+            if (window.innerWidth <= 768) {
+                // Предотвращаем зум при двойном тапе
+                let lastTouchEnd = 0;
+                document.addEventListener('touchend', function (event) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        event.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+                
+                // Улучшаем прокрутку
+                document.body.style.webkitOverflowScrolling = 'touch';
+                
+                // Добавляем поддержку pull-to-refresh
+                let startY = 0;
+                let currentY = 0;
+                let isPulling = false;
+                
+                document.addEventListener('touchstart', function(e) {
+                    if (window.scrollY === 0) {
+                        startY = e.touches[0].clientY;
+                        isPulling = true;
+                    }
+                });
+                
+                document.addEventListener('touchmove', function(e) {
+                    if (isPulling && window.scrollY === 0) {
+                        currentY = e.touches[0].clientY;
+                        const pullDistance = currentY - startY;
+                        
+                        if (pullDistance > 0 && pullDistance < 100) {
+                            // Можно добавить визуальный индикатор
+                        }
+                    }
+                });
+                
+                document.addEventListener('touchend', function(e) {
+                    if (isPulling && window.scrollY === 0) {
+                        const pullDistance = currentY - startY;
+                        if (pullDistance > 80) {
+                            // Обновляем страницу
+                            window.location.reload();
+                        }
+                    }
+                    isPulling = false;
+                });
+            }
         });
     </script>
     {% block scripts %}{% endblock %}

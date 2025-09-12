@@ -122,6 +122,10 @@ class Student(db.Model):
     task_26_deferred = db.Column(db.Boolean, default=False)
     task_27_deferred = db.Column(db.Boolean, default=False)
     exam_type = db.Column(db.String(10), nullable=False, default='ege')  # Тип экзамена: 'ege' или 'oge'
+    # Новые поля для ЕГЭ учеников
+    grade = db.Column(db.Integer, nullable=True)  # Класс: 10 или 11
+    tariff = db.Column(db.String(50), nullable=True)  # Тариф: 'all_inclusive' или 'self_check'
+    course = db.Column(db.String(50), nullable=True)  # Курс: 'yearly' (пока только Годовой)
 
     @property
     def full_name(self):

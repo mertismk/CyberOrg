@@ -309,6 +309,10 @@ def student_new():
             needs_python_basics=False,  # Всегда False, поле больше не используется
             initial_score=initial_score,
             notes=form.notes.data,
+            # Новые поля для ЕГЭ учеников
+            grade=form.grade.data if form.exam_type.data == 'ege' else None,
+            tariff=form.tariff.data if form.exam_type.data == 'ege' else None,
+            course=form.course.data if form.exam_type.data == 'ege' else None,
             # created_by_id=current_user.id # Добавим позже, если нужно
         )
         db.session.add(student)
@@ -393,8 +397,16 @@ def student_edit(student_id):
         # Обрабатываем поля в зависимости от типа экзамена
         if form.exam_type.data == 'ege':
             student.initial_score = form.initial_score.data
+            # Для ЕГЭ обновляем новые поля
+            student.grade = form.grade.data
+            student.tariff = form.tariff.data
+            student.course = form.course.data
         else:  # ОГЭ
             student.initial_score = None
+            # Для ОГЭ очищаем новые поля
+            student.grade = None
+            student.tariff = None
+            student.course = None
         
         # Поле needs_python_basics больше не используется
         student.needs_python_basics = False

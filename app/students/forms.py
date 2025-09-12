@@ -12,6 +12,10 @@ class StudentForm(FlaskForm):
     initial_score = IntegerField('Балл за последний пробник (если есть)', validators=[Optional(), NumberRange(min=0, max=100, message='Введите балл от 0 до 100')])
     hours_per_week = IntegerField('Часов на информатику в неделю', validators=[DataRequired(), NumberRange(min=1, message='Укажите хотя бы 1 час')])
     notes = TextAreaField('Заметки', validators=[Optional()])
+    # Новые поля для ЕГЭ учеников
+    grade = SelectField('Класс', choices=[(10, '10 класс'), (11, '11 класс')], coerce=int, validators=[Optional()])
+    tariff = SelectField('Тариф', choices=[('all_inclusive', 'Все включено'), ('self_check', 'Самопроверка')], validators=[Optional()])
+    course = SelectField('Курс', choices=[('yearly', 'Годовой')], default='yearly', validators=[Optional()])
     submit = SubmitField('Сохранить')
     
     def __init__(self, *args, **kwargs):
@@ -25,10 +29,18 @@ class StudentForm(FlaskForm):
             # Для ОГЭ: целевая оценка от 3 до 5
             self.target_score.label.text = 'Целевая оценка'
             self.target_score.validators = [DataRequired(), NumberRange(min=3, max=5, message='Введите оценку от 3 до 5')]
+            # Для ОГЭ новые поля не обязательны
+            self.grade.validators = [Optional()]
+            self.tariff.validators = [Optional()]
+            self.course.validators = [Optional()]
         else:
             # Для ЕГЭ: целевой балл от 60 до 100
             self.target_score.label.text = 'Целевой балл'
             self.target_score.validators = [DataRequired(), NumberRange(min=60, max=100, message='Введите балл от 60 до 100')]
+            # Для ЕГЭ новые поля обязательны
+            self.grade.validators = [DataRequired()]
+            self.tariff.validators = [DataRequired()]
+            self.course.validators = [DataRequired()]
     
     def validate(self, extra_validators=None):
         """Переопределяем валидацию для динамического обновления валидаторов"""

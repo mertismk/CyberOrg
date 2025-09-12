@@ -121,6 +121,37 @@
                             {% endif %}
                         </div>
                     </div>
+                    
+                    <!-- Новые поля для ЕГЭ учеников -->
+                    {% if student.exam_type == 'ege' %}
+                        <hr class="my-3">
+                        <div class="row mb-2">
+                            <div class="col-6 text-muted">Класс:</div>
+                            <div class="col-6 fw-bold text-end">{{ student.grade or 'Не указан' }}{% if student.grade %} класс{% endif %}</div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6 text-muted">Тариф:</div>
+                            <div class="col-6 fw-bold text-end">
+                                {% if student.tariff == 'all_inclusive' %}
+                                    <span class="badge bg-success"><i class="fas fa-crown me-1"></i>Все включено</span>
+                                {% elif student.tariff == 'self_check' %}
+                                    <span class="badge bg-info"><i class="fas fa-check-circle me-1"></i>Самопроверка</span>
+                                {% else %}
+                                    Не указан
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6 text-muted">Курс:</div>
+                            <div class="col-6 fw-bold text-end">
+                                {% if student.course == 'yearly' %}
+                                    <span class="badge bg-warning"><i class="fas fa-calendar-alt me-1"></i>Годовой</span>
+                                {% else %}
+                                    {{ student.course or 'Не указан' }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
 
                 {# Добавляем блок с заметкой #}

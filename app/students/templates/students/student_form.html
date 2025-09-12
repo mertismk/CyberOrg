@@ -96,6 +96,35 @@
                         </div>
                     </div>
 
+                    <!-- Новые поля для ЕГЭ учеников -->
+                    <div id="ege-specific-fields" style="display: none;">
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start mb-3">
+                                    <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle me-3" style="background-color: rgba(114, 9, 183, 0.1);">
+                                        <i class="fas fa-graduation-cap text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-1">Дополнительная информация для ЕГЭ</h6>
+                                        <p class="text-muted small mb-0">Обязательные поля для учеников ЕГЭ</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-0">
+                                    <div class="col-md-4">
+                                        {{ render_field(form.grade) }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ render_field(form.tariff) }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ render_field(form.course) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row mb-0">
                         <div class="col-md-6">
                             <div id="target-score-field">
@@ -146,6 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const examTypeSelect = document.getElementById('exam_type');
     const targetScoreField = document.getElementById('target-score-field');
     const initialScoreField = document.getElementById('initial-score-field');
+    const egeSpecificFields = document.getElementById('ege-specific-fields');
     const targetScoreInput = targetScoreField.querySelector('input');
     const targetScoreLabel = targetScoreField.querySelector('label');
     
@@ -162,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Скрываем поля для ОГЭ
             initialScoreField.style.display = 'none';
+            egeSpecificFields.style.display = 'none';
         } else {
             // Для ЕГЭ
             targetScoreLabel.textContent = 'Целевой балл';
@@ -172,6 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Показываем поля для ЕГЭ
             initialScoreField.style.display = 'block';
+            egeSpecificFields.style.display = 'block';
         }
     }
     

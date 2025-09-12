@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, send_from_directory, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_ # Импортируем and_, or_
 import re # Импортируем re для обработки синонимов
@@ -186,3 +186,21 @@ def search():
         webinars=results["webinars"], 
         query=query
     )
+
+
+@bp.route('/manifest.json')
+def manifest():
+    """Обслуживание Web App Manifest"""
+    return send_from_directory(current_app.static_folder, 'manifest.json', mimetype='application/json')
+
+
+@bp.route('/sw.js')
+def service_worker():
+    """Обслуживание Service Worker"""
+    return send_from_directory(current_app.static_folder, 'sw.js', mimetype='application/javascript')
+
+
+@bp.route('/offline.html')
+def offline():
+    """Обслуживание офлайн страницы"""
+    return send_from_directory(current_app.static_folder, 'offline.html')

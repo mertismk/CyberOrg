@@ -19,3 +19,4 @@ python-dotenv==1.1.0
 psycopg2-binary==2.9.9; python_version < "3.13"
 psycopg[binary]==3.2.9; python_version >= "3.13"
 requests==2.32.4
+Pillow==10.4.0

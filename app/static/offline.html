@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Офлайн - CyberOrg</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+        }
+        .offline-container {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        .offline-icon {
+            font-size: 4rem;
+            color: #8a2be2;
+            margin-bottom: 1.5rem;
+        }
+        .offline-title {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .offline-text {
+            color: #666;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .retry-btn {
+            background: #8a2be2;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .retry-btn:hover {
+            background: #7b1fa2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(138, 43, 226, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">
+            <i class="fas fa-wifi-slash"></i>
+        </div>
+        <h2 class="offline-title">Нет подключения к интернету</h2>
+        <p class="offline-text">
+            К сожалению, вы находитесь в офлайн режиме. 
+            Проверьте подключение к интернету и попробуйте снова.
+        </p>
+        <button class="btn retry-btn" onclick="window.location.reload()">
+            <i class="fas fa-redo me-2"></i>
+            Попробовать снова
+        </button>
+    </div>
+    
+    <script>
+        // Автоматическая проверка подключения
+        function checkConnection() {
+            if (navigator.onLine) {
+                window.location.reload();
+            }
+        }
+        
+        // Проверяем подключение каждые 5 секунд
+        setInterval(checkConnection, 5000);
+        
+        // Слушаем событие восстановления подключения
+        window.addEventListener('online', function() {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>
