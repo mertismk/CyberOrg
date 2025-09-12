@@ -3,224 +3,221 @@
 {% block title %}{{ plan.student.first_name }} {{ plan.student.last_name }} - План обучения{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <div class="d-flex justify-content-between flex-wrap mb-4">
-        <div class="d-flex gap-2 mb-2">
-            <a href="{{ url_for('students.student_detail', student_id=plan.student.id) }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-2"></i> К профилю
-            </a>
-            <a href="{{ url_for('plans.edit_study_plan', plan_id=plan.id) }}" class="btn btn-primary">
-                <i class="fas fa-edit me-2"></i> Редактировать
-            </a>
-        </div>
-        <div class="d-flex gap-2 mb-2">
-            <button type="button" class="btn btn-success mark-all-webinars-btn" data-plan-id="{{ plan.id }}" title="Отметить все вебинары как просмотренные">
-                <i class="fas fa-eye me-2"></i> Отметить все
-            </button>
-            <form method="post" action="{{ url_for('plans.delete_study_plan', plan_id=plan.id) }}" onsubmit="return confirm('Вы уверены, что хотите удалить этот план обучения?');">
-                <button type="submit" class="btn btn-danger">
-                    <i class="fas fa-trash me-2"></i> Удалить
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h1 class="fw-bold mb-1">План обучения #{{ plan.id }}</h1>
-            <p class="text-muted">
-                <i class="fas fa-user me-2"></i>{{ plan.student.last_name }} {{ plan.student.first_name }} | 
-                <i class="fas fa-calendar-alt me-2"></i>Создан: {{ plan.created_at|moscow_time }}
-            </p>
-        </div>
-    </div>
-
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-primary-light d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                            <i class="fas fa-user text-primary"></i>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold mb-0">Ученик</h6>
-                            <p class="mb-0">{{ plan.student.last_name }} {{ plan.student.first_name }}</p>
-                        </div>
-                    </div>
-                    
+<div class="container-fluid mt-4">
+    <!-- Заголовок и основная информация -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-primary-light d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                            <i class="fas fa-calendar-day text-primary"></i>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold mb-0">Дата создания</h6>
-                            <p class="mb-0">{{ plan.created_at|moscow_time }}</p>
-                        </div>
+                        <a href="{{ url_for('students.student_detail', student_id=plan.student.id) }}" class="btn btn-outline-secondary btn-sm me-3">
+                            <i class="fas fa-arrow-left"></i> Назад к студенту
+                        </a>
+                        <h4 class="mb-0">
+                            <i class="fas fa-graduation-cap text-primary"></i>
+                            План ЕГЭ - {{ plan.student.full_name }}
+                        </h4>
+                    </div>
+                    <div>
+                        <span class="badge bg-success">Активен</span>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-primary-light d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                            <i class="fas fa-user-edit text-primary"></i>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Студент:</strong><br>
+                            {{ plan.student.full_name }}<br>
+                            <small class="text-muted">{{ plan.student.platform_id if plan.student.platform_id else 'ID: ' + plan.student.id|string }}</small>
                         </div>
-                        <div>
-                            <h6 class="fw-bold mb-0">Создатель</h6>
-                            <p class="mb-0">{{ plan.created_by.full_name if plan.created_by else 'Неизвестно' }}</p>
+                        <div class="col-md-3">
+                            <strong>Создан:</strong><br>
+                            {{ plan.created_at.strftime('%d.%m.%Y %H:%M') if plan.created_at else 'Неизвестно' }}<br>
+                            <small class="text-muted">{{ plan.created_by.full_name if plan.created_by else 'Неизвестно' }}</small>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Статус:</strong><br>
+                            <span class="badge bg-success">Активный план</span><br>
+                            <small class="text-muted">План обучения ЕГЭ</small>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Действия:</strong><br>
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('plans.edit_study_plan', plan_id=plan.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i> Редактировать
+                                </a>
+                                <form method="post" action="{{ url_for('plans.delete_study_plan', plan_id=plan.id) }}" class="d-inline" onsubmit="return confirm('Вы уверены, что хотите удалить этот план обучения?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i> Удалить
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                    
-                    {% set current_time = now or datetime.utcnow() %}
-                    {% if plan.created_at and (current_time - plan.created_at).days > 35 %}
-                        <div class="alert alert-warning d-flex align-items-center mt-3 mb-0">
-                            <div class="me-3">
-                                <i class="fas fa-exclamation-triangle fa-2x"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold mb-1">План устарел</h6>
-                                <p class="mb-0">Создан более 5 недель назад. Рекомендуется создать новый план.</p>
-                            </div>
-                        </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="text-center mb-4">
-        <button type="button" class="btn btn-primary" id="scrollToStudentInfo">
-            <i class="fas fa-angle-double-down me-2"></i> Переместиться к информации для ученика
-        </button>
-    </div>
 
-    <!-- ВОЗВРАЩЕНО: Жесткий range(1, 5) -->
-    {% for week_num in range(1, 5) %}
-        {% set planned_webinars = weeks.get(week_num, []) %}
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-calendar-week me-2"></i> Неделя {{ week_num }}
-                    {% if week_dates and week_num in week_dates %}
-                    <small class="text-muted ms-2">
-                        ({{ week_dates[week_num].start.strftime('%d.%m') }} - {{ week_dates[week_num].end.strftime('%d.%m.%Y') }})
-                    </small>
-                    {% endif %}
-                </h5>
-                <span class="badge rounded-pill {% if planned_webinars|length > 0 %}bg-primary{% else %}bg-secondary{% endif %}">
-                    {{ planned_webinars|length }} вебинаров
-                </span>
-            </div>
-            <div class="card-body">
-                {% if planned_webinars %}
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    <!-- План по неделям -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-calendar-alt text-success"></i> План по неделям</h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-success mark-all-webinars-btn me-2" 
+                                data-plan-id="{{ plan.id }}" title="Отметить все вебинары как просмотренные">
+                            <i class="fas fa-eye"></i> Отметить все
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="scrollToStudentInfo">
+                            <i class="fas fa-angle-double-down"></i> К информации для ученика
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% for week_num in range(1, 5) %}
+                        {% set planned_webinars = weeks.get(week_num, []) %}
+                        {% set week_watched = 0 %}
+                        {% set week_total = planned_webinars|length %}
                         {% for planned in planned_webinars %}
-                            {% set webinar = planned.webinar %}
-                            {% set is_watched = webinar.id in watched_webinar_ids %}
-                            <div class="col">
-                                <div class="card h-100 border-0 shadow-sm hover-shadow">
-                                    <div class="webinar-cover position-relative {% if is_watched %}watched{% endif %}">
-                                        {% if webinar.cover_url %}
-                                            <img src="{{ webinar.cover_url }}" class="card-img-top" alt="{{ webinar.title }}" style="aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px 8px 0 0;">
-                                        {% else %}
-                                            <div class="text-center py-5 card-img-top" style="aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-light) 100%); border-radius: 8px 8px 0 0;">
-                                                <i class="fas fa-video fa-3x text-white"></i>
-                                            </div>
-                                        {% endif %}
-                                        
-                                        {% if is_watched %}
-                                            <div class="position-absolute top-0 end-0 m-2 p-2 rounded-circle bg-success text-white" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-check"></i>
-                                            </div>
-                                        {% endif %}
-
-                                        {% if webinar.category == 1 %}
-                                            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill bg-success text-white">
-                                                <small><i class="fas fa-bookmark me-1"></i>Обязательный</small>
-                                            </div>
-                                        {% elif webinar.category == 2 %}
-                                            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill bg-info text-white">
-                                                <small><i class="fas fa-sync me-1"></i>Повторение</small>
-                                            </div>
-                                        {% elif webinar.category == 3 %}
-                                            <div class="position-absolute top-0 start-0 m-2 px-2 py-1 rounded-pill bg-secondary text-white">
-                                                <small><i class="fas fa-star me-1"></i>Необязательный</small>
-                                            </div>
-                                        {% endif %}
-                                        
-                                        <!-- Отображаем продолжительность вебинара в часах вверху карточки -->
-                                        <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded-pill bg-light text-dark">
-                                            <small><i class="far fa-clock me-1"></i>{{ get_webinar_hours(webinar)|round(1) }} ч</small>
-                                        </div>
-                                    </div>
-                                    <div class="card-body d-flex flex-column position-relative">
-                                        <h6 class="card-title fw-bold mb-3 mt-2">{{ webinar.title }}</h6>
-                                        <div class="task-badge-container mb-3 flex-grow-0">
-                                            {% for task in webinar.task_numbers %}
-                                                <span class="badge bg-light text-dark border me-1 mb-1">№{{ task.number }}</span>
-                                            {% else %}
-                                                <span class="badge bg-light text-dark border">Без номера</span>
-                                            {% endfor %}
-                                        </div>
-                                        
-                                        <div class="mt-auto pt-2 flex-grow-0">
-                                            <div class="small text-muted mb-2 d-flex justify-content-between">
-                                                <span><i class="far fa-calendar-alt me-1"></i> {{ webinar.date.strftime('%d.%m.%Y') if webinar.date else 'Нет даты' }}</span>
-                                                <span class="badge bg-light text-dark">ID: {{ webinar.url[-5:] if webinar.url and webinar.url|length >= 5 else 'N/A' }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer bg-white border-0 pt-0">
-                                        <div class="d-flex justify-content-between">
-                                            <a href="{{ webinar.url }}" target="_blank" class="btn btn-primary">
-                                                <i class="fas fa-play me-1"></i> Смотреть
-                                            </a>
-                                            
-                                            {% if not is_watched %}
-                                                <form method="post" action="{{ url_for('students.mark_webinar_watched', student_id=plan.student.id) }}">
-                                                    <input type="hidden" name="webinar_id" value="{{ webinar.id }}">
-                                                    <button type="submit" class="btn btn-success">
-                                                        <i class="fas fa-check me-1"></i> Отметить
-                                                    </button>
-                                                </form>
-                                            {% else %}
-                                                <form method="post" action="{{ url_for('students.mark_webinar_watched', student_id=plan.student.id) }}">
-                                                    <input type="hidden" name="webinar_id" value="{{ webinar.id }}">
-                                                    <input type="hidden" name="action" value="unwatch">
-                                                    <button type="submit" class="btn btn-outline-warning" title="Снять отметку о просмотре">
-                                                        <i class="fas fa-undo me-1"></i> Отменить
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            {% if planned.webinar.id in watched_webinar_ids %}
+                                {% set week_watched = week_watched + 1 %}
+                            {% endif %}
                         {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="text-center py-4">
-                        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-3" style="max-height: 150px; opacity: 0.7;">
-                        <h5>На эту неделю нет запланированных вебинаров</h5>
-                        <p class="text-muted">Вы можете отредактировать план, чтобы добавить вебинары</p>
-                    </div>
-                {% endif %}
+                        
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calendar-week"></i>
+                                    Неделя {{ week_num }}
+                                    {% if week_dates and week_num in week_dates %}
+                                    <small class="text-muted ms-2">
+                                        ({{ week_dates[week_num].start.strftime('%d.%m') }} - {{ week_dates[week_num].end.strftime('%d.%m.%Y') }})
+                                    </small>
+                                    {% endif %}
+                                    {% if week_total > 0 %}
+                                    <span class="badge bg-info ms-2">
+                                        {{ "%.0f"|format((week_watched / week_total * 100) if week_total > 0 else 0) }}% 
+                                        ({{ week_watched }}/{{ week_total }})
+                                    </span>
+                                    {% endif %}
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if planned_webinars %}
+                                    <div class="row">
+                                        {% for planned in planned_webinars %}
+                                            {% set webinar = planned.webinar %}
+                                            {% set is_watched = webinar.id in watched_webinar_ids %}
+                                            <div class="col-md-6 col-lg-4 mb-3">
+                                                <div class="card border-0 bg-light">
+                                                    <div class="card-header bg-transparent">
+                                                        <h6 class="mb-0">
+                                                            <i class="fas fa-video text-primary"></i> Вебинар
+                                                        </h6>
+                                                    </div>
+                                                    <div class="card-body p-2">
+                                                        <div class="d-flex align-items-center mb-2 p-2 rounded {{ 'bg-success bg-opacity-10' if is_watched else 'bg-light' }}">
+                                                            <div class="flex-shrink-0 me-2">
+                                                                {% if is_watched %}
+                                                                    <i class="fas fa-check-circle text-success"></i>
+                                                                {% else %}
+                                                                    <i class="fas fa-circle text-muted"></i>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="flex-grow-1">
+                                                                <div class="fw-bold small">
+                                                                    {{ webinar.title }}
+                                                                </div>
+                                                                <div class="text-muted small">
+                                                                    {% for task in webinar.task_numbers %}
+                                                                        <span class="badge bg-light text-dark border me-1">№{{ task.number }}</span>
+                                                                    {% else %}
+                                                                        <span class="badge bg-light text-dark border">Без номера</span>
+                                                                    {% endfor %}
+                                                                </div>
+                                                                {% if webinar.date %}
+                                                                <div class="text-muted small">
+                                                                    <i class="fas fa-calendar"></i>
+                                                                    {{ webinar.date.strftime('%d.%m.%Y') }}
+                                                                </div>
+                                                                {% endif %}
+                                                                {% if webinar.category == 1 %}
+                                                                    <div class="text-muted small">
+                                                                        <i class="fas fa-bookmark text-success"></i> Обязательный
+                                                                    </div>
+                                                                {% elif webinar.category == 2 %}
+                                                                    <div class="text-muted small">
+                                                                        <i class="fas fa-sync text-info"></i> Повторение
+                                                                    </div>
+                                                                {% elif webinar.category == 3 %}
+                                                                    <div class="text-muted small">
+                                                                        <i class="fas fa-star text-secondary"></i> Необязательный
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="flex-shrink-0">
+                                                                <div class="d-flex flex-column gap-1">
+                                                                    <a href="{{ webinar.url }}" target="_blank" class="btn btn-sm btn-primary" title="Смотреть вебинар">
+                                                                        <i class="fas fa-play"></i>
+                                                                    </a>
+                                                                    {% if is_watched %}
+                                                                        <form method="post" action="{{ url_for('students.mark_webinar_watched', student_id=plan.student.id) }}" class="d-inline">
+                                                                            <input type="hidden" name="webinar_id" value="{{ webinar.id }}">
+                                                                            <input type="hidden" name="action" value="unwatch">
+                                                                            <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                                                    onclick="return confirm('Убрать отметку о просмотре?')" title="Убрать отметку">
+                                                                                <i class="fas fa-times"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    {% else %}
+                                                                        <form method="post" action="{{ url_for('students.mark_webinar_watched', student_id=plan.student.id) }}" class="d-inline">
+                                                                            <input type="hidden" name="webinar_id" value="{{ webinar.id }}">
+                                                                            <button type="submit" class="btn btn-sm btn-outline-success" 
+                                                                                    onclick="return confirm('Отметить вебинар как просмотренный?')" title="Отметить как просмотренный">
+                                                                                <i class="fas fa-check"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-center py-4">
+                                        <img src="{{ url_for('static', filename='images/sorry.png') }}" alt="Нет вебинаров" class="img-fluid mb-3" style="max-height: 150px; opacity: 0.7;">
+                                        <h5>На эту неделю нет запланированных вебинаров</h5>
+                                        <p class="text-muted">Вы можете отредактировать план, чтобы добавить вебинары</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
-    {% endfor %}
+    </div>
 
-    <div class="card mb-4" id="studentInfoSection">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0"><i class="fas fa-info-circle me-2"></i>Информация для ученика</h5>
-            <button type="button" class="btn btn-primary" id="copyStudentInfo">
-                <i class="fas fa-copy me-2"></i> Копировать
-            </button>
-        </div>
-        <div class="card-body">
-            <div class="p-3 bg-light rounded-3 mb-3">
-                <p class="text-muted small mb-0">Текст ниже можно скопировать кнопкой выше и отправить ученику</p>
-            </div>
-            
-            <div id="contentToCopy" class="p-4 border rounded-3">
+    <!-- Информация для отправки ученику -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-paper-plane text-success"></i> Информация для отправки ученику</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="copyStudentMessage(event)">
+                        <i class="fas fa-copy"></i> Копировать
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Скопируйте и отправьте этот текст ученику:</h6>
+                    </div>
+                    <div id="student-message" class="bg-light p-3 rounded" style="font-family: monospace; font-size: 14px;">
                 {% set taskEmojis = {
                     '💻': [2, 5, 6, 8, 12, 14, 15, 16, 17, 19, 20, 21, 23, 24, 25],
                     '📝': [1, 4, 7, 11, 13],
@@ -357,6 +354,22 @@
             </div>
         </div>
     </div>
+
+    <!-- Кнопки действий -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('students.student_detail', student_id=plan.student.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад к студенту
+                </a>
+                <div>
+                    <a href="{{ url_for('plans.view_plans') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list"></i> Все планы
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -419,7 +432,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Скроллинг к информации для ученика
         const scrollButton = document.getElementById('scrollToStudentInfo');
-        const studentInfoSection = document.getElementById('studentInfoSection');
+        const studentInfoSection = document.querySelector('.row.mt-4 .card');
         
         if (scrollButton && studentInfoSection) {
             scrollButton.addEventListener('click', function() {
@@ -428,8 +441,8 @@
         }
         
         // Копирование информации для ученика
-        const copyButton = document.getElementById('copyStudentInfo');
-        const contentToCopy = document.getElementById('contentToCopy');
+        const copyButton = document.querySelector('[onclick="copyStudentMessage()"]');
+        const contentToCopy = document.getElementById('student-message');
         
         if (copyButton && contentToCopy) {
             copyButton.addEventListener('click', function() {
@@ -438,13 +451,13 @@
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(textToCopy)
                         .then(() => {
-                            this.innerHTML = '<i class="fas fa-check me-2"></i> Скопировано!';
+                            this.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
                             this.classList.add('btn-success');
-                            this.classList.remove('btn-primary');
+                            this.classList.remove('btn-outline-primary');
                             setTimeout(() => {
-                                this.innerHTML = '<i class="fas fa-copy me-2"></i> Копировать';
+                                this.innerHTML = '<i class="fas fa-copy"></i> Копировать';
                                 this.classList.remove('btn-success');
-                                this.classList.add('btn-primary');
+                                this.classList.add('btn-outline-primary');
                             }, 2000);
                         })
                         .catch(err => {
@@ -642,118 +655,167 @@
         
         // Функция для форматированного копирования текста
         function getTextWithFormatting(element) {
-            let output = '';
-            const blockTags = ['P', 'H5', 'DIV', 'UL'];
-
-            const taskEmojis = {
-                '💻': [2, 5, 6, 8, 12, 14, 15, 16, 17, 19, 20, 21, 23, 24, 25],
-                '📝': [1, 4, 7, 11, 13],
-                '📊': [3, 9, 10, 18, 22],
-                '⚙️': [26],
-                '✨': [27]
-            };
-
-            function getEmojiForTask(taskNumber) {
-                for (const emoji in taskEmojis) {
-                    if (taskEmojis[emoji].includes(taskNumber)) {
-                        return emoji + ' ';
-                    }
-                }
-                return '';
+            try {
+                // Простое извлечение текста с базовой очисткой
+                let text = element.innerText || element.textContent || '';
+                
+                // Очищаем текст от лишних пробелов и переносов
+                text = text.replace(/\s+/g, ' '); // Заменяем множественные пробелы на один
+                text = text.replace(/\n\s*\n/g, '\n\n'); // Оставляем максимум два переноса подряд
+                text = text.replace(/\n{3,}/g, '\n\n'); // Убираем более двух переносов подряд
+                text = text.replace(/^\s+|\s+$/gm, ''); // Убираем пробелы в начале и конце строк
+                text = text.trim(); // Убираем пробелы в начале и конце всего текста
+                
+                return text;
+            } catch (error) {
+                console.error('Ошибка при форматировании текста: ', error);
+                return element.textContent || '';
             }
-
-            function traverse(node, listIndent = '') {
-                let nodeProcessedByTag = false;
-
-                if (node.nodeType === Node.TEXT_NODE) {
-                    const trimmedText = node.nodeValue.replace(/\s+/g, ' ').trim();
-                    if (trimmedText) {
-                        if (output.length > 0 && !output.endsWith(' ') && !output.endsWith('\n')) {
-                             output += ' ';
-                        }
-                        output += trimmedText;
-                    }
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    if (node.id === 'webinarData' || node.style.display === 'none') {
-                        return;
-                    }
-
-                    const tagName = node.tagName;
-                    let prefix = '';
-                    let suffix = '';
-                    let currentIndent = listIndent;
-                    let needsBlockSuffix = false;
-
-                    if (blockTags.includes(tagName) || tagName === 'UL') {
-                        if (output.length > 0 && !output.endsWith('\n\n')) {
-                            prefix = output.endsWith('\n') ? '\n' : '\n\n';
-                        }
-                        needsBlockSuffix = true;
-                    } else if (tagName === 'LI') {
-                        prefix = (output.length > 0 && !output.endsWith('\n') ? '\n' : ''); 
-                        needsBlockSuffix = false;
-                    } else if (tagName === 'SPAN' && node.textContent.includes('(№')) {
-                        let processedTextContent = node.textContent.replace(/\s+/g, ' ').trim();
-                        const numbers = processedTextContent.match(/\d+/g);
-                        if (numbers && numbers.length > 0) {
-                            const lastNumber = parseInt(numbers[numbers.length - 1], 10);
-                            if (lastNumber === 8 && processedTextContent.endsWith(')')) {
-                                processedTextContent = processedTextContent.slice(0, -1) + ' )';
-                            }
-                        }
-                        output += processedTextContent;
-                        nodeProcessedByTag = true;
-                    } else if (tagName === 'BR') {
-                        prefix = '\n';
-                        nodeProcessedByTag = true;
-                    } else if (tagName === 'A') {
-                        const href = node.getAttribute('href');
-                        const textContent = node.textContent.replace(/\s+/g, ' ').trim();
-                        
-                        if (output.length > 0 && !output.endsWith('\n') && !output.endsWith(' ') && !(/^[\s.,;:!?]/.test(textContent))) {
-                             output += ' ';
-                        }
-
-                        if (textContent && textContent !== href) {
-                            output += textContent;
-                            if (href) {
-                            }
-                        } else if (href) {
-                            output += href;
-                        }
-                        if (node.parentNode && node.parentNode.tagName === 'LI') {
-                            output += '\n'; 
-                        }
-                        nodeProcessedByTag = true;
-                        return;
-                    }
-                    
-                    output += prefix;
-
-                    if (!nodeProcessedByTag) {
-                         Array.from(node.childNodes).forEach(child => traverse(child, currentIndent)); 
-                    }
-                    
-                    if (needsBlockSuffix) {
-                        while(output.endsWith(' ')) {
-                            output = output.slice(0, -1);
-                        }
-                        if (!output.endsWith('\n\n')) {
-                             output += output.endsWith('\n') ? '\n' : '\n\n';
-                        }
-                    }
-                }
-            }
-
-            traverse(element);
-            
-            output = output.replace(/^ +/gm, '');
-            output = output.replace(/\n{3,}/g, '\n\n');
-            output = output.trim();
-
-            return output;
         }
     });
+    
+    // Функция для копирования сообщения ученику
+    function copyStudentMessage(event) {
+        const messageElement = document.getElementById('student-message');
+        const button = event.target.closest('button');
+        
+        try {
+            // Форматируем текст с правильными отступами
+            let text = formatTextForCopy(messageElement);
+            
+            // Пробуем современный API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopySuccess(button);
+                }).catch(function(err) {
+                    console.error('Ошибка clipboard API: ', err);
+                    fallbackCopy(text, button);
+                });
+            } else {
+                // Fallback для старых браузеров
+                fallbackCopy(text, button);
+            }
+        } catch (error) {
+            console.error('Ошибка при обработке текста: ', error);
+            alert('Не удалось обработать текст для копирования.');
+        }
+    }
+    
+    // Функция для форматирования текста с правильными отступами
+    function formatTextForCopy(element) {
+        let result = '';
+        
+        // Обрабатываем каждый дочерний элемент
+        function processNode(node, depth = 0) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent.trim();
+                if (text) {
+                    result += text + ' ';
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                // Пропускаем скрытые элементы
+                if (node.style.display === 'none' || node.getAttribute('style')?.includes('display: none')) {
+                    return;
+                }
+                
+                switch (tagName) {
+                    case 'div':
+                        if (node.classList.contains('mb-4') || node.classList.contains('mb-3') || node.classList.contains('mt-5')) {
+                            result += '\n';
+                        }
+                        break;
+                    case 'p':
+                        result += '\n';
+                        break;
+                    case 'h1':
+                    case 'h2':
+                    case 'h3':
+                    case 'h4':
+                    case 'h5':
+                    case 'h6':
+                        result += '\n';
+                        break;
+                    case 'ul':
+                        result += '\n';
+                        break;
+                    case 'li':
+                        result += '\n';
+                        break;
+                    case 'br':
+                        result += '\n';
+                        break;
+                }
+                
+                // Обрабатываем дочерние элементы
+                for (let child of node.childNodes) {
+                    processNode(child, depth + 1);
+                }
+                
+                // Добавляем переносы после блочных элементов
+                if (['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul'].includes(tagName)) {
+                    result += '\n';
+                }
+            }
+        }
+        
+        // Обрабатываем все дочерние элементы
+        for (let child of element.childNodes) {
+            processNode(child);
+        }
+        
+        // Очищаем результат, но сохраняем структуру
+        result = result.replace(/[ \t]+/g, ' '); // Заменяем множественные пробелы и табы на один пробел
+        result = result.replace(/\n[ \t]+/g, '\n'); // Убираем пробелы в начале строк
+        result = result.replace(/[ \t]+\n/g, '\n'); // Убираем пробелы в конце строк
+        result = result.replace(/\n{3,}/g, '\n\n'); // Ограничиваем максимум двумя переносами подряд
+        result = result.replace(/^\s+|\s+$/g, ''); // Убираем пробелы в начале и конце всего текста
+        
+        return result;
+    }
+    
+    // Функция показа успешного копирования
+    function showCopySuccess(button) {
+        if (!button) return;
+        
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-primary');
+        }, 2000);
+    }
+    
+    // Fallback функция для копирования
+    function fallbackCopy(text, button) {
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '-9999px';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                showCopySuccess(button);
+            } else {
+                throw new Error('execCommand failed');
+            }
+        } catch (err) {
+            console.error('Ошибка fallback копирования: ', err);
+            alert('Не удалось скопировать текст. Попробуйте выделить и скопировать вручную.');
+        }
+    }
 </script>
 
 <script>

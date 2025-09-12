@@ -227,14 +227,16 @@ def create_study_plan(student_id):
         # Проверяем, является ли этот запрос финальным созданием плана
         elif request.form.get("final_create") == "1":
             # Обработка финального создания плана
-            selected_webinar_ids = request.form.getlist("selected_webinar_ids")
+            selected_webinar_ids = request.form.getlist("webinar_ids")
             webinar_weeks = {}
             
-            # Получаем распределение по неделям
-            for i in range(1, 5):  # недели 1-4
-                week_webinars = request.form.getlist(f"week_{i}_webinars")
-                for webinar_id in week_webinars:
-                    webinar_weeks[webinar_id] = i
+            # Получаем распределение по неделям из формы
+            for webinar_id in selected_webinar_ids:
+                week_number = request.form.get(f"week_numbers_{webinar_id}", 1)
+                try:
+                    webinar_weeks[webinar_id] = int(week_number)
+                except ValueError:
+                    webinar_weeks[webinar_id] = 1
             
             if not selected_webinar_ids:
                 flash("Не выбраны вебинары для плана.", "warning")
