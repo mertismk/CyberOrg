@@ -14,11 +14,23 @@ from app.models import (
     TaskNumber,
     WatchedWebinar,
     KnownTaskNumber,
+    OGETopic,
+    OGETopicOrder,
+    OGEParallelPlan,
+    OGEParallelPlanSlot,
+    OGEParallelPlanWebinar,
+    OGEParallelPlanTopicOrder,
 )
 from app.plans import bp
 
 # Импортируем сервис для рекомендаций
 from app.services.plan_service import recommend_webinars, get_webinar_hours, get_priority_for_webinar, analyze_webinar_blocks
+# Импортируем сервис для ОГЭ планов
+from app.services.oge_plan_service import (
+    create_oge_parallel_plan, get_oge_topics_in_order, get_plan_progress, 
+    get_parallel_plan_visual_data, extend_parallel_plan, initialize_oge_topic_order,
+    generate_student_message
+)
 
 # Используем относительный импорт для форм внутри того же пакета
 # from .forms import CreatePlanForm, EditPlanForm # Формы не используются в этих роутах
@@ -263,7 +275,12 @@ def create_study_plan(student_id):
 
             db.session.commit()
             flash("План обучения успешно создан!", "success")
-            return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
+            
+            # Для студентов ОГЭ перенаправляем на создание плана ОГЭ
+            if student.exam_type == 'oge':
+                return redirect(url_for("plans.create_oge_plan", student_id=student_id))
+            else:
+                return redirect(url_for("plans.view_study_plan", plan_id=study_plan.id))
         
         # Обработка формы анализа блоков - показываем страницу с ручным редактированием
         else:
@@ -762,79 +779,105 @@ def mark_all_webinars_watched(plan_id):
         abort(403)
     plan = StudyPlan.query.get_or_404(plan_id)
 
-    # Разрешаем всем авторизованным пользователям (кураторам) отмечать вебинары как просмотренные
-    # Ранее было ограничение: if not current_user.is_admin and current_user.id != plan.created_by_id:
+    try:
+        # Разрешаем всем авторизованным пользователям (кураторам) отмечать вебинары как просмотренные
+        # Ранее было ограничение: if not current_user.is_admin and current_user.id != plan.created_by_id:
 
-    planned_webinars = PlannedWebinar.query.filter_by(study_plan_id=plan_id).all()
-    webinar_ids = {pw.webinar_id for pw in planned_webinars}
+        planned_webinars = PlannedWebinar.query.filter_by(study_plan_id=plan_id).all()
+        webinar_ids = {pw.webinar_id for pw in planned_webinars}
 
-    existing_watched_ids = {
-        w.webinar_id for w in WatchedWebinar.query.filter_by(student_id=plan.student_id)
-    }
+        existing_watched_ids = {
+            w.webinar_id for w in WatchedWebinar.query.filter_by(student_id=plan.student_id)
+        }
 
-    watched_count = 0
-    newly_watched_ids = set()
-    for webinar_id in webinar_ids:
-        if webinar_id not in existing_watched_ids:
-            watched = WatchedWebinar(
-                student_id=plan.student_id,
-                webinar_id=webinar_id,
-                created_by_id=current_user.id,
-            )
-            db.session.add(watched)
-            watched_count += 1
-            newly_watched_ids.add(webinar_id)
+        watched_count = 0
+        newly_watched_ids = set()
+        for webinar_id in webinar_ids:
+            if webinar_id not in existing_watched_ids:
+                watched = WatchedWebinar(
+                    student_id=plan.student_id,
+                    webinar_id=webinar_id,
+                    created_by_id=current_user.id,
+                )
+                db.session.add(watched)
+                watched_count += 1
+                newly_watched_ids.add(webinar_id)
 
-    if watched_count > 0:
-        db.session.commit()
-        flash(f"{watched_count} вебинаров отмечены как просмотренные", "success")
         # Обновляем множество ID просмотренных
         existing_watched_ids.update(newly_watched_ids)
-    else:
-        flash("Все вебинары плана уже были отмечены ранее", "info")
 
-    # --- Автоматическая отметка заданий ---
-    tasks_to_check = set()
-    webinars_in_plan = (
-        Webinar.query.filter(Webinar.id.in_(webinar_ids))
-        .options(db.selectinload(Webinar.task_numbers))
-        .all()
-    )
-    for webinar in webinars_in_plan:
-        for task in webinar.task_numbers:
-            tasks_to_check.add(task)
+        # --- Автоматическая отметка заданий ---
+        tasks_to_check = set()
+        webinars_in_plan = (
+            Webinar.query.filter(Webinar.id.in_(webinar_ids))
+            .options(db.selectinload(Webinar.task_numbers))
+            .all()
+        )
+        for webinar in webinars_in_plan:
+            for task in webinar.task_numbers:
+                tasks_to_check.add(task)
 
-    tasks_marked = 0
-    existing_known_numbers = {
-        kn.task_number
-        for kn in KnownTaskNumber.query.filter_by(student_id=plan.student_id)
-    }
+        tasks_marked = 0
+        existing_known_numbers = {
+            kn.task_number
+            for kn in KnownTaskNumber.query.filter_by(student_id=plan.student_id)
+        }
 
-    for task in tasks_to_check:
-        if task.number in existing_known_numbers:
-            continue  # Задание уже известно
+        for task in tasks_to_check:
+            if task.number in existing_known_numbers:
+                continue  # Задание уже известно
 
-        # Проверяем, все ли вебинары для этого задания просмотрены
-        task_webinar_ids = {
-            tw.id for tw in task.webinars
-        }  # ID всех вебов для этого задания
-        if task_webinar_ids.issubset(
-            existing_watched_ids
-        ):  # Все ли они есть в просмотренных?
-            known_task = KnownTaskNumber(
-                student_id=plan.student_id, task_number=task.number
-            )
-            db.session.add(known_task)
-            tasks_marked += 1
-            existing_known_numbers.add(
-                task.number
-            )  # Добавляем в известные, чтобы не проверять снова
+            # Проверяем, все ли вебинары для этого задания просмотрены
+            task_webinar_ids = {
+                tw.id for tw in task.webinars
+            }  # ID всех вебов для этого задания
+            if task_webinar_ids.issubset(
+                existing_watched_ids
+            ):  # Все ли они есть в просмотренных?
+                known_task = KnownTaskNumber(
+                    student_id=plan.student_id, task_number=task.number
+                )
+                db.session.add(known_task)
+                tasks_marked += 1
+                existing_known_numbers.add(
+                    task.number
+                )  # Добавляем в известные, чтобы не проверять снова
 
-    if tasks_marked > 0:
+        # Делаем commit для всех изменений
         db.session.commit()
-        flash(f"{tasks_marked} заданий автоматически отмечены как изученные", "success")
+        
+        # Для AJAX запросов не показываем flash сообщения о заданиях
+        if not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if watched_count > 0:
+                flash(f"{watched_count} вебинаров отмечены как просмотренные", "success")
+            else:
+                flash("Все вебинары плана уже были отмечены ранее", "info")
+            if tasks_marked > 0:
+                flash(f"{tasks_marked} заданий автоматически отмечены как изученные", "success")
 
-    return redirect(url_for("plans.view_study_plan", plan_id=plan_id))
+        # Для AJAX запросов возвращаем JSON, для обычных - редирект
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            message = f'Отмечено как просмотренные: {watched_count} вебинаров' if watched_count > 0 else 'Все вебинары уже отмечены как просмотренные'
+            if tasks_marked > 0:
+                message += f', {tasks_marked} заданий автоматически отмечены как изученные'
+            return jsonify({
+                'success': True,
+                'message': message,
+                'added_count': watched_count,
+                'tasks_marked': tasks_marked
+            })
+        else:
+            return redirect(url_for("plans.view_study_plan", plan_id=plan_id))
+    
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'message': f'Ошибка при отметке вебинаров: {str(e)}'
+            }), 500
+        else:
+            flash(f"Ошибка при отметке вебинаров: {str(e)}", "error")
+            return redirect(url_for("plans.view_study_plan", plan_id=plan_id))
 
 
 @bp.route("/api/recommendations/<int:student_id>")
@@ -951,3 +994,341 @@ def view_plans():
         students_with_plans=students_with_plans,
         title="Все планы обучения"
     )
+
+
+# ========== МАРШРУТЫ ДЛЯ ОГЭ ПЛАНОВ ==========
+
+@bp.route("/oge/create/<int:student_id>", methods=["GET", "POST"])
+@login_required
+def create_oge_plan(student_id):
+    """Создание плана ОГЭ для студента"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    student = Student.query.get_or_404(student_id)
+    
+    if student.exam_type != 'oge':
+        flash("План ОГЭ может быть создан только для студентов ОГЭ", "error")
+        return redirect(url_for("students.student_detail", student_id=student_id))
+    
+    # Проверяем, есть ли уже активный план ОГЭ
+    existing_plan = OGEParallelPlan.query.filter_by(
+        student_id=student_id, 
+        is_active=True
+    ).first()
+    
+    if existing_plan:
+        flash("У студента уже есть активный план ОГЭ", "warning")
+        return redirect(url_for(".manage_oge_plan", plan_id=existing_plan.id))
+    
+    if request.method == "POST":
+        try:
+            webinars_per_week = int(request.form.get("webinars_per_week", 1))
+            hard_prog_webinars_per_week = int(request.form.get("hard_prog_webinars_per_week", 0))
+            
+            # Валидация
+            if webinars_per_week < 1 or webinars_per_week > 3:
+                flash("Количество вебинаров в неделю должно быть от 1 до 3", "error")
+                return redirect(url_for(".create_oge_plan", student_id=student_id))
+            
+            if hard_prog_webinars_per_week < 0 or hard_prog_webinars_per_week > 1:
+                flash("Количество вебинаров хард-вебинаров ОГЭ должно быть 0 или 1", "error")
+                return redirect(url_for(".create_oge_plan", student_id=student_id))
+            
+            if webinars_per_week + hard_prog_webinars_per_week > 3:
+                flash("Всего вебинаров в неделю не может быть больше 3", "error")
+                return redirect(url_for(".create_oge_plan", student_id=student_id))
+            
+            # Создаем план
+            plan = create_oge_parallel_plan(
+                student=student,
+                webinars_per_week=webinars_per_week,
+                hard_prog_webinars_per_week=hard_prog_webinars_per_week,
+                created_by_id=current_user.id
+            )
+            
+            flash(f"План ОГЭ успешно создан для {student.full_name}", "success")
+            return redirect(url_for(".manage_oge_plan", plan_id=plan.id))
+            
+        except Exception as e:
+            flash(f"Ошибка при создании плана: {str(e)}", "error")
+            return redirect(url_for(".create_oge_plan", student_id=student_id))
+    
+    # GET запрос - показываем форму
+    return render_template(
+        "plans/create_oge_plan.html",
+        student=student,
+        title=f"Создание плана ОГЭ - {student.full_name}"
+    )
+
+
+@bp.route("/oge/manage/<int:plan_id>")
+@login_required
+def manage_oge_plan(plan_id):
+    """Управление планом ОГЭ"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    plan = OGEParallelPlan.query.get_or_404(plan_id)
+    
+    # Получаем данные для визуализации
+    visual_data = get_parallel_plan_visual_data(plan)
+    progress = get_plan_progress(plan)
+    
+    return render_template(
+        "plans/manage_oge_plan.html",
+        plan=plan,
+        visual_data=visual_data,
+        progress=progress,
+        generate_student_message=generate_student_message,
+        title=f"План ОГЭ - {plan.student.full_name}"
+    )
+
+
+@bp.route("/oge/extend/<int:plan_id>", methods=["POST"])
+@login_required
+def extend_oge_plan(plan_id):
+    """Расширение плана ОГЭ на дополнительные недели"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    plan = OGEParallelPlan.query.get_or_404(plan_id)
+    
+    try:
+        additional_weeks = int(request.form.get("additional_weeks", 4))
+        
+        if additional_weeks < 1 or additional_weeks > 12:
+            flash("Количество дополнительных недель должно быть от 1 до 12", "error")
+            return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+        
+        extend_parallel_plan(plan, additional_weeks)
+        
+        flash(f"План успешно расширен на {additional_weeks} недель", "success")
+        
+    except Exception as e:
+        flash(f"Ошибка при расширении плана: {str(e)}", "error")
+    
+    return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+
+
+@bp.route("/oge/deactivate/<int:plan_id>", methods=["POST"])
+@login_required
+def deactivate_oge_plan(plan_id):
+    """Деактивация плана ОГЭ"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    plan = OGEParallelPlan.query.get_or_404(plan_id)
+    
+    try:
+        plan.is_active = False
+        db.session.commit()
+        
+        flash("План ОГЭ деактивирован", "success")
+        
+    except Exception as e:
+        flash(f"Ошибка при деактивации плана: {str(e)}", "error")
+    
+    return redirect(url_for("students.student_detail", student_id=plan.student_id))
+
+
+@bp.route("/oge/init-topics", methods=["POST"])
+@login_required
+def init_oge_topics():
+    """Инициализация тем ОГЭ (только для администраторов)"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        initialize_oge_topic_order()
+        flash("Темы ОГЭ успешно инициализированы", "success")
+    except Exception as e:
+        flash(f"Ошибка при инициализации тем: {str(e)}", "error")
+    
+    return redirect(url_for("main.index"))
+
+
+@bp.route("/oge/topics")
+@login_required
+def manage_oge_topics():
+    """Управление темами ОГЭ и их приоритетами"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    # Получаем все темы ОГЭ с их приоритетами
+    topics = OGETopic.query.filter_by(is_active=True).order_by(
+        OGETopic.priority.asc().nullslast(),
+        OGETopic.name.asc()
+    ).all()
+    
+    return render_template(
+        "plans/manage_oge_topics.html",
+        topics=topics,
+        title="Управление темами ОГЭ"
+    )
+
+
+@bp.route("/oge/topics/update-priority", methods=["POST"])
+@login_required
+def update_oge_topic_priority():
+    """Обновление приоритета темы ОГЭ"""
+    if not current_user.is_admin:
+        abort(403)
+    
+    try:
+        topic_id = int(request.form.get("topic_id"))
+        priority = request.form.get("priority")
+        
+        topic = OGETopic.query.get_or_404(topic_id)
+        
+        if priority == "" or priority is None:
+            topic.priority = None
+        else:
+            priority_int = int(priority)
+            if priority_int < 1 or priority_int > 4:
+                flash("Приоритет должен быть от 1 до 4", "error")
+                return redirect(url_for(".manage_oge_topics"))
+            topic.priority = priority_int
+        
+        db.session.commit()
+        flash(f"Приоритет темы '{topic.name}' обновлен", "success")
+        
+    except ValueError:
+        flash("Неверный формат приоритета", "error")
+    except Exception as e:
+        flash(f"Ошибка при обновлении приоритета: {str(e)}", "error")
+    
+    return redirect(url_for(".manage_oge_topics"))
+
+
+@bp.route("/oge/mark-webinar-watched/<int:plan_id>/<int:webinar_id>", methods=["POST"])
+@login_required
+def mark_oge_webinar_watched(plan_id, webinar_id):
+    """Отметить вебинар как просмотренный в плане ОГЭ"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    plan = OGEParallelPlan.query.get_or_404(plan_id)
+    
+    # Проверяем, что вебинар принадлежит этому плану
+    plan_webinar = OGEParallelPlanWebinar.query.filter_by(
+        plan_id=plan_id, 
+        webinar_id=webinar_id
+    ).first()
+    
+    if not plan_webinar:
+        flash("Вебинар не найден в плане", "error")
+        return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+    
+    # Проверяем, не отмечен ли уже как просмотренный
+    existing = WatchedWebinar.query.filter_by(
+        student_id=plan.student_id,
+        webinar_id=webinar_id
+    ).first()
+    
+    if existing:
+        flash("Вебинар уже отмечен как просмотренный", "warning")
+        return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+    
+    try:
+        # Добавляем запись о просмотре
+        watched_webinar = WatchedWebinar(
+            student_id=plan.student_id,
+            webinar_id=webinar_id,
+            created_by_id=current_user.id
+        )
+        db.session.add(watched_webinar)
+        db.session.commit()
+        
+        flash("Вебинар отмечен как просмотренный", "success")
+        
+    except Exception as e:
+        flash(f"Ошибка при отметке вебинара: {str(e)}", "error")
+    
+    return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+
+
+@bp.route("/oge/mark-all-webinars-watched/<int:plan_id>", methods=["POST"])
+@login_required
+def mark_all_oge_webinars_watched(plan_id):
+    """Отметить все вебинары плана ОГЭ как просмотренные"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    plan = OGEParallelPlan.query.get_or_404(plan_id)
+    
+    try:
+        # Получаем все вебинары плана
+        plan_webinars = plan.webinars
+        
+        # Получаем уже просмотренные вебинары
+        watched_webinar_ids = {
+            w.webinar_id for w in WatchedWebinar.query.filter_by(student_id=plan.student_id).all()
+        }
+        
+        # Добавляем только непросмотренные вебинары
+        added_count = 0
+        for plan_webinar in plan_webinars:
+            if plan_webinar.webinar_id not in watched_webinar_ids:
+                watched_webinar = WatchedWebinar(
+                    student_id=plan.student_id,
+                    webinar_id=plan_webinar.webinar_id,
+                    created_by_id=current_user.id
+                )
+                db.session.add(watched_webinar)
+                added_count += 1
+        
+        db.session.commit()
+        
+        # Проверяем, это AJAX запрос или обычный
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': True,
+                'message': f'Отмечено как просмотренные: {added_count} вебинаров' if added_count > 0 else 'Все вебинары уже отмечены как просмотренные',
+                'added_count': added_count
+            })
+        else:
+            if added_count > 0:
+                flash(f"Отмечено как просмотренные: {added_count} вебинаров", "success")
+            else:
+                flash("Все вебинары уже отмечены как просмотренные", "info")
+            return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+        
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                'success': False,
+                'message': f'Ошибка при отметке вебинаров: {str(e)}'
+            }), 500
+        else:
+            flash(f"Ошибка при отметке вебинаров: {str(e)}", "error")
+            return redirect(url_for(".manage_oge_plan", plan_id=plan_id))
+
+
+@bp.route("/oge/unmark-webinar-watched/<int:plan_id>/<int:webinar_id>", methods=["POST"])
+@login_required
+def unmark_oge_webinar_watched(plan_id, webinar_id):
+    """Убрать отметку о просмотре вебинара в плане ОГЭ"""
+    if current_user.is_educational_curator:
+        abort(403)
+    
+    plan = OGEParallelPlan.query.get_or_404(plan_id)
+    
+    try:
+        # Находим запись о просмотре
+        watched_webinar = WatchedWebinar.query.filter_by(
+            student_id=plan.student_id,
+            webinar_id=webinar_id
+        ).first()
+        
+        if watched_webinar:
+            db.session.delete(watched_webinar)
+            db.session.commit()
+            flash("Отметка о просмотре вебинара убрана", "success")
+        else:
+            flash("Вебинар не был отмечен как просмотренный", "warning")
+        
+    except Exception as e:
+        flash(f"Ошибка при снятии отметки: {str(e)}", "error")
+    
+    return redirect(url_for(".manage_oge_plan", plan_id=plan_id))

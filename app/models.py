@@ -305,6 +305,8 @@ class OGETopic(db.Model):
     name = db.Column(db.String(200), nullable=False)  # Название темы (например, "Системы счисления")
     task_numbers_str = db.Column(db.String(100))  # Номера заданий в виде строки (например, "1, 2")
     description = db.Column(db.Text)  # Описание темы (опционально)
+    priority = db.Column(db.Integer, nullable=True)  # Приоритет темы (1-4, None если без приоритета)
+    is_hard_prog = db.Column(db.Boolean, nullable=True)  # Является ли тема хард-прогой
     is_active = db.Column(db.Boolean, default=True)  # Активна ли тема
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -333,3 +335,90 @@ webinar_oge_topic_association = db.Table(
     db.Column("webinar_id", db.Integer, db.ForeignKey("webinar.id"), primary_key=True),
     db.Column("oge_topic_id", db.Integer, db.ForeignKey("oge_topic.id"), primary_key=True),
 )
+
+
+# Модель для порядка изучения тем ОГЭ
+class OGETopicOrder(db.Model):
+    __tablename__ = 'oge_topic_order'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey("oge_topic.id"), nullable=False)
+    order_index = db.Column(db.Integer, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    topic = db.relationship("OGETopic")
+    
+    __table_args__ = (db.UniqueConstraint("topic_id", name="uq_oge_topic_order_topic"),)
+
+
+# Модель для параллельных планов ОГЭ
+class OGEParallelPlan(db.Model):
+    __tablename__ = 'oge_parallel_plan'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("student.id"), nullable=False)
+    webinars_per_week = db.Column(db.Integer, nullable=False)  # 1-3 вебинара в неделю
+    hard_prog_webinars_per_week = db.Column(db.Integer, default=0)  # 0-1 вебинар хард-проги в неделю
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    student = db.relationship("Student")
+    created_by = db.relationship("User")
+    slots = db.relationship("OGEParallelPlanSlot", back_populates="plan", cascade="all, delete-orphan")
+    webinars = db.relationship("OGEParallelPlanWebinar", back_populates="plan", cascade="all, delete-orphan")
+    topic_orders = db.relationship("OGEParallelPlanTopicOrder", back_populates="plan", cascade="all, delete-orphan")
+
+
+# Модель для слотов параллельного плана ОГЭ
+class OGEParallelPlanSlot(db.Model):
+    __tablename__ = 'oge_parallel_plan_slot'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey("oge_parallel_plan.id"), nullable=False)
+    slot_number = db.Column(db.Integer, nullable=False)  # 1, 2, 3 для обычных слотов, 0 для хард-проги
+    current_topic_id = db.Column(db.Integer, db.ForeignKey("oge_topic.id"), nullable=True)
+    current_topic_position = db.Column(db.Integer, default=0)  # Позиция в текущей теме
+    is_completed = db.Column(db.Boolean, default=False)
+    
+    plan = db.relationship("OGEParallelPlan", back_populates="slots")
+    current_topic = db.relationship("OGETopic")
+    
+    __table_args__ = (db.UniqueConstraint("plan_id", "slot_number", name="uq_oge_parallel_plan_slot"),)
+
+
+# Модель для вебинаров в параллельном плане ОГЭ
+class OGEParallelPlanWebinar(db.Model):
+    __tablename__ = 'oge_parallel_plan_webinar'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey("oge_parallel_plan.id"), nullable=False)
+    webinar_id = db.Column(db.Integer, db.ForeignKey("webinar.id"), nullable=False)
+    slot_number = db.Column(db.Integer, nullable=False)  # 1, 2, 3 для обычных слотов, 0 для хард-проги
+    week_number = db.Column(db.Integer, nullable=False)
+    topic_id = db.Column(db.Integer, db.ForeignKey("oge_topic.id"), nullable=True)  # None для хард-проги
+    position_in_topic = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    plan = db.relationship("OGEParallelPlan", back_populates="webinars")
+    webinar = db.relationship("Webinar")
+    topic = db.relationship("OGETopic")
+    
+    __table_args__ = (db.UniqueConstraint("plan_id", "webinar_id", name="uq_oge_parallel_plan_webinar"),)
+
+
+# Модель для кастомного порядка тем в плане ОГЭ
+class OGEParallelPlanTopicOrder(db.Model):
+    __tablename__ = 'oge_parallel_plan_topic_order'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey("oge_parallel_plan.id"), nullable=False)
+    topic_id = db.Column(db.Integer, db.ForeignKey("oge_topic.id"), nullable=False)
+    order_index = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    plan = db.relationship("OGEParallelPlan", back_populates="topic_orders")
+    topic = db.relationship("OGETopic")
+    
+    __table_args__ = (db.UniqueConstraint("plan_id", "topic_id", name="uq_oge_plan_topic_order_topic"),)

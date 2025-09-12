@@ -10,7 +10,8 @@ from app.models import (
     WatchedWebinar,
     KnownTaskNumber,
     Webinar,
-    TaskNumber, 
+    TaskNumber,
+    OGEParallelPlan,
 )
 from app.students import bp
 from .forms import StudentForm
@@ -105,19 +106,64 @@ def student_detail(student_id):
         ),
         joinedload(Student.known_tasks),  # Загружаем известные задания
     ).get_or_404(student_id)
+    
+    # Загружаем планы ОГЭ для студентов ОГЭ
+    oge_plans = []
+    oge_plans_status = {}
+    if student.exam_type == 'oge':
+        oge_plans = OGEParallelPlan.query.filter_by(
+            student_id=student_id, 
+            is_active=True
+        ).order_by(OGEParallelPlan.created_at.desc()).all()
+        
+        # Определяем статус просмотра для каждого плана
+        watched_webinar_ids = {w.webinar_id for w in student.watched_webinars}
+        for plan in oge_plans:
+            plan_webinar_ids = {pw.webinar_id for pw in plan.webinars}
+            watched_in_plan = len(plan_webinar_ids.intersection(watched_webinar_ids))
+            total_in_plan = len(plan_webinar_ids)
+            oge_plans_status[plan.id] = {
+                'all_watched': watched_in_plan == total_in_plan and total_in_plan > 0,
+                'watched_count': watched_in_plan,
+                'total_count': total_in_plan
+            }
+
+    # Определяем статус просмотра для планов ЕГЭ
+    study_plans_status = {}
+    if student.exam_type != 'oge':
+        watched_webinar_ids = {w.webinar_id for w in student.watched_webinars}
+        for plan in student.plans:
+            plan_webinar_ids = {pw.webinar_id for pw in plan.planned_webinars}
+            watched_in_plan = len(plan_webinar_ids.intersection(watched_webinar_ids))
+            total_in_plan = len(plan_webinar_ids)
+            study_plans_status[plan.id] = {
+                'all_watched': watched_in_plan == total_in_plan and total_in_plan > 0,
+                'watched_count': watched_in_plan,
+                'total_count': total_in_plan
+            }
 
     # --- Начало изменений: Расчет процента прохождения последнего плана ---
     last_plan = None
+    last_oge_plan = None
     completion_percentage = 0
-    if student.plans:  # Проверяем, есть ли планы вообще
+    
+    # Для студентов ОГЭ проверяем планы ОГЭ
+    if student.exam_type == 'oge' and oge_plans:
+        last_oge_plan = oge_plans[0]  # Уже отсортированы по дате создания desc
+    elif student.plans:  # Для студентов ЕГЭ проверяем обычные планы
         # Находим последний по дате создания
         last_plan = (
             max(student.plans, key=lambda p: p.created_at) if student.plans else None
         )
 
-    if (
+    # Расчет прогресса для планов ОГЭ
+    if student.exam_type == 'oge' and last_oge_plan:
+        from app.services.oge_plan_service import get_plan_progress
+        progress = get_plan_progress(last_oge_plan)
+        completion_percentage = progress['overall_progress']
+    elif (
         last_plan and last_plan.planned_webinars
-    ):  # Если есть последний план и в нем есть вебинары
+    ):  # Если есть последний план ЕГЭ и в нем есть вебинары
         total_in_plan = len(last_plan.planned_webinars)
         watched_in_plan_count = 0
         plan_webinar_ids = {pw.webinar_id for pw in last_plan.planned_webinars}
@@ -212,8 +258,12 @@ def student_detail(student_id):
         all_webinars=all_webinars,
         required_tasks=required_tasks,
         study_plans=sorted(student.plans, key=lambda x: x.created_at, reverse=True),
+        study_plans_status=study_plans_status,
         # --- Начало изменений: Передача данных о плане ---
         last_plan=last_plan,
+        last_oge_plan=last_oge_plan,
+        oge_plans=oge_plans,
+        oge_plans_status=oge_plans_status,
         completion_percentage=completion_percentage,
         # --- Конец изменений ---
         task_stats=task_stats,

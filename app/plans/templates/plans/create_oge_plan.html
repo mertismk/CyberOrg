@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-graduation-cap text-primary"></i>
+                        Создание плана ОГЭ
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Информация о студенте</h5>
+                        <p class="mb-0">
+                            <strong>Студент:</strong> {{ student.full_name }}<br>
+                            <strong>Platform ID:</strong> {{ student.platform_id }}<br>
+                            <strong>Учебный год:</strong> {{ student.academic_year }}
+                        </p>
+                    </div>
+
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="webinars_per_week" class="form-label">
+                                        <i class="fas fa-calendar-week text-primary"></i>
+                                        Количество вебинаров в неделю
+                                    </label>
+                                    <select class="form-select" id="webinars_per_week" name="webinars_per_week" required>
+                                        <option value="1">1 вебинар в неделю</option>
+                                        <option value="2">2 вебинара в неделю</option>
+                                        <option value="3">3 вебинара в неделю</option>
+                                    </select>
+                                    <div class="form-text">
+                                        Выберите количество обычных вебинаров по темам ОГЭ в неделю
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="hard_prog_webinars_per_week" class="form-label">
+                                        <i class="fas fa-code text-warning"></i>
+                                        Хард-вебинары ОГЭ в неделю
+                                    </label>
+                                    <select class="form-select" id="hard_prog_webinars_per_week" name="hard_prog_webinars_per_week">
+                                        <option value="0">Без хард-вебинаров</option>
+                                        <option value="1">1 хард-вебинар в неделю</option>
+                                    </select>
+                                    <div class="form-text">
+                                        Дополнительные хард-вебинары ОГЭ (опционально)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Важно!</h6>
+                            <ul class="mb-0">
+                                <li>Общее количество вебинаров в неделю не может превышать 3</li>
+                                <li>При 1 вебинаре в неделю темы изучаются последовательно</li>
+                                <li>При 2-3 вебинарах темы изучаются параллельно</li>
+                                <li>Приоритетные темы: Системы счисления, Программирование, Графы, Кодирование информации</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('students.student_detail', student_id=student.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Назад к студенту
+                        </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Создать план ОГЭ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const webinarsPerWeek = document.getElementById('webinars_per_week');
+    const hardProgPerWeek = document.getElementById('hard_prog_webinars_per_week');
+    
+    function updateHardProgOptions() {
+        const selectedWebinars = parseInt(webinarsPerWeek.value);
+        const hardProgSelect = hardProgPerWeek;
+        
+        // Очищаем опции
+        hardProgSelect.innerHTML = '';
+        
+        // Добавляем опции в зависимости от выбранного количества вебинаров
+        if (selectedWebinars <= 2) {
+            hardProgSelect.innerHTML += '<option value="0">Без хард-проги</option>';
+            hardProgSelect.innerHTML += '<option value="1">1 вебинар хард-проги в неделю</option>';
+        } else {
+            // При 3 вебинарах хард-прога недоступна
+            hardProgSelect.innerHTML += '<option value="0">Без хард-проги</option>';
+            hardProgSelect.disabled = true;
+        }
+    }
+    
+    webinarsPerWeek.addEventListener('change', updateHardProgOptions);
+    updateHardProgOptions(); // Инициализация
+});
+</script>
+{% endblock %}
