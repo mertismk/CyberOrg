@@ -60,7 +60,7 @@ class WebinarForm(FlaskForm):
     # Поля для ЕГЭ
     for_beginners = BooleanField('Python с нуля') 
     for_basic = BooleanField('Основной курс') 
-    for_advanced = BooleanField('Задание 26') 
+    for_advanced = BooleanField('Хард-прога') 
     for_expert = BooleanField('Задание 27') 
     for_mocks = BooleanField('Разбор пробников') 
     for_practice = BooleanField('Нарешка') 

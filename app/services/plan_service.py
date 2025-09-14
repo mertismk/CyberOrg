@@ -169,12 +169,12 @@ def analyze_webinar_blocks(webinars, watched_webinar_ids, hours_per_week=9, need
             elif block_key == 'basic':
                 if needs_python_basics:
                     time_percentage = 0.34  # 34% времени на основной курс (если есть Python)
-                elif needs_task_26 and not is_first_plan:
+                elif needs_task_26:
                     time_percentage = 0.66  # 66% времени на основной курс (если есть T26)
                 else:
                     time_percentage = 1.0   # 100% времени на основной курс
-            elif block_key == 'advanced' and needs_task_26 and not is_first_plan:
-                time_percentage = 0.34  # 34% времени на T26 (если не первый план)
+            elif block_key == 'advanced' and needs_task_26 and not needs_python_basics:
+                time_percentage = 0.34  # 34% времени на T26
             else:
                 # Для остальных блоков (mocks, practice, minisnap) - минимальное время
                 time_percentage = 0.1
@@ -189,7 +189,7 @@ def analyze_webinar_blocks(webinars, watched_webinar_ids, hours_per_week=9, need
             if block_data['recommended_per_week'] == 0 and block_data['count'] > 0:
                 if (block_key == 'beginners' and needs_python_basics) or \
                    (block_key == 'basic') or \
-                   (block_key == 'advanced' and needs_task_26 and not is_first_plan):
+                   (block_key == 'advanced' and needs_task_26 and not needs_python_basics):
                     block_data['recommended_per_week'] = 1
         else:
             block_data['recommended_per_week'] = 0

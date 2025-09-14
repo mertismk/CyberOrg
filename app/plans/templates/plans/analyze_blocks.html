@@ -57,7 +57,7 @@
                         {% set block_names = {
                             'beginners': 'Python с нуля',
                             'basic': 'Основной курс (включая задание 27)', 
-                            'advanced': 'Задание 26',
+                            'advanced': 'Хард-прога',
                             'mocks': 'Разбор пробников',
                             'practice': 'Нарешка'
                         } %}
@@ -243,13 +243,13 @@
                 } else if (blockKey === 'basic') {
                     if (needsPythonBasics) {
                         timePercentage = 0.34; // 34% времени на основной курс (если есть Python)
-                    } else if (needsTask26 && !isFirstPlan) {
+                    } else if (needsTask26) {
                         timePercentage = 0.66; // 66% времени на основной курс (если есть T26)
                     } else {
                         timePercentage = 1.0; // 100% времени на основной курс
                     }
-                } else if (blockKey === 'advanced' && needsTask26 && !isFirstPlan) {
-                    timePercentage = 0.34; // 34% времени на T26 (если не первый план)
+                } else if (blockKey === 'advanced' && needsTask26 && !needsPythonBasics) {
+                    timePercentage = 0.34; // 34% времени на T26
                 } else {
                     // Для остальных блоков (mocks, practice) - минимальное время
                     timePercentage = 0.1;
@@ -265,13 +265,13 @@
                 if (recommendedPerWeek === 0 && data.count > 0) {
                     if ((blockKey === 'beginners' && needsPythonBasics) ||
                         (blockKey === 'basic') ||
-                        (blockKey === 'advanced' && needsTask26 && !isFirstPlan)) {
+                        (blockKey === 'advanced' && needsTask26 && !needsPythonBasics)) {
                         recommendedPerWeek = 1;
                     }
                 }
                 
                 // Обновляем значение только для блоков, которые должны измениться при переключении галочки
-                if (blockKey === 'beginners' || blockKey === 'basic') {
+                if (blockKey === 'beginners' || blockKey === 'basic' || blockKey === 'advanced') {
                     input.value = recommendedPerWeek;
                     
                     // Обновляем текст рекомендации
