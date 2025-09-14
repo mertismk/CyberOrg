@@ -1,4 +1,5 @@
 from datetime import datetime, date
+import re
 from collections import deque, Counter  # Добавляем Counter
 
 # Переносим импорт сюда
@@ -70,6 +71,36 @@ def create_webinar_sort_key(webinar):
 
 
 # --- Новые вспомогательные функции ---
+
+def _extract_beginner_lesson_number(title: str) -> int:
+    """Пытается извлечь номер занятия из названия ролика. Если не найдено — возвращает большое число.
+
+    Ожидаемые форматы: "Занятие 1", "Урок 2", просто число в названии.
+    """
+    if not title:
+        return 10_000
+    # Ищем конструкции вида "Занятие 12" или "Урок 5"
+    match = re.search(r"(?:занятие|урок)\s*(\d+)", title, flags=re.IGNORECASE)
+    if match:
+        try:
+            return int(match.group(1))
+        except ValueError:
+            pass
+    # Иначе берём первое число в названии, если есть
+    any_num = re.search(r"(\d+)", title)
+    if any_num:
+        try:
+            return int(any_num.group(1))
+        except ValueError:
+            pass
+    return 10_000
+
+def _beginner_sort_key(webinar: Webinar):
+    """Ключ сортировки для роликов Python с нуля: по номеру занятия, затем по дате, затем по ID."""
+    number = _extract_beginner_lesson_number(getattr(webinar, 'title', '') or '')
+    # Для стабильности сортируем дальше по дате и ID
+    dt_key = get_sortable_datetime(getattr(webinar, 'date', None))
+    return (number, dt_key, webinar.id)
 
 def analyze_webinar_blocks(webinars, watched_webinar_ids, hours_per_week=9, needs_python_basics=False, is_first_plan=True, needs_task_26=False, include_2025_webinars=False):
     """
@@ -166,7 +197,7 @@ def analyze_webinar_blocks(webinars, watched_webinar_ids, hours_per_week=9, need
     return blocks
 
 
-def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids):
+def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids, hours_per_week=15):
     """
     Фильтрует вебинары по квотам блоков и распределяет их по неделям.
     
@@ -174,6 +205,7 @@ def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids
         webinars: список всех вебинаров
         block_quotas: словарь с квотами блоков {'beginners': 3, 'basic': 1, ...}
         watched_webinar_ids: множество ID просмотренных вебинаров
+        hours_per_week: максимум часов в неделю
     
     Returns:
         tuple: (filtered_webinars, webinar_weeks)
@@ -213,12 +245,18 @@ def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids
         if block_key:
             webinars_by_block[block_key].append(webinar)
     
-    # Сортируем вебинары в каждом блоке по дате
+    # Сортируем вебинары в каждом блоке: beginner по номеру занятия, остальные по дате
     for block_key, block_webinars in webinars_by_block.items():
-        block_webinars.sort(key=lambda w: w.date if w.date else datetime.min.date())
+        if block_key == 'beginners':
+            block_webinars.sort(key=_beginner_sort_key)
+        else:
+            block_webinars.sort(key=lambda w: w.date if w.date else datetime.min.date())
     
     # Распределяем вебинары по неделям согласно квотам (каждую неделю)
     print(f"Block quotas applied - distributing webinars (per week):")
+    
+    # Трекер часов по неделям
+    weekly_hours = {week: 0.0 for week in range(1, 5)}
     
     for week in range(1, 5):  # 4 недели
         for block_key, quota_per_week in block_quotas.items():
@@ -228,7 +266,7 @@ def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids
             block_webinars = webinars_by_block[block_key]
             selected_count = 0
             
-            # Выбираем нужное количество вебинаров для этой недели
+            # Выбираем вебинары согласно квоте, но не превышая лимит часов
             for webinar in block_webinars:
                 if webinar.id in webinar_weeks:  # Уже назначен
                     continue
@@ -236,12 +274,46 @@ def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids
                 if selected_count >= quota_per_week:
                     break
                     
-                filtered_webinars.append(webinar)
-                webinar_weeks[webinar.id] = week
-                selected_count += 1
+                webinar_hours = get_webinar_hours(webinar)
+                if weekly_hours[week] + webinar_hours <= hours_per_week:
+                    filtered_webinars.append(webinar)
+                    webinar_weeks[webinar.id] = week
+                    weekly_hours[week] += webinar_hours
+                    selected_count += 1
+                else:
+                    print(f"  Week {week}, {block_key}: webinar {webinar.id} skipped - would exceed hour limit")
             
             if selected_count > 0:
-                print(f"  Week {week}, {block_key}: {selected_count} webinars selected")
+                print(f"  Week {week}, {block_key}: {selected_count} webinars selected ({weekly_hours[week]:.1f}h total)")
+    
+    # Дозаполняем недели до лимита часов вебинарами основного курса
+    print("\nFilling remaining hours with basic course webinars:")
+    basic_webinars = webinars_by_block.get('basic', [])
+    
+    for week in range(1, 5):
+        remaining_hours = hours_per_week - weekly_hours[week]
+        if remaining_hours > 1.0:  # Если остается больше 1 часа
+            print(f"  Week {week}: {remaining_hours:.1f}h remaining, adding basic webinars...")
+            added_count = 0
+            
+            for webinar in basic_webinars:
+                if webinar.id in webinar_weeks:  # Уже назначен
+                    continue
+                    
+                webinar_hours = get_webinar_hours(webinar)
+                if weekly_hours[week] + webinar_hours <= hours_per_week:
+                    filtered_webinars.append(webinar)
+                    webinar_weeks[webinar.id] = week
+                    weekly_hours[week] += webinar_hours
+                    added_count += 1
+                    print(f"    Added webinar {webinar.id} ({webinar_hours:.1f}h), total: {weekly_hours[week]:.1f}h")
+                    
+                    # Если осталось мало времени, останавливаемся
+                    if hours_per_week - weekly_hours[week] < 1.0:
+                        break
+            
+            if added_count > 0:
+                print(f"  Week {week}: added {added_count} basic webinars, final: {weekly_hours[week]:.1f}h")
     
     # Подсчитываем общее количество по блокам
     block_totals = {}
@@ -256,13 +328,15 @@ def _filter_webinars_by_block_quotas(webinars, block_quotas, watched_webinar_ids
 
 
 def _handle_beginner_webinars(
-    student, all_webinars, watched_webinar_ids, hours_per_week
+    student, all_webinars, watched_webinar_ids, hours_per_week, videos_per_week: int = 3, weeks: int = 4
 ):
-    """Обрабатывает вебинары 'Python с нуля'."""
+    """Обрабатывает вебинары 'Python с нуля' и раскладывает ровно по videos_per_week на неделю по порядку.
+
+    Возвращает список выбранных роликов и маппинг ID -> неделя, а также набор назначенных ID.
+    """
     selected_beginner_webinars = []
-    remaining_beginner_overflow = deque()
+    beginner_weeks = {}
     beginner_assigned_ids = set()
-    week1_hours = 0.0
 
     if student.needs_python_basics:
         beginner_webinars_available = [
@@ -270,31 +344,35 @@ def _handle_beginner_webinars(
             for w in all_webinars
             if w.for_beginners and w.id not in watched_webinar_ids
         ]
+        beginner_webinars_available.sort(key=_beginner_sort_key)
         print(
             f"\nНайдено доступных beginner вебинаров: {len(beginner_webinars_available)}"
         )
-        for w in beginner_webinars_available:
-            w_hours = get_webinar_hours(w)
-            if week1_hours + w_hours <= hours_per_week:
-                selected_beginner_webinars.append(w)
-                beginner_assigned_ids.add(w.id)
-                week1_hours += w_hours
-            else:
-                remaining_beginner_overflow.append(w)
-        print(
-            f"Добавлено beginner (Неделя 1): {len(selected_beginner_webinars)} вебинаров ({week1_hours} часов)"
-        )
-        print(
-            f"Осталось beginner для Недели 2: {len(remaining_beginner_overflow)} вебинаров"
-        )
+
+        # Берём по videos_per_week на каждую неделю, максимум на 'weeks' недель
+        max_videos = videos_per_week * weeks
+        sliced = beginner_webinars_available[:max_videos]
+        for idx, w in enumerate(sliced):
+            week_number = (idx // videos_per_week) + 1  # 1..weeks
+            if week_number > weeks:
+                break
+            selected_beginner_webinars.append(w)
+            beginner_assigned_ids.add(w.id)
+            beginner_weeks[w.id] = week_number
+
+        # Выведем статистику по неделям
+        per_week_counts = {wn: 0 for wn in range(1, weeks + 1)}
+        for wid, wn in beginner_weeks.items():
+            per_week_counts[wn] += 1
+        for wn in range(1, weeks + 1):
+            print(f"Добавлено beginner (Неделя {wn}): {per_week_counts[wn]} вебинаров ({per_week_counts[wn] * 2.5:.1f} часов)")
     else:
         print("\nPython Basics не требуется.")
 
     return (
         selected_beginner_webinars,
-        remaining_beginner_overflow,
+        beginner_weeks,
         beginner_assigned_ids,
-        week1_hours,
     )
 
 
@@ -546,12 +624,12 @@ def _distribute_webinars_to_weeks(
     webinar_weeks = {}
     selected_regular_webinars = []
     
-    # Словарь для хранения часов по неделям
+    # Словарь для хранения часов по неделям (инициализируем из weekly_hours_summary для всех недель)
     weekly_stats = {
-        1: {'total': weekly_hours_summary[1], 't26': 0, 't27': 0, 'regular': 0},
-        2: {'total': 0, 't26': 0, 't27': 0, 'regular': 0},
-        3: {'total': 0, 't26': 0, 't27': 0, 'regular': 0},
-        4: {'total': 0, 't26': 0, 't27': 0, 'regular': 0},
+        1: {'total': weekly_hours_summary.get(1, 0.0), 't26': 0, 't27': 0, 'regular': 0},
+        2: {'total': weekly_hours_summary.get(2, 0.0), 't26': 0, 't27': 0, 'regular': 0},
+        3: {'total': weekly_hours_summary.get(3, 0.0), 't26': 0, 't27': 0, 'regular': 0},
+        4: {'total': weekly_hours_summary.get(4, 0.0), 't26': 0, 't27': 0, 'regular': 0},
     }
     
     # Счетчики добавленных вебинаров
@@ -788,6 +866,18 @@ def recommend_webinars(
     print(f"Total webinars in DB: {len(all_webinars)}")
     print(f"Academic Year Filter: {'Both 2025 and 2026' if include_2025_webinars else 'Only 2026'}")
 
+    # --- 1.4. Ролики Python с нуля: сначала пытаемся заполнить Неделю 1, остаток в Неделю 2 ---
+    selected_beginner_webinars, beginner_weeks, beginner_assigned_ids = _handle_beginner_webinars(
+        student,
+        all_webinars,
+        watched_webinar_ids,
+        hours_per_week,
+    )
+    # Помечаем занятые ID и часы за ролики Python с нуля по неделям
+    assigned_webinar_ids.update(beginner_assigned_ids)
+    for wid, week in beginner_weeks.items():
+        weekly_hours_summary[week] = weekly_hours_summary.get(week, 0.0) + get_webinar_hours(next(w for w in selected_beginner_webinars if w.id == wid))
+
     # --- 1.5. Анализ блоков вебинаров ---
     # Определяем нужны ли задания 26
     needs_task_26 = False
@@ -812,8 +902,75 @@ def recommend_webinars(
     # Применяем недельные квоты блоков если они заданы
     if block_quotas:
         print(f"Applying weekly block quotas: {block_quotas}")
-        # Фильтруем вебинары по квотам блоков и сразу распределяем по неделям
-        suitable_webinars, webinar_weeks = _filter_webinars_by_block_quotas(all_webinars, block_quotas, watched_webinar_ids)
+        
+        # НОВАЯ ЛОГИКА: Сначала обрабатываем beginner вебинары с правильной сортировкой
+        if student.needs_python_basics and 'beginners' in block_quotas and block_quotas['beginners'] > 0:
+            print("Processing beginner webinars with correct ordering...")
+            beginner_webinars_available = [
+                w for w in all_webinars 
+                if w.for_beginners and w.id not in watched_webinar_ids
+            ]
+            beginner_webinars_available.sort(key=_beginner_sort_key)
+            
+            # Распределяем beginner видео по неделям согласно квоте
+            beginner_count = 0
+            beginner_webinars_selected = []
+            beginner_weeks_mapping = {}
+            
+            for week in range(1, 5):  # 4 недели
+                week_quota = block_quotas['beginners']
+                added_this_week = 0
+                
+                while added_this_week < week_quota and beginner_count < len(beginner_webinars_available):
+                    webinar = beginner_webinars_available[beginner_count]
+                    beginner_webinars_selected.append(webinar)
+                    beginner_weeks_mapping[webinar.id] = week
+                    beginner_count += 1
+                    added_this_week += 1
+                
+                # Если beginner ролики закончились, но квота недели не заполнена,
+                # запомним это для дозаполнения основным курсом
+                if beginner_count >= len(beginner_webinars_available) and added_this_week < week_quota:
+                    print(f"Week {week}: beginner videos ended, need {week_quota - added_this_week} more slots to fill with basic course")
+                    break
+            
+            # Подготавливаем модифицированные квоты блоков для остальных вебинаров
+            # Если beginner квота не была полностью использована, переносим остаток в basic
+            modified_block_quotas = block_quotas.copy()
+            total_beginner_needed = block_quotas['beginners'] * 4  # 4 недели
+            actual_beginner_count = len(beginner_webinars_selected)
+            
+            if actual_beginner_count < total_beginner_needed:
+                # Beginner ролики закончились, добавляем недостающее количество к basic квоте
+                missing_slots = total_beginner_needed - actual_beginner_count
+                original_basic_quota = modified_block_quotas.get('basic', 0)
+                modified_block_quotas['basic'] = original_basic_quota + (missing_slots // 4)  # Распределяем по неделям
+                if missing_slots % 4 > 0:
+                    # Если остаток, добавляем еще один в неделю
+                    modified_block_quotas['basic'] += 1
+                    
+                print(f"Beginner videos insufficient: {actual_beginner_count}/{total_beginner_needed}, adding {missing_slots} slots to basic quota")
+                print(f"Modified basic quota: {original_basic_quota} -> {modified_block_quotas['basic']}")
+            
+            # Убираем beginner квоту для остальной обработки
+            modified_block_quotas['beginners'] = 0
+            
+            # Удаляем beginner из общего пула для _filter_webinars_by_block_quotas
+            non_beginner_webinars = [w for w in all_webinars if not w.for_beginners]
+            
+            # Фильтруем остальные вебинары по модифицированным квотам блоков
+            other_webinars, other_weeks = _filter_webinars_by_block_quotas(non_beginner_webinars, modified_block_quotas, watched_webinar_ids, hours_per_week)
+            
+            # Объединяем результаты
+            suitable_webinars = beginner_webinars_selected + other_webinars
+            webinar_weeks = {**beginner_weeks_mapping, **other_weeks}
+            
+            print(f"Beginner webinars selected: {len(beginner_webinars_selected)}")
+            print(f"Other webinars selected: {len(other_webinars)}")
+        else:
+            # Обычная логика без beginner обработки
+            suitable_webinars, webinar_weeks = _filter_webinars_by_block_quotas(all_webinars, block_quotas, watched_webinar_ids, hours_per_week)
+        
         print(f"Webinars after block quotas filtering: {len(suitable_webinars)}")
         
         # Рассчитываем часы по неделям
@@ -879,13 +1036,13 @@ def recommend_webinars(
     # --- 7. Распределение по неделям ---
     final_webinar_weeks, selected_regular_webinars = _distribute_webinars_to_weeks(
         task_deques,
-        remaining_beginner_overflow,
+        deque(),
         hours_per_week,
         assigned_webinar_ids,  # Модифицируется
         weekly_hours_summary,  # Модифицируется
     )
     # Добавляем недели для beginner вебинаров к итоговому словарю
-    final_webinar_weeks.update({w.id: 1 for w in selected_beginner_webinars})
+    final_webinar_weeks.update({w.id: beginner_weeks[w.id] for w in selected_beginner_webinars})
 
     # --- 8. Сборка результатов ---
     all_selected_webinars = selected_beginner_webinars + selected_regular_webinars
