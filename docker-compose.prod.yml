@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14
+    container_name: cyberorg_postgres_prod
+    environment:
+      POSTGRES_USER: cyberorg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cyberorg}
+      POSTGRES_DB: cyberorg
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberorg -d cyberorg"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web:
+    build: .
+    container_name: cyberorg_web_prod
+    environment:
+      - DATABASE_URL=postgresql://cyberorg:${POSTGRES_PASSWORD:-cyberorg}@db:5432/cyberorg
+      - SECRET_KEY=${SECRET_KEY}
+      - FLASK_ENV=production
+    volumes:
+      - ./app/static/uploads:/app/app/static/uploads
+      - ./backups:/backups
+    ports:
+      - "80:1111"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1111/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
